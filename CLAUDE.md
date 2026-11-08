@@ -107,6 +107,16 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   3% of fitting replies and at least 3 days apart, she says the exact running count in a random flavor
   (`TOUCH_COUNT_STYLES`), her own words. `TOUCH_AWARE=off` leaves it out of her prompt and mood.
   Tests: `.github/scripts/touch.test.php`.
+- **Touch feedback** (`webapp/js/desktop/fx.js`, shared by desktop.js and the settings window's "Touch feedback" tab,
+  which previews with the same code): ripple shape (circle/heart/star/sparkle/paw/diamond), motion (expand, pulse,
+  wavy, shaky, burst, spin), size/speed/rings/line; "Let her pick" (`reactionRipple`: shaky for touches she isn't
+  ready for, heart burst for warm ones at Close+, a ripple on combos). Labels: box (rounded, pill, square, speech
+  bubble, cloud, Jun style, none), font, size, animation (pop, bounce, float, wiggle, typewriter, glitch, fade),
+  border, see-through. Picks in localStorage `desktop.fx` (applied as classes/vars on `<body>`), colors in the
+  theme (`--ripple`, `--label`, `--label-edge`, `--label-ink`). The label and thought-bubble base CSS live in fx.js.
+  Thought icons: `EMOTES` in fx.js (symbols, pictures, ASCII robot faces with a blinking caret); `pickEmote` says
+  a basic icon a different way now and then by bond and mood, never the same icon twice in a row; idle thoughts by
+  mood, hour and bond (`pickFromPool`); bubble pops in a mix of ways (`eAnim`); robot faces never/sometimes/often.
 
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings

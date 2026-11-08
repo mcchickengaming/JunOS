@@ -41,16 +41,37 @@
   select.btn { padding: 6px 8px; }
   input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
   .pct { width: 38px; text-align: right; color: var(--muted); font-size: 12px; }
+  /* touch feedback preview: a little piece of desktop. the same variables as desktop.html's :root,
+     so the theme's colors (set inline by js) mix the same way here */
+  .preview { position: sticky; top: 49px; z-index: 1; height: 170px; margin: 4px 0 10px; border-radius: 12px; overflow: hidden; cursor: crosshair;
+    border: 1px solid var(--border-2); background: linear-gradient(135deg, #2b3a55, #1c2238 55%, #3a2a48);
+    --panel: #191233; --accent: #ec0054; --ink: #ffffff; --bubble: #191233; --bubble-edge: #ec0054; --bubble-a: 1; --edge-a: 1; --outline: none;
+    --bubble-bg: color-mix(in srgb, var(--bubble) calc(var(--bubble-a) * 100%), transparent);
+    --edge: color-mix(in srgb, var(--bubble-edge) calc(var(--edge-a) * 100%), transparent); }
+  .preview .pv-hint { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #fff9; pointer-events: none; }
+  .preview .pv-head { position: absolute; left: 50%; top: 112px; width: 54px; height: 54px; margin-left: -27px; border-radius: 50% 50% 40% 40%;
+    background: radial-gradient(circle at 50% 40%, #f3d9cf, #d8b4a8); box-shadow: 0 0 0 3px #3b2b2b inset; pointer-events: none; }
+  .preview .pv-head::before, .preview .pv-head::after { content: ''; position: absolute; top: -12px; width: 18px; height: 22px; background: #3b2b2b;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+  .preview .pv-head::before { left: 2px; } .preview .pv-head::after { right: 2px; }
+  .preview-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+  .gallery { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gallery button { min-width: 40px; height: 34px; padding: 0 8px; border-radius: 17px; border: 1px solid var(--border-2); background: var(--bg-3); color: var(--fg);
+    font: 700 15px Arial, Helvetica, sans-serif; cursor: pointer; }
+  .gallery button.ascii { font-family: Consolas, "Courier New", monospace; font-size: 13px; }
+  .gallery button:hover { background: var(--bg-4); border-color: var(--accent); }
+  .gal-name { margin: 10px 0 4px; font-size: 12.5px; color: var(--muted); }
 </style>
 </head>
 <body>
 <header>
   <h1>Jun on the desktop</h1>
-  <p class="sub">How to play with her, her colors, and her spots.</p>
+  <p class="sub">How to play with her, her colors, how her touches look, and her spots.</p>
 </header>
 <nav>
   <button type="button" data-tab="help">How to play</button>
   <button type="button" data-tab="colors">Colors</button>
+  <button type="button" data-tab="feedback">Touch feedback</button>
   <button type="button" data-tab="spots">Her spots</button>
 </nav>
 
@@ -116,6 +137,26 @@
   <p><button type="button" class="btn danger" id="resetColors">Reset all colors</button></p>
 </section>
 
+<section id="tab-feedback" hidden>
+  <p class="hint">How a touch looks: the ripple where you click, the little labels, and her thought icons. Click the preview to try it.
+    Changes reach her right away.</p>
+  <div class="preview" id="preview"><div class="pv-head"></div><div class="emote" id="pvEmote"></div>
+    <div class="action-label" id="pvLabel"></div><span class="pv-hint">Click anywhere in here</span></div>
+  <div class="preview-btns"><button type="button" class="btn" id="pvLabelBtn">Show a label</button>
+    <button type="button" class="btn" id="pvIconBtn">Show an icon</button>
+    <button type="button" class="btn" id="pvHerBtn">Show one of her picks</button></div>
+  <h2>Ripple</h2>
+  <div id="rippleRows"></div>
+  <h2>Labels</h2>
+  <p class="hint">The quick ones ("Boop!", "Hug") and the steady one over a rub.</p>
+  <div id="labelRows"></div>
+  <h2>Thought icons</h2>
+  <div id="iconRows"></div>
+  <p class="hint">All her icons. Click one to see it. She picks them herself, by her mood, the hour and how close you are.</p>
+  <div id="gallery"></div>
+  <p><button type="button" class="btn danger" id="resetFx">Reset touch feedback</button></p>
+</section>
+
 <section id="tab-spots" hidden>
   <p class="hint">A spot gives her a place to stay out of your way. Drag a spot to move it, right-click it for more. Drop her onto a spot and she'll stay there.</p>
   <h2>Add a spot</h2>
@@ -127,6 +168,6 @@
   <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=7"></script>
+<script type="module" src="js/desktop-settings.js?v=9"></script>
 </body>
 </html>

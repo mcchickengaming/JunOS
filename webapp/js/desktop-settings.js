@@ -8,6 +8,7 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=37';
+import * as Fx from './desktop/fx.js?v=2';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -38,6 +39,7 @@ function show(tab) {
   for (const b of tabs) b.classList.toggle('on', b.dataset.tab === tab);
   for (const s of document.querySelectorAll('section')) s.hidden = s.id !== 'tab-' + tab;
   if (tab === 'spots') loadSpots();
+  if (tab === 'feedback') previewTheme();
 }
 tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
 show(decodeURIComponent(location.hash.slice(1)) || 'help');
@@ -164,6 +166,7 @@ document.getElementById('resetColors').addEventListener('click', () => {
   writeTheme({});
   buildColors();
   buildAlphas();
+  buildFeedback();
 });
 
 // ---------------------------------------------------------------
@@ -216,4 +219,210 @@ async function loadSpots(state) {
 }
 document.getElementById('roam').addEventListener('click', async () => {
   if (D?.spots) loadSpots(await D.spots('stay', null));
+});
+
+// ---------------------------------------------------------------
+// touch feedback: the ripple, the labels, her thought icons. the picks
+// go to localStorage['desktop.fx'] (desktop/fx.js), the colors to the
+// theme like every other color. the preview runs the same code she does
+
+Fx.installCss();
+Fx.applyFx();
+const preview = document.getElementById('preview');
+const pvLabel = document.getElementById('pvLabel');
+const pvEmote = document.getElementById('pvEmote');
+const SAMPLE_LABELS = ['Boop!', 'Headpat', 'Cheek poke', 'Hug', 'Tail tug!', 'Holding hands', 'Ticklish feet!', 'Ear flick'];
+
+// the theme's colors and see-through, on the preview box
+function previewTheme() {
+  const box = document.getElementById('preview');
+  const t = readTheme();
+  box.removeAttribute('style');
+  for (const [k, v] of Object.entries(t)) if (/^--[a-z-]+$/.test(k)) box.style.setProperty(k, String(v));
+  // the ripple goes on the page itself, not in the box
+  document.body.style.setProperty('--ripple', t['--ripple'] || t['--accent'] || '#ec0054');
+}
+window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) previewTheme(); });
+
+let pvLabelTimer = null;
+function pvShowLabel(text, x, y) {
+  const r = preview.getBoundingClientRect();
+  x = x ?? r.width / 2;
+  y = y ?? 70;
+  const ms = Fx.labelText(pvLabel, text || SAMPLE_LABELS[Math.floor(Math.random() * SAMPLE_LABELS.length)], 1300);
+  pvLabel.style.left = Math.max(50, Math.min(r.width - 50, x)) + 'px';
+  pvLabel.style.top = Math.max(30, y - 20) + 'px';
+  pvLabel.classList.remove('on');
+  void pvLabel.offsetWidth;
+  pvLabel.classList.add('on');
+  clearTimeout(pvLabelTimer);
+  pvLabelTimer = setTimeout(() => pvLabel.classList.remove('on'), ms);
+}
+let pvEmoteTimer = null;
+function pvShowIcon(kind) {
+  kind = kind || Fx.pickFromPool(Object.keys(Fx.EMOTES));
+  Fx.fillEmote(pvEmote, kind);
+  pvEmote.style.left = '50%';
+  pvEmote.style.top = '98px';
+  pvEmote.classList.remove('show');
+  void pvEmote.offsetWidth;
+  pvEmote.classList.add('show');
+  clearTimeout(pvEmoteTimer);
+  pvEmoteTimer = setTimeout(() => pvEmote.classList.remove('show'), 2000);
+}
+function pvCenter() {
+  const r = preview.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + 80 };
+}
+preview.addEventListener('pointerdown', (e) => {
+  Fx.ripple(e.clientX, e.clientY);
+  const r = preview.getBoundingClientRect();
+  pvShowLabel(null, e.clientX - r.left, e.clientY - r.top);
+});
+document.getElementById('pvLabelBtn').addEventListener('click', () => pvShowLabel());
+document.getElementById('pvIconBtn').addEventListener('click', () => pvShowIcon());
+// a few of the ripples she picks herself when "let her pick" is on
+const HER_PICKS = [
+  ['A hug, once you\'re close', { shape: 'heart', motion: 'burst' }],
+  ['A tail grab she isn\'t ready for', { motion: 'shaky' }],
+  ['A boop', { shape: 'star', motion: 'burst' }],
+  ['Her tail, as friends', { shape: 'paw' }],
+  ['A combo', { shape: 'sparkle', motion: 'spin', rings: 2 }],
+];
+let herPick = 0;
+document.getElementById('pvHerBtn').addEventListener('click', () => {
+  const [text, opts] = HER_PICKS[herPick++ % HER_PICKS.length];
+  const c = pvCenter();
+  Fx.ripple(c.x, c.y, opts);
+  pvShowLabel(text);
+});
+
+// a change shows itself in the preview, once the slider stops moving
+let pvSoon = null;
+function changed(what) {
+  clearTimeout(pvSoon);
+  pvSoon = setTimeout(() => {
+    if (what === 'ripple') { const c = pvCenter(); Fx.ripple(c.x, c.y); }
+    if (what === 'label') pvShowLabel();
+    if (what === 'icon') pvShowIcon();
+  }, 160);
+}
+function setFx(key, value, what) {
+  const f = { ...Fx.readFx(), [key]: value };
+  Fx.writeFx(f);
+  Fx.applyFx(f);
+  changed(what);
+}
+
+function selectOf(list, key, what) {
+  const sel = document.createElement('select');
+  sel.className = 'btn';
+  for (const [v, name] of list) {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = name;
+    sel.appendChild(o);
+  }
+  sel.value = Fx.readFx()[key];
+  sel.addEventListener('change', () => setFx(key, sel.value, what));
+  return sel;
+}
+function rangeOf(key, min, max, step, what, fmt) {
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.alignItems = 'center';
+  wrap.style.gap = '8px';
+  const r = document.createElement('input');
+  r.type = 'range';
+  r.min = String(min);
+  r.max = String(max);
+  r.step = String(step);
+  r.value = String(Fx.readFx()[key]);
+  const out = document.createElement('span');
+  out.className = 'pct';
+  const show = () => { out.textContent = fmt(Number(r.value)); };
+  show();
+  r.addEventListener('input', () => { show(); setFx(key, Number(r.value), what); });
+  wrap.append(r, out);
+  return wrap;
+}
+function checkOf(key, what) {
+  const c = document.createElement('input');
+  c.type = 'checkbox';
+  c.checked = !!Fx.readFx()[key];
+  c.addEventListener('change', () => setFx(key, c.checked, what));
+  return c;
+}
+function colorsOf(label, slots, what) {
+  const theme = readTheme();
+  return makeItemColorButton(label, slots.map(s => s[0]), slots.map(([, v]) => theme[v] || null), (i, hex) => {
+    const t = readTheme();
+    if (hex) t[slots[i][1]] = hex; else delete t[slots[i][1]];
+    writeTheme(t);
+    previewTheme();
+    changed(what);
+  }, 'ds-swatch');
+}
+const times = (v) => '×' + v.toFixed(1);
+
+function buildFeedback() {
+  const rip = document.getElementById('rippleRows');
+  rip.innerHTML = '';
+  rip.append(
+    row('Shape', 'What the ripple looks like.', selectOf(Fx.RIPPLE_SHAPES, 'rShape', 'ripple')),
+    row('Motion', 'How it moves: grows, beats, wobbles, shakes, bursts apart or spins.', selectOf(Fx.RIPPLE_MOTIONS, 'rMotion', 'ripple')),
+    row('Size', 'How big it gets.', rangeOf('rSize', 0.5, 2.5, 0.1, 'ripple', times)),
+    row('Speed', 'Higher is quicker.', rangeOf('rSpeed', 0.4, 2.5, 0.1, 'ripple', times)),
+    row('Rings', 'How many go out, one after another (for a burst: more pieces).', rangeOf('rRings', 1, 4, 1, 'ripple', (v) => String(v))),
+    row('Line', 'How thick the line is.', rangeOf('rWidth', 1, 5, 0.5, 'ripple', (v) => v + 'px')),
+    row('Color', 'Right-click to go back to her accent color.', colorsOf('Ripple', [['Ripple', '--ripple']], 'ripple')),
+    row('Let her pick', 'Now and then she changes the ripple to show how she takes a touch: shaky when it\'s one she isn\'t ready for, a burst of hearts for a hug once you\'re close.', checkOf('rHerPick', 'ripple')),
+  );
+  const lab = document.getElementById('labelRows');
+  lab.innerHTML = '';
+  lab.append(
+    row('Box', 'The shape around the words.', selectOf(Fx.LABEL_BOXES, 'lBox', 'label')),
+    row('Font', 'The letters.', selectOf(Fx.LABEL_FONTS.map(f => [f[0], f[1]]), 'lFont', 'label')),
+    row('Text size', '', rangeOf('lSize', 9, 20, 1, 'label', (v) => v + 'px')),
+    row('Animation', 'How a quick label shows up.', selectOf(Fx.LABEL_ANIMS, 'lAnim', 'label')),
+    row('Border', 'How thick the edge is. 0 for none.', rangeOf('lBorder', 0, 4, 1, 'label', (v) => v + 'px')),
+    row('See-through', 'How solid the box is.', rangeOf('lAlpha', 0, 1, 0.05, 'label', (v) => Math.round(v * 100) + '%')),
+    row('Colors', 'Box, edge and text. Right-click a color to go back to the default.', colorsOf('Labels', [['Box', '--label'], ['Edge', '--label-edge'], ['Text', '--label-ink']], 'label')),
+  );
+  const ico = document.getElementById('iconRows');
+  ico.innerHTML = '';
+  ico.append(
+    row('Robot faces', 'Her ASCII faces (^_^ >_< [ERR]): she knows she\'s an android and finds it funny.', selectOf(Fx.ASCII_AMOUNTS, 'eAscii', 'icon')),
+    row('How they appear', 'Pop, bounce, wobble, drop in or spin. A mix keeps her from moving the same way every time.', selectOf(Fx.ICON_ANIMS, 'eAnim', 'icon')),
+  );
+  const gal = document.getElementById('gallery');
+  gal.innerHTML = '';
+  for (const [name, kinds] of Fx.EMOTE_GROUPS) {
+    const h = document.createElement('div');
+    h.className = 'gal-name';
+    h.textContent = name;
+    const g = document.createElement('div');
+    g.className = 'gallery';
+    for (const k of kinds) {
+      const [text, type] = Fx.EMOTES[k];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = text;
+      if (type === 'ascii') b.className = 'ascii';
+      b.addEventListener('click', () => pvShowIcon(k));
+      g.appendChild(b);
+    }
+    gal.append(h, g);
+  }
+}
+buildFeedback();
+previewTheme();
+document.getElementById('resetFx').addEventListener('click', () => {
+  Fx.writeFx({});
+  Fx.applyFx({});
+  const t = readTheme();
+  for (const k of ['--ripple', '--label', '--label-edge', '--label-ink']) delete t[k];
+  writeTheme(t);
+  previewTheme();
+  buildFeedback();
 });

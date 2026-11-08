@@ -81,20 +81,7 @@
   .shadow.lifted { transform: translate(-50%, -50%) scale(.35); opacity: 0; }
   .shadow[hidden] { display: none; }
 
-  /* the little thought icon over her head: ♪ ? ! ♥ … */
-  .emote { position: absolute; z-index: 5; pointer-events: none; min-width: 30px; height: 30px; padding: 0 6px; box-sizing: border-box;
-    display: flex; align-items: center; justify-content: center; font: 800 18px Arial, Helvetica, sans-serif; color: var(--ink); text-shadow: var(--outline);
-    background: var(--bubble-bg); border: 2px solid var(--edge); border-radius: 15px; transform: translate(-50%, -100%) scale(0); opacity: 0; }
-  .emote::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 10px; height: 10px; background: var(--bubble-bg);
-    border-right: 2px solid var(--edge); border-bottom: 2px solid var(--edge); transform: translateX(-50%) rotate(45deg); }
-  .emote.show { animation: emote-pop 1.9s ease forwards; }
-  @keyframes emote-pop {
-    0% { opacity: 0; transform: translate(-50%, -80%) scale(0); }
-    12% { opacity: 1; transform: translate(-50%, -105%) scale(1.15); }
-    20% { transform: translate(-50%, -100%) scale(1); }
-    80% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -120%) scale(.9); }
-  }
+  /* the little thought icon over her head: js/desktop/fx.js */
 
   /* stepping out of her window, and climbing back in */
   #stage.enter { animation: jun-enter .7s cubic-bezier(.2, .9, .3, 1.3) both; }
@@ -131,9 +118,6 @@
   .cloud i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); animation: cloud-dot 1s ease-in-out infinite; }
   .cloud i:nth-child(2) { animation-delay: .15s; } .cloud i:nth-child(3) { animation-delay: .3s; }
   @keyframes cloud-dot { 0%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
-
-  /* picture icons sit in the bubble a bit bigger */
-  .emote.pic { font-size: 17px; }
 
   /* particles: hearts, sparkles, dust */
   .particle { position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%); animation: particle-fly linear forwards; }
@@ -183,9 +167,7 @@
   @keyframes pin-rub { from { transform: translate(-65%, -50%) rotate(-8deg); } to { transform: translate(-35%, -50%) rotate(8deg); } }
 
   /* feedback at the pointer */
-  .ripple { position: absolute; z-index: 7; pointer-events: none; width: 34px; height: 34px; border-radius: 50%;
-    border: 2px solid var(--accent); transform: translate(-50%, -50%) scale(.3); opacity: .9; animation: ripple .55s ease-out forwards; }
-  @keyframes ripple { to { transform: translate(-50%, -50%) scale(1.4); opacity: 0; } }
+  /* the ripple and the labels: js/desktop/fx.js (shared with the settings preview) */
   .ring { position: absolute; z-index: 7; pointer-events: none; width: 46px; height: 46px; border-radius: 50%;
     transform: translate(-50%, -50%); opacity: 0;
     background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), color-mix(in srgb, var(--panel) 70%, transparent) 0);
@@ -193,19 +175,6 @@
   @property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
   .ring.on { opacity: 1; animation: ring-fill var(--hold, 450ms) linear forwards; }
   @keyframes ring-fill { from { --p: 0; } to { --p: 1; } }
-  .action-label { position: absolute; z-index: 8; pointer-events: none; padding: 3px 9px; border-radius: 10px; white-space: nowrap;
-    font: 800 12px Arial, Helvetica, sans-serif; color: var(--ink); background: var(--bubble-bg); border: 1px solid var(--edge); text-shadow: var(--outline);
-    transform: translate(-50%, -100%) scale(.8); opacity: 0; }
-  .action-label.on { animation: label-pop 1.25s ease forwards; }
-  .rub-label { transform: translate(-50%, -100%) scale(.9); transition: opacity .25s ease, transform .25s ease, left .2s ease, top .2s ease; }
-  .rub-label.on { animation: none; opacity: 1; transform: translate(-50%, -100%) scale(1); }
-  @keyframes label-pop {
-    0% { opacity: 0; transform: translate(-50%, -80%) scale(.8); }
-    15% { opacity: 1; transform: translate(-50%, -100%) scale(1.05); }
-    75% { opacity: 1; transform: translate(-50%, -110%) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -130%) scale(1); }
-  }
-
   @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, -60px); } }
 </style>
 </head>
@@ -239,6 +208,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=46"></script>
+<script type="module" src="js/desktop.js?v=47"></script>
 </body>
 </html>

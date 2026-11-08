@@ -27,6 +27,7 @@ import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
 import * as Body from './desktop/body.js?v=37';
 import * as TouchLog from './core/touch-log.js?v=1';
+import * as Fx from './desktop/fx.js?v=2';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -57,6 +58,11 @@ function applyTheme() {
 }
 applyTheme();
 window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) applyTheme(); });
+// how the ripple, the labels and her thought icons look (desktop
+// settings > Touch feedback), live the same way
+Fx.installCss();
+Fx.applyFx();
+window.addEventListener('storage', (e) => { if (e.key === Fx.FX_KEY) Fx.applyFx(); });
 
 const OOC = '(OOC stage direction, not spoken by Anon: ';
 const NOTES = {
@@ -295,6 +301,8 @@ function fireCombo(c, now) {
   const a = Live2D.faceAnchor();
   Body.combo(c.id);
   if (a) actionLabel(c.label, a.x, a.y - a.modelH * 0.12);
+  // a combo is a big moment: her pick of ripple, right on her face
+  if (a && Fx.currentFx().rHerPick) Fx.ripple(a.x, a.y, closeness() >= 3 ? { shape: 'heart', motion: 'burst' } : { shape: 'sparkle', motion: 'spin', rings: 2 });
   sparkles(5);
   TouchLog.tap('combo_' + c.id);
   maybeSay('combo:' + c.id);
@@ -499,12 +507,11 @@ function reportFeet() {
 // ---------------------------------------------------------------
 // the thought icon over her head
 
-// symbols in the bubble, a few small pictures, and some that are
-// effects instead (a burst of hearts, the thinking cloud)
-const EMOTES = {
-  note: '♪', question: '?', bang: '!', heart: '♥', dots: '…', bonk: '!!', zzz: 'z',
-  anger: '💢', sparkle: '✨', laugh: 'ha!', sweat: '💧', coffee: '☕', moon: '🌙', star: '⭐', flower: '🌸',
-};
+// the icons themselves live in desktop/fx.js (EMOTES): symbols, small
+// pictures, her robot faces in ascii. 'hearts' is an effect: a burst of
+// hearts, then the heart icon. Fx.pickEmote sometimes says the same
+// feeling a different way (by bond and mood) and never shows the same
+// icon twice in a row
 let emoteTimer = null;
 function headTop() {
   const a = ready && Live2D.faceAnchor();
@@ -513,9 +520,9 @@ function headTop() {
 function showEmote(kind) {
   if (kind === 'hearts') { floatHearts(4); kind = 'heart'; }
   const t = headTop();
-  if (!t || !EMOTES[kind]) return;
-  emoteEl.textContent = EMOTES[kind];
-  emoteEl.classList.toggle('pic', EMOTES[kind].length > 1 || /\p{Extended_Pictographic}/u.test(EMOTES[kind]));
+  if (!t || !Fx.EMOTES[kind]) return;
+  kind = Fx.pickEmote(kind, { close: closeness(), mood: Body.currentMood() });
+  Fx.fillEmote(emoteEl, kind);
   emoteEl.style.left = t.x + 'px';
   emoteEl.style.top = t.y + 'px';
   emoteEl.classList.remove('show');
@@ -807,13 +814,13 @@ const POKE_LABEL = { head: 'Poke!', cheek: 'Cheek poke', nose: 'Boop!', ear: 'Ea
   tail: 'Tail tug!', hand: 'Squeeze', side: 'Tickle!', thigh: 'Thigh poke', feet: 'Ticklish feet!' };
 const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!', thigh: 'Thigh rub', feet: 'Foot rub', feettickle: 'Foot tickle!', tail: 'Tail rub' };
 
-function ripple(x, y) {
-  const el = document.createElement('div');
-  el.className = 'ripple';
-  el.style.left = x + 'px';
-  el.style.top = y + 'px';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 600);
+// the ripple's shape and motion are the owner's picks (desktop/fx.js);
+// with "let her pick" on, now and then she changes it to show how she
+// takes the touch: shaky when it's a touch she isn't fond of yet, a
+// burst of hearts for a hug or a headpat once they're close
+function ripple(x, y, region) {
+  const mine = region ? Fx.reactionRipple(region.kind, closeness(), Body.currentMood()) : null;
+  Fx.ripple(x, y, mine || {});
 }
 
 const ring = document.getElementById('ring');
@@ -871,14 +878,14 @@ let labelTimer = null;
 const label = document.getElementById('actionLabel');
 function actionLabel(text, x, y) {
   if (!text) return;
-  label.textContent = text;
+  const ms = Fx.labelText(label, text, 1300);
   label.style.left = Math.max(40, Math.min(window.innerWidth - 40, x)) + 'px';
   label.style.top = Math.max(16, y - 26) + 'px';
   label.classList.remove('on');
   void label.offsetWidth;
   label.classList.add('on');
   clearTimeout(labelTimer);
-  labelTimer = setTimeout(() => label.classList.remove('on'), 1300);
+  labelTimer = setTimeout(() => label.classList.remove('on'), ms);
 }
 
 // ---------------------------------------------------------------
@@ -1101,7 +1108,7 @@ window.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
   press = { x: e.screenX, y: e.screenY, cx: e.clientX, cy: e.clientY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
   const p = press;
-  ripple(e.clientX, e.clientY);
+  ripple(e.clientX, e.clientY, region);
   // holds: her hand (hold hands), her torso (a hug), her tail (grab it)
   if (region.kind === 'hand' || region.kind === 'hug' || region.kind === 'tail' || region.kind === 'thigh' || region.kind === 'feet') {
     // a ring fills around the pointer while the hold builds up, so it's
@@ -1450,14 +1457,22 @@ function scheduleMoves() {
       const part = daypart();
       const mood = Body.currentMood();
       if (Math.random() < 0.18) {
-        const pool = [];
-        if (part === 'morning') pool.push('coffee', 'coffee');
-        if (part === 'night') pool.push('moon', 'moon', 'zzz');
-        if (mood === 'happy') pool.push('note', 'flower', 'star', 'hearts');
-        if (mood === 'nervous' || mood === 'scared') pool.push('sweat', 'sweat');
-        if (mood === 'upset') pool.push('dots', 'anger');
-        pool.push('question', 'note', 'dots');
-        showEmote(pool[Math.floor(Math.random() * pool.length)]);
+        const close = closeness();
+        const hour = new Date().getHours();
+        const pool = ['question', 'note', 'dots', 'idea', 'a_load', 'a_binary', 'a_beep', 'gear'];
+        if (part === 'morning') pool.push('coffee', 'coffee', 'sun', 'a_ok');
+        if (hour >= 11 && hour < 14) pool.push('snack', 'snack');
+        if (hour >= 16 && hour < 22) pool.push('game', 'snack');
+        if (part === 'night') pool.push('moon', 'moon', 'zzz', 'sleepy', 'a_load');
+        // past midnight, her android side: running low
+        if (hour >= 0 && hour < 5) pool.push('battery', 'battery');
+        if (mood === 'happy') pool.push('note', 'notes', 'flower', 'star', 'hearts', 'a_cat', 'a_happy', 'paw');
+        if (mood === 'happy' && close >= 2) pool.push('smug', 'a_owo', 'a_wink');
+        if (mood === 'happy' && close >= 3) pool.push('twohearts', 'sparkheart', 'a_heart');
+        if (close >= 3 && Math.random() < 0.3) pool.push('a_love');
+        if (mood === 'nervous' || mood === 'scared') pool.push('sweat', 'sweat', 'a_fluster', 'a_shock');
+        if (mood === 'upset') pool.push('dots', 'anger', 'hmph', 'a_flat', 'a_cry');
+        showEmote(Fx.pickFromPool(pool));
       } else {
         Body.idleMove();
       }
