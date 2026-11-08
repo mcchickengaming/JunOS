@@ -275,7 +275,7 @@ export function pointerMove(x, y) {
   if (carried) return null;
   const now = performance.now();
   const region = regionAt(x, y);
-  const kind = region && ['head', 'ear', 'side'].includes(region.kind) ? region.kind : null;
+  const kind = region && ['head', 'ear', 'side', 'thigh', 'feet'].includes(region.kind) ? region.kind : null;
   if (!kind || (pat && pat.kind !== kind)) {
     if (pat && now - pat.last > 500) endPat();
     if (!kind) return null;
@@ -302,6 +302,10 @@ export function pointerMove(x, y) {
       Actions.applyAction({ name: 'receive_headpat', kwargs: {} });
     } else if (kind === 'ear') {
       emote('heart');
+    } else if (kind === 'thigh') {
+      emote('bang');
+    } else if (kind === 'feet') {
+      emote('note');
     }
   }
   if (!pat.started) return null;
@@ -314,6 +318,10 @@ export function pointerMove(x, y) {
     if (onPat) onPat(now - pat.started);
   } else if (kind === 'ear') {
     earRub();
+  } else if (kind === 'thigh') {
+    thighRub(now - pat.started);
+  } else if (kind === 'feet') {
+    feetRub(now - pat.started);
   } else {
     tickle();
   }
@@ -357,6 +365,8 @@ export const SPOT_DEFAULTS = {
   side: { dx: 0.1, dy: 0.33, r: 0.035, pair: true, label: 'Side (tickle)' },
   hand: { dx: 0.135, dy: 0.47, r: 0.035, pair: true, label: 'Hand' },
   tail: { dx: 0.17, dy: 0.5, r: 0.04, pair: false, label: 'Tail' },
+  thigh: { dx: 0.045, dy: 0.58, r: 0.035, w: 0.9, pair: true, label: 'Thigh' },
+  feet: { dx: 0.05, dy: 0.82, r: 0.028, w: 1.3, pair: true, label: 'Foot' },
 };
 // v2: units changed from head widths to her height, older saves don't fit
 const SPOTS_KEY = 'desktop.touchSpots.v2';
@@ -432,7 +442,7 @@ export function regionAt(x, y) {
 
 // what the pointer looks like over each spot, so he can SEE what he
 // can do. an emoji drawn into an svg cursor, hotspot in the middle
-const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', hug: '🤗', body: '💬' };
+const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', hug: '🤗', thigh: '👆', feet: '✋', body: '💬' };
 const cursorCache = {};
 // a few more for what's going on, not where: holding hands, a hug
 CURSOR_ICON.holding = '🤝';
@@ -528,6 +538,27 @@ export function poke(region) {
     case 'side':
       tickle();
       break;
+    case 'thigh':
+      // a poke on the thigh: a jump, a look down at it, a pout
+      act('[A:emote|surprised]');
+      Live2D.playSequence([
+        { dt_ms: 0, params: { ParamBodyY: 0.35, ParamHeadY: -0.4, ParamEyeballLY: -0.8, ParamEyeballRY: -0.8 } },
+        { dt_ms: 350, params: { ParamBodyY: 0 } },
+        { dt_ms: 600, params: { ParamHeadY: 0, ParamEyeballLY: 0, ParamEyeballRY: 0 } },
+      ]);
+      setHeld('ParamBlush', 0.5, 1600);
+      setTimeout(() => act('[A:emote|pout]'), 500);
+      emote('bang');
+      break;
+    case 'feet':
+      // ticklish feet: she pulls the foot back with a giggle
+      act('[A:emote|laughing]');
+      Live2D.playSequence([
+        { dt_ms: 0, params: { [s < 0 ? 'ParamLegL' : 'ParamLegR']: -0.6, ParamBodyZ: 0.12 * s } },
+        { dt_ms: 400, params: { [s < 0 ? 'ParamLegL' : 'ParamLegR']: 0, ParamBodyZ: 0 } },
+      ]);
+      emote('laugh');
+      break;
     default:
       // shoulder: she turns to see who it is
       Live2D.playSequence([
@@ -603,6 +634,35 @@ export function tickle() {
   emote('laugh');
 }
 let lastTickle = 0;
+
+// rubbing her thigh: she gets flustered, looks down and away, blushes,
+// and after a while pushes the hand off with a pout
+let thighWarned = 0;
+export function thighRub(ms) {
+  const now = performance.now();
+  busyMove = now + 800;
+  setHeld('ParamBlush', Math.min(1, 0.4 + ms / 3000), 1500);
+  setHeld('ParamHeadY', -0.3, 600);
+  setHeld('ParamHeadX', -0.35, 600);
+  setHeld('ParamEyeballLX', -0.7, 600);
+  setHeld('ParamEyeballRX', -0.7, 600);
+  if (ms > 2500 && now - thighWarned > 6000) {
+    thighWarned = now;
+    act('[A:emote|pout]');
+    emote('sweat');
+  }
+}
+
+// a foot rub: she relaxes, eyes closed, a happy little sway
+export function feetRub(ms) {
+  const now = performance.now();
+  busyMove = now + 800;
+  setHeld('ParamEyesHappy', 1, 900);
+  setHeld('ParamEyeOpen', -0.6, 700);
+  setHeld('ParamHeadZ', 0.12, 700);
+  setHeld('ParamBlush', 0.3, 1200);
+  if (ms > 3000 && Math.random() < 0.02) emote('note');
+}
 
 // rubbing her ear: ears flutter, eyes go soft
 export function earRub() {

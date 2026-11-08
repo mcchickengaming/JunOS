@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=19';
+import * as Body from './desktop/body.js?v=20';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -540,8 +540,8 @@ document.addEventListener('mouseleave', () => { if (!press) { setThrough(true); 
 // short label saying what just happened
 
 const POKE_LABEL = { head: 'Poke!', cheek: 'Cheek poke', nose: 'Boop!', ear: 'Ear flick', shoulder: 'Tap tap',
-  tail: 'Tail tug!', hand: 'Squeeze', side: 'Tickle!' };
-const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!' };
+  tail: 'Tail tug!', hand: 'Squeeze', side: 'Tickle!', thigh: 'Thigh poke', feet: 'Ticklish feet!' };
+const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!', thigh: 'Thigh rub', feet: 'Foot rub' };
 
 function ripple(x, y) {
   const el = document.createElement('div');
