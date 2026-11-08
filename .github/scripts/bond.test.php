@@ -65,6 +65,12 @@ $before = bond_get($u)['xp'];
 bond_award($u, 5, 'message');
 $eq('a new day resets the cap', bond_get($u)['xp'], $before + 5 + BOND_XP_FIRST_TODAY);
 
+relationship_set($u, ['affection' => 90, 'trust' => 90, 'tension' => 10]);
+$g = relationship_get($u);
+$eq('feelings capped by the bond', [$g['affection'], $g['trust'], $g['tension']], [bond_ceiling(2), bond_ceiling(2), 10]);
+$eq('ceilings rise with the stage', [bond_ceiling(1), bond_ceiling(3), bond_ceiling(6)], [35, 65, 100]);
+$eq('early stages: not his girlfriend yet', str_contains(bond_context($u), "you are not there yet"), true);
+
 putenv('BOND_STAGES=off');
 $eq('off: nothing awarded', bond_award($u, 5, 'message'), null);
 $eq('off: no prompt block', bond_context($u), '');

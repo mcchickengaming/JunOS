@@ -28,6 +28,13 @@ const BOND_STAGES = [
             . "quiet moments that need no words. You keep your own opinions and edge. Devotion never makes you a pushover."],
 ];
 
+// the most affection and trust she can feel at each stage
+const BOND_CEILINGS = [1 => 35, 2 => 50, 3 => 65, 4 => 80, 5 => 90, 6 => 100];
+
+function bond_ceiling(int $stage): int {
+    return BOND_CEILINGS[$stage] ?? 100;
+}
+
 // xp per thing. a chatty day lands around the cap, so Friend takes
 // a few days and Devoted a month or two of real time together.
 const BOND_XP_MESSAGE = 3;
@@ -151,6 +158,14 @@ function bond_context(int $userId): string {
         . BOND_STAGES[$b['stage']]['how'] . "\n"
         . "Your feelings right now (below) color this, but this sets how much of yourself you show him. "
         . "Never mention stages, levels or numbers.";
+    // the persona calls her his girlfriend from line one. early on
+    // that has to read as a label she hasn't grown into yet
+    if ($b['stage'] <= 2) {
+        $out .= "\nYou live with him, but it's new. Whatever the words 'girlfriend' and 'boyfriend' say elsewhere, "
+            . "you are not there yet and you don't act like it.";
+    } elseif ($b['stage'] === 3) {
+        $out .= "\nYou're more than friends, but neither of you has really said it yet.";
+    }
     if ($b['pending_stage'] !== null) {
         $out .= "\n\n## This moment\nSomething between you just shifted: you feel closer to him than before. "
             . "Let it show briefly and naturally in this reply, in character: a small admission, a softer tone, a slip. "

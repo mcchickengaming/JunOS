@@ -59,7 +59,22 @@ function ban_apply(int $userId, string $reason): array {
 // [A:mood_shift|...] tag is what moves them.
 const RELATIONSHIP_DEFAULTS = ['affection' => 60, 'trust' => 50, 'tension' => 20];
 
+// what she can feel is capped by how well she knows him. a stranger
+// can't be at 60 affection however a first chat went; the ceiling
+// rises with the bond (lib/bond.php). tension is never capped.
 function relationship_get(int $userId): array {
+    return relationship_cap($userId, relationship_get_raw($userId));
+}
+
+function relationship_cap(int $userId, array $g): array {
+    if (!function_exists('bond_enabled') || !bond_enabled()) return $g;
+    $ceiling = bond_ceiling(bond_get($userId)['stage']);
+    $g['affection'] = min($g['affection'], $ceiling);
+    $g['trust'] = min($g['trust'], $ceiling);
+    return $g;
+}
+
+function relationship_get_raw(int $userId): array {
     try {
         $st = db()->prepare('SELECT affection, trust, tension FROM relationship WHERE user_id=?');
         $st->execute([$userId]);
@@ -82,6 +97,7 @@ function relationship_get(int $userId): array {
 function relationship_set(int $userId, array $values): void {
     $clamp = fn($n) => max(0, min(100, (int)$n));
     try {
+        $values = relationship_cap($userId, $values + RELATIONSHIP_DEFAULTS);
         $before = relationship_get($userId);
         db()->prepare(
             'INSERT INTO relationship (user_id, affection, trust, tension, updated_at) VALUES (?, ?, ?, ?, ?)
