@@ -1,6 +1,6 @@
 import { chatInput, sendBtn } from './dom.js?v=77';
 import { replayFaceBubbleIntro, scheduleFaceBubbleHide, showFaceBubble } from './face-bubble.js?v=92';
-import { loadMood } from './mood.js?v=91';
+import { loadMood } from './mood.js?v=92';
 import { escapeHtml } from '../core/util.js?v=1';
 import * as Names from '../core/names.js?v=1';
 import { inject } from '../trip/scene.js?v=1';

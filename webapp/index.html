@@ -633,11 +633,23 @@ html[data-pre-auth] #app { visibility: hidden; }
    costs a round trip the auth screen doesn't even need. -->
 <link rel="preload" as="style" href="styles.css?v=75">
 <link rel="preload" as="style" href="css/trip-loader.css?v=1">
+<style>
+  /* bond: the long arc, above the mood gauges. lives here so the
+     cached stylesheets didn't need a renumber */
+  .bond-block { margin: 12px 0 16px; }
+  .bond-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .bond-label { font-weight: 600; }
+  .bond-stage { color: var(--accent, #e58cd2); font-weight: 600; }
+  .bond-step { margin-left: auto; opacity: .6; font-size: .85em; }
+  .bond-track { height: 10px; border-radius: 999px; background: var(--track-empty, rgba(255,255,255,.1)); overflow: hidden; }
+  .bond-fill { height: 100%; width: 0; border-radius: inherit; background: var(--accent, #e58cd2); transition: width .6s ease; }
+  .bond-next { margin-top: 6px; }
+</style>
 <noscript><link rel="stylesheet" href="styles.css?v=75"></noscript>
 
 <script type="module" src="js/core/pwa.js?v=2"></script>
 <script src="js/boot-gate.js?v=29"></script>
-<script type="module" src="js/app.js?v=144"></script>
+<script type="module" src="js/app.js?v=145"></script>
 </head>
 <body>
 
@@ -1044,6 +1056,15 @@ html[data-pre-auth] #app { visibility: hidden; }
             <div class="set-row-title">Relationship</div>
           </div>
           <div class="set-row-desc">Where Jun stands with you right now. She moves these herself, one reply at a time.</div>
+          <div class="bond-block" id="bondBlock" hidden>
+            <div class="bond-head">
+              <span class="bond-label">Bond</span>
+              <span class="bond-stage" id="bondStage">Stranger</span>
+              <span class="bond-step" id="bondStep">1 / 6</span>
+            </div>
+            <div class="bond-track" aria-hidden="true"><div class="bond-fill" id="bondFill"></div></div>
+            <div class="set-row-desc bond-next" id="bondNext"></div>
+          </div>
           <div class="mood-controls">
             <div class="mood-row mood-row--affection">
               <span class="mood-label">Affection</span>

@@ -160,7 +160,28 @@ function setMoodPhrase(k, value) {
     if (el && el.textContent !== next) el.textContent = next;
   }
 }
+// bond: the long arc that only grows. the panel shows where they
+// are; a stage-up gets a toast, but not on the first load of a page
+let lastBondStage = null;
+function renderBond(b) {
+  const block = document.getElementById('bondBlock');
+  if (!block || !b || typeof b.stage !== 'number') return;
+  block.hidden = false;
+  document.getElementById('bondStage').textContent = b.name;
+  document.getElementById('bondStep').textContent = `${b.stage} / ${b.stages}`;
+  const span = b.next_xp === null ? 1 : Math.max(1, b.next_xp - b.stage_xp);
+  const pct = b.next_xp === null ? 100 : Math.min(100, Math.round(((b.xp - b.stage_xp) / span) * 100));
+  document.getElementById('bondFill').style.width = pct + '%';
+  document.getElementById('bondNext').textContent = b.next_name
+    ? `Spend time together to reach ${b.next_name}.`
+    : 'As close as two people get.';
+  if (lastBondStage !== null && b.stage > lastBondStage) {
+    import('../core/ui.js?v=1').then((ui) => ui.toast(`You and Jun grew closer: ${b.name}`, 'ok')).catch(() => {});
+  }
+  lastBondStage = b.stage;
+}
 function renderMood(state) {
+  if (state && state.bond) renderBond(state.bond);
   const shown = { ...moodBaseline };
   for (const k of ['affection', 'trust', 'tension']) {
     if (!state || typeof state[k] !== 'number') continue;

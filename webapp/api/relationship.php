@@ -6,7 +6,8 @@ rate_limit('relationship', 60, 60);
 $userId = (int)$user['id'];
 
 if (require_method('GET', 'PUT') === 'GET') {
-    json_out(($_GET['action'] ?? '') === 'history' ? relationship_history($userId) : relationship_get($userId));
+    json_out(($_GET['action'] ?? '') === 'history' ? relationship_history($userId)
+        : relationship_get($userId) + ['bond' => bond_get($userId)]);
 }
 
 require_admin();

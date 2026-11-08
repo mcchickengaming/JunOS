@@ -365,6 +365,7 @@ function chat_run_tool(string $name, array $args, array $ctx, array &$state): st
         if ($where !== 'cards') trip_set((int)$ctx['user']['id'], $where, $ctx['conv_id']);
         else ach_add((int)$ctx['user']['id'], 'cards');
         relationship_history_add((int)$ctx['user']['id'], null, 'outing:' . $where);
+        bond_award((int)$ctx['user']['id'], BOND_XP_OUTING, 'outing:' . $where);
         sse_send(['go' => $where]);
         $state['went'] = $where;
         return json_encode([

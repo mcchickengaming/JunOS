@@ -51,6 +51,12 @@ $toolsOffered = provider_tools_enabled();
 
 [$convSummary, $summaryCoveredCount] = chat_conversation_summary($convId, (int)$user['id']);
 $rel = relationship_get((int)$user['id']);
+// bond xp for his turn, before her prompt is built, so a stage he
+// just reached is already in the reply this message gets. idle
+// nudges, regenerations, watch ticks and the card table are her
+// turns or replays, not time he spent with her.
+$bondEligible = !$req['idle'] && !$req['regenerate'] && !$req['ephemeral'] && $req['watch'] === null;
+if ($bondEligible) bond_award((int)$user['id'], bond_xp_for_message($lastUserMsg), 'message');
 $liveContext = chat_live_context($req, $user, $lastUserMsg, $convSummary, $rel, $toolsOffered, $approvedWebSearchQuery);
 $systemContent = chat_system_content($toolsOffered, (int)$user['id']);
 $messages = chat_build_messages($req, $systemContent, $liveContext, $summaryCoveredCount);
@@ -358,6 +364,12 @@ if (!$sawError && $assistantBuffer !== '') {
     }
 
     chat_save_reply($convId, $assistantBuffer, $req, $lastUserMsg);
+
+    if ($bondEligible) {
+        bond_award((int)$user['id'], bond_xp_for_mood($rel, relationship_get((int)$user['id'])), 'mood');
+        // she's had her reply to react in, the moment is spent
+        bond_clear_pending((int)$user['id']);
+    }
 }
 
 sse_done();

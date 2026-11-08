@@ -191,6 +191,9 @@ function chat_live_context(array $req, array $user, string $lastUserMsg, string 
         $contextParts[] = "## Current Wardrobe State\n" . $req['outfit_context'];
     }
 
+    $bondBlock = bond_context((int)$user['id']);
+    if ($bondBlock !== '') $contextParts[] = $bondBlock;
+
     $feelingsBlock = "## YOUR FEELINGS TOWARD ANON RIGHT NOW - highest priority for this reply\n"
         . relationship_directives($rel);
     $contextParts[] = $feelingsBlock;
