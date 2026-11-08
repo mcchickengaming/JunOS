@@ -72,9 +72,9 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   (`SPOT_DEFAULTS`, owner-adjustable via Jun menu > On the desktop > Adjust touch spots, saved in
   localStorage `desktop.touchSpots.v2`; pairs mirror unless unlinked, then `left` holds its own place, so
   nothing assumes she's symmetrical; `off: true` switches one off; Undo/Ctrl+Z; she's held in place while adjusting via `junDesktop.hold` → main.js `held`; "Show touch spots" desk setting draws outlines). The tail spot is the rig's TailMain meshes (geometry `drawablesSpot`), and anim.js `holdTail(ms)` stills its swing under a hand. Head on the rig's headpat area, else body; click
-  = poke, hold = hand-hold / hug (torso) / tail grab / thigh squish (body.js `thighSquish`/`thighSquishTick`, by bond:
-  Stranger/Familiar wriggles free fast, Friend holds still then pulls away, Close+ blush builds and she lets him), rub = headpat/ear rub/tickle/thigh/foot/tail rub (on her feet a quick jiggle, 5 turns in 0.6 s, is a
-  foot tickle `feettickle`; by bond she pulls her foot away: Stranger/Familiar right away, Friend after ~3 s of
+  = poke, hold = hand-hold / hug (torso) / tail grab / foot rub / thigh squish (body.js `thighSquish`/`thighSquishTick`, by bond:
+  Stranger/Familiar wriggles free fast, Friend holds still then pulls away, Close+ blush builds and she lets him), rub = headpat/ear rub/tickle/thigh/foot/tail rub (on her feet: a foot rub is press and hold, owner's call, and a hover
+  jiggle, 5 turns in 0.6 s, is a foot tickle `feettickle`; by bond she pulls her foot away: Stranger/Familiar right away, Friend after ~3 s of
   tickling, Close+ after ~6 s; `Body.setCloseness` from the bond stage), drag =
   carry; cursor icon + glow show the spot. Hold-to-pat (like the game): press on her head (160 ms or the first
   3 px of movement; a quick click stays a poke) and the petting hand follows the mouse (ParamHeadpatX/Y), her head

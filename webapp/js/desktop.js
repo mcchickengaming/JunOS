@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=36';
+import * as Body from './desktop/body.js?v=37';
 import * as TouchLog from './core/touch-log.js?v=1';
 
 const D = window.junDesktop || null;
@@ -325,7 +325,7 @@ function pinHand() {
     }, 120);
   } else if (press && press.hold && press.hold !== 'freed') {
     const p = press;
-    const step = p.hold === 'tail' ? 'tailgrab' : p.hold === 'thigh' ? 'thighsquish' : p.hold;
+    const step = p.hold === 'tail' ? 'tailgrab' : p.hold === 'thigh' ? 'thighsquish' : p.hold === 'feet' ? 'footrub' : p.hold;
     next = { type: 'hold', step, p, x: p.cx, y: p.cy };
     // the hold carries on in the pinned hand; its count ends with the pin
     p.pinned = true;
@@ -1103,10 +1103,10 @@ window.addEventListener('pointerdown', (e) => {
   const p = press;
   ripple(e.clientX, e.clientY);
   // holds: her hand (hold hands), her torso (a hug), her tail (grab it)
-  if (region.kind === 'hand' || region.kind === 'hug' || region.kind === 'tail' || region.kind === 'thigh') {
+  if (region.kind === 'hand' || region.kind === 'hug' || region.kind === 'tail' || region.kind === 'thigh' || region.kind === 'feet') {
     // a ring fills around the pointer while the hold builds up, so it's
     // clear that keeping the button down does something
-    holdRing(true, e.clientX, e.clientY, { hand: '🤝', hug: '🤗', tail: '✊', thigh: '🤏' }[region.kind]);
+    holdRing(true, e.clientX, e.clientY, { hand: '🤝', hug: '🤗', tail: '✊', thigh: '🤏', feet: '✋' }[region.kind]);
     p.holdTimer = setTimeout(() => {
       if (press !== p || p.dragging) return;
       if (dozing) wake(true);
@@ -1142,6 +1142,26 @@ window.addEventListener('pointerdown', (e) => {
           p.hold = 'freed';
           document.body.style.cursor = '';
           actionLabel('She wriggled free', e.clientX, e.clientY - 22);
+        }, 260);
+      } else if (region.kind === 'feet') {
+        // a foot rub: press and hold. how she takes it depends on the bond
+        p.hold = 'feet';
+        p.holdAt = Date.now();
+        TouchLog.begin('hold', 'footrub');
+        const combo = touched('footrub');
+        p.talkTimer = setTimeout(() => { if (p.hold === 'feet') maybeSay('feetrub'); }, 2200);
+        document.body.style.cursor = Body.cursorFor('feet');
+        if (!combo) actionLabel('Foot rub', e.clientX, e.clientY);
+        p.hugTimer = setInterval(() => {
+          Body.feetRub(Date.now() - p.holdAt);
+          if (!Body.feetPulledAway()) return;
+          // she pulled her foot away: the rub is over
+          clearInterval(p.hugTimer);
+          clearTimeout(p.talkTimer);
+          TouchLog.end('hold');
+          p.hold = 'freed';
+          document.body.style.cursor = '';
+          actionLabel('She pulled her foot away', e.clientX, e.clientY - 22);
         }, 260);
       } else if (region.kind === 'hand') {
         TouchLog.begin('hold', 'hand');

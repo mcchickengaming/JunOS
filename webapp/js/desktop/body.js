@@ -348,8 +348,8 @@ export function pointerMove(x, y) {
     }
   }
   if (!pat.started) return null;
-  // her feet: slow is a foot rub, quick little back-and-forths are a
-  // tickle. it takes a few quick turns to switch over, and a calm
+  // her feet: quick little back-and-forths are a tickle (a foot rub is
+  // a press and hold, see desktop.js). it takes a few quick turns to switch over, and a calm
   // moment to switch back, so it doesn't flicker between the two
   if (kind === 'feet') {
     if (now < feetAway) { endPat(); return null; }
@@ -362,6 +362,9 @@ export function pointerMove(x, y) {
       feetTickle(now - pat.tickleAt);
       return now < feetAway ? null : 'feettickle';
     }
+    // a slow hover does nothing here: a foot rub is press and hold
+    // (desktop.js), easier than rubbing back and forth
+    return null;
   }
   rubEffect(kind, now - pat.started, x);
   return kind === 'feet' && now < feetAway ? null : kind;
