@@ -35,8 +35,20 @@ export const TUNE = {
   swingArm: 0.9,      // ParamArmLRot/RRot per unit of swing
   swingLeg: 0.6,      // ParamLegL/R per unit of swing
   liftGain: 0.0009,   // moving her up/down lifts/drops the arms
-  lookEyes: 0.9,      // how far her eyes follow the cursor
+  lookEyes: 0.9,      // how far her eyes turn toward what she's looking at
   lookHead: 0.45,     // and her head
+  // attention: she doesn't track every twitch of the mouse. she
+  // NOTICES it now and then, looks for a few seconds, gets bored
+  noticeNear: 220,        // px from her head that counts as "right next to me"
+  noticeNearChance: 0.6,  // chance she looks when it's that close
+  noticeBigMove: 300,     // px travelled in half a second that counts as "something happening"
+  noticeBigChance: 0.3,   // chance she looks at that
+  noticeEveryMs: 700,     // she rolls those chances at most this often
+  attendMs: [1800, 5000], // how long she keeps looking once she noticed
+  boredMs: [6000, 18000], // then ignores the cursor for this long
+  saccadePx: 90,          // her eyes jump to the cursor only once it's this far from where she's looking
+  fixateMs: 400,          // and not more often than this
+  glanceAwayChance: 0.5,  // when she stops looking, chance she glances off at something of her own
 };
 
 let canvas = null;
@@ -47,7 +59,11 @@ let ramp = 0;             // 0..1, eases the cycle in and out
 let phase = 0;
 let turn = 0;             // current turn, degrees
 let lastT = 0;
-let look = null;          // { x, y, at }
+let look = null;          // { x, y, at } the cursor, last we heard
+// what she's looking at: { x, y, until, why } in window px, or null
+let gaze = null;
+const att = { cursorUntil: 0, boredUntil: 0, lastRoll: 0, gazeAt: 0 };
+const trail = [];
 let pat = null;           // headpat in progress
 let onPat = null;
 let busyMove = 0;         // an idle move is playing until this time
@@ -132,7 +148,51 @@ export function landed() {
 // the cursor, anywhere on the screen, in this window's coordinates
 export function cursor(x, y) {
   if (look && Math.abs(look.x - x) < 2 && Math.abs(look.y - y) < 2) return;
-  look = { x, y, at: performance.now() };
+  const now = performance.now();
+  look = { x, y, at: now };
+  trail.push({ x, y, t: now });
+  while (trail.length && now - trail[0].t > 500) trail.shift();
+  if (asleep || carried || walkDir) return;
+  if (now < att.cursorUntil) {
+    // already watching it: her eyes jump to it in steps, not glued on
+    if (gaze && Math.hypot(x - gaze.x, y - gaze.y) > TUNE.saccadePx && now - att.gazeAt > TUNE.fixateMs) {
+      gaze = { x, y, until: att.cursorUntil, why: 'cursor' };
+      att.gazeAt = now;
+    }
+    return;
+  }
+  if (now < att.boredUntil || now - att.lastRoll < TUNE.noticeEveryMs) return;
+  att.lastRoll = now;
+  const a = anchor();
+  if (!a) return;
+  let travel = 0;
+  for (let i = 1; i < trail.length; i++) travel += Math.hypot(trail[i].x - trail[i - 1].x, trail[i].y - trail[i - 1].y);
+  const near = Math.hypot(x - a.x, y - a.y) < TUNE.noticeNear;
+  const chance = near ? TUNE.noticeNearChance : (travel > TUNE.noticeBigMove ? TUNE.noticeBigChance : 0);
+  if (Math.random() >= chance) return;
+  att.cursorUntil = now + rand(TUNE.attendMs);
+  gaze = { x, y, until: att.cursorUntil, why: 'cursor' };
+  att.gazeAt = now;
+}
+
+const rand = ([lo, hi]) => lo + Math.random() * (hi - lo);
+
+// something else wants her eyes for a moment (later: what's on the
+// screen). window px, like the cursor
+export function lookAtPoint(x, y, ms = 2000) {
+  gaze = { x, y, until: performance.now() + ms, why: 'point' };
+}
+
+function loseInterest(now) {
+  att.cursorUntil = 0;
+  att.boredUntil = now + rand(TUNE.boredMs);
+  gaze = null;
+  if (Math.random() < TUNE.glanceAwayChance) {
+    // off at something of her own, somewhere across the screen
+    const a = anchor();
+    const w = window.screen?.availWidth || 1600, h = window.screen?.availHeight || 900;
+    if (a) gaze = { x: a.x + (Math.random() - 0.5) * w, y: a.y - Math.random() * h * 0.5, until: now + rand([900, 2200]), why: 'own' };
+  }
 }
 export function setAsleep(on) { asleep = !!on; }
 export function cursorMovedWithin(ms) {
@@ -306,12 +366,15 @@ function frame(t) {
     return;
   }
 
-  // standing: eyes (and a bit of head) follow the cursor while it moves
-  if (!asleep && look && performance.now() - look.at < 6000 && !patting() && performance.now() > busyMove) {
+  // standing: whatever has her attention right now, if anything
+  const now = performance.now();
+  if (gaze && gaze.why === 'cursor' && now > att.cursorUntil) loseInterest(now);
+  if (gaze && now > gaze.until) gaze = null;
+  if (!asleep && gaze && !patting() && now > busyMove) {
     const a = anchor();
     if (!a) return;
-    const dx = clamp((look.x - a.x) / Math.max(300, window.innerWidth * 1.2), -1, 1);
-    const dy = clamp((a.y - look.y) / Math.max(300, window.innerHeight * 1.2), -1, 1);
+    const dx = clamp((gaze.x - a.x) / Math.max(300, window.innerWidth * 1.2), -1, 1);
+    const dy = clamp((a.y - gaze.y) / Math.max(300, window.innerHeight * 1.2), -1, 1);
     for (const p of ['ParamEyeballLX', 'ParamEyeballRX']) { Live2D.setTarget(p, dx * TUNE.lookEyes); Live2D.hold(p, 400); }
     for (const p of ['ParamEyeballLY', 'ParamEyeballRY']) { Live2D.setTarget(p, dy * TUNE.lookEyes * 0.8); Live2D.hold(p, 400); }
     Live2D.setTarget('ParamHeadX', dx * TUNE.lookHead); Live2D.hold('ParamHeadX', 400);
