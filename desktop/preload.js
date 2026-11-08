@@ -18,7 +18,8 @@ contextBridge.exposeInMainWorld('junDesktop', {
   // px between her feet and the bottom of the window, so she
   // stands ON the taskbar and not half a leg above it
   reportFeet: (px) => ipcRenderer.send('jun:feet', Number(px) || 0),
-  wander: () => ipcRenderer.send('jun:walk', 'wander'),
+  // opts: { speed, hop }, her mood sets them
+  wander: (opts) => ipcRenderer.send('jun:walk', { what: 'wander', speed: Number(opts?.speed) || 1, hop: Number(opts?.hop) || 0 }),
   stopWalk: () => ipcRenderer.send('jun:walk', 'stop'),
   goInside: () => ipcRenderer.send('jun:mode', 'inside'),
   stepOut: () => ipcRenderer.send('jun:mode', 'stepout'),
@@ -32,5 +33,9 @@ contextBridge.exposeInMainWorld('junDesktop', {
   onIdle: on('jun:idle'),
   // the mouse anywhere on screen, in this window's coordinates
   onCursor: on('jun:cursor'),
+  // thrown or falling: her speed, so her limbs swing with it
+  onFly: on('jun:fly'),
+  // the tray's "On the desktop" settings
+  onSettings: on('jun:settings'),
   onCommand: on('jun:command'),
 });

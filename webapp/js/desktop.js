@@ -16,6 +16,8 @@ import { api, apiJson } from './core/api.js?v=1';
 import * as ChatAPI from './core/chat-api.js?v=7';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
+import { moodTier, daypart } from './core/mood-tier.js?v=2';
+import * as Gauges from './core/speech-card.js?v=19';
 import { configureTts, say } from './core/speech-card.js?v=19';
 import { localTimeString } from './core/util.js?v=1';
 import * as Actions from './live2d/actions.js?v=99';
@@ -23,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=6';
+import * as Body from './desktop/body.js?v=7';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -36,6 +38,8 @@ const talk = document.getElementById('talk');
 const form = document.getElementById('talkForm');
 const input = document.getElementById('talkInput');
 const zzz = document.getElementById('zzz');
+const shadow = document.getElementById('shadow');
+const emoteEl = document.getElementById('emote');
 const note = document.getElementById('note');
 
 const OOC = '(OOC stage direction, not spoken by Anon: ';
@@ -43,6 +47,7 @@ const NOTES = {
   stepout: `${OOC}you just climbed out of your app window and are now standing on the taskbar at the bottom of Anon's computer screen, out on his desktop. React out loud to being out here, one short line, in character. No narration.)`,
   inside: `${OOC}you are climbing back into your app window from Anon's desktop. Say one short line out loud as you go, in character. No narration.)`,
   wake: `${OOC}you dozed off on the taskbar while Anon was away from his computer, and he just came back. Wake up and say one short line out loud, in character. No narration.)`,
+  thrown: `${OOC}Anon just grabbed you with his mouse cursor and flung you across his screen. You flew, bounced and landed back on the taskbar. React out loud, one short line, in character. No narration.)`,
   headpat: `${OOC}Anon is patting your head with his mouse cursor while you stand on his taskbar. React out loud, one short line, in character. No narration.)`,
   dropped: `${OOC}Anon just grabbed you with his mouse cursor, carried you across his screen and dropped you back down on the taskbar. React out loud, one short line, in character. No narration.)`,
 };
@@ -53,6 +58,7 @@ const FALLBACK = {
   wake: "Mm... oh. You're back.",
   dropped: 'Hey! Warn me first!',
   headpat: 'Mm... okay, you can keep doing that.',
+  thrown: "Did you just THROW me?!",
   talk: "Sorry, I zoned out for a second. Say that again?",
 };
 
@@ -147,6 +153,8 @@ async function ask(content, { ephemeral, fallback }) {
 // desktop. never two in a row
 async function react(kind) {
   if (!ready || busy) return;
+  // quiet mode: she keeps her thoughts to herself
+  if (settings.quiet) return;
   if (kind !== 'inside' && Date.now() - lastReactAt < 20000) return;
   lastReactAt = Date.now();
   await ask(NOTES[kind], { ephemeral: true, fallback: FALLBACK[kind] });
@@ -260,7 +268,58 @@ function reportFeet() {
   if (!a) return;
   const bottom = a.y - a.modelH * 0.09 + a.modelH;
   D?.reportFeet(Math.max(0, window.innerHeight - bottom));
+  // her shadow sits right under her feet
+  shadow.style.left = a.x + 'px';
+  shadow.style.top = (bottom - 4) + 'px';
+  shadow.style.width = Math.round(a.modelW * 0.42) + 'px';
+  shadow.hidden = MODE !== 'stepout';
 }
+
+// ---------------------------------------------------------------
+// the thought icon over her head
+
+const EMOTES = { note: '♪', question: '?', bang: '!', heart: '♥', dots: '…', bonk: '!!', zzz: 'z' };
+let emoteTimer = null;
+function showEmote(kind) {
+  const a = ready && Live2D.faceAnchor();
+  if (!a || !EMOTES[kind]) return;
+  emoteEl.textContent = EMOTES[kind];
+  emoteEl.style.left = (a.x + a.headW * 0.45) + 'px';
+  emoteEl.style.top = (a.y - a.modelH * 0.09) + 'px';
+  emoteEl.classList.remove('show');
+  void emoteEl.offsetWidth; // restart the animation
+  emoteEl.classList.add('show');
+  clearTimeout(emoteTimer);
+  emoteTimer = setTimeout(() => emoteEl.classList.remove('show'), 2000);
+}
+
+// ---------------------------------------------------------------
+// her mood and the hour shape how lively she is out here
+
+let pace = { speed: 1, hop: 4 };
+async function refreshMood() {
+  try { await Gauges.fetchGauges(); } catch (e) {}
+  const m = moodTier({ affection: Gauges.affection, trust: Gauges.trust, tension: Gauges.tension });
+  const part = daypart();
+  Body.setMood(m, part);
+  pace = {
+    happy: { speed: 1.2, hop: 6 }, neutral: { speed: 1, hop: 4 }, nervous: { speed: 1.05, hop: 3 },
+    upset: { speed: 0.8, hop: 2 }, scared: { speed: 0.85, hop: 2 },
+  }[m] || { speed: 1, hop: 4 };
+  if (part === 'night') pace = { speed: pace.speed * 0.85, hop: Math.max(1, pace.hop - 2) };
+}
+
+// ---------------------------------------------------------------
+// "On the desktop" settings from the tray (desktop/main.js)
+
+let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false };
+const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
+const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
+D?.onSettings?.((s) => {
+  settings = { ...settings, ...s };
+  Body.setWatch(WATCH[settings.watch] ?? 1);
+  if (settings.quiet) D?.stopWalk();
+});
 
 window.addEventListener('resize', () => setTimeout(frame, 60));
 
@@ -318,6 +377,7 @@ window.addEventListener('pointermove', (e) => {
   if (dozing) wake(false);
   D?.dragStart();
   Body.setCarried(true);
+  shadow.classList.add('lifted');
 }, true);
 
 const endPress = (e) => {
@@ -328,7 +388,7 @@ const endPress = (e) => {
   if (p.dragging) {
     D?.dragEnd();
     // compact doesn't fall, it just stays where it was put
-    if (MODE !== 'stepout') Body.landed();
+    if (MODE !== 'stepout') { Body.landed(); shadow.classList.remove('lifted'); }
     return;
   }
   // a click at the end of a headpat is part of the pat
@@ -366,21 +426,31 @@ document.getElementById('toHide').addEventListener('click', () => D?.hide());
 // ---------------------------------------------------------------
 // out on the desktop: walking, dozing, being carried
 
+let thrown = false;
 D?.onWalk(({ state, dir }) => {
   if (state === 'walking') {
     walking = true;
     Body.walking(dir || 1);
+    if (Math.random() < 0.25 && pace.speed >= 1.2) showEmote('note');
     return;
   }
+  if (state === 'flying') { thrown = true; shadow.classList.add('lifted'); return; }
+  if (state === 'bonk') { showEmote('bonk'); return; }
   walking = false;
   Body.walking(0);
-  if (state === 'landed') Body.landed();
+  if (state === 'landed') {
+    Body.landed();
+    shadow.classList.remove('lifted');
+  }
   if (state === 'landed' && MODE === 'stepout') {
     // not every single time he moves her, that gets old
     drops++;
-    if (drops === 1 || Math.random() < 0.3) react('dropped');
+    if (thrown) react('thrown');
+    else if (drops === 1 || Math.random() < 0.3) react('dropped');
   }
+  thrown = false;
 });
+D?.onFly?.(({ vx, vy }) => Body.flyVelocity(vx, vy));
 
 function doze() {
   if (dozing || busy) return;
@@ -414,16 +484,20 @@ function wake(withLine) {
 
 D?.onIdle(({ seconds, dozeAfter }) => {
   if (!ready) return;
+  // at night she nods off sooner
+  if (daypart() === 'night' && Number.isFinite(dozeAfter)) dozeAfter = Math.min(dozeAfter, 120);
   if (seconds >= dozeAfter) doze();
   else if (dozing && seconds < 30) wake(true);
 });
 
 // a stroll every so often, when she isn't busy with him
 function scheduleWander() {
+  const range = WANDER_S[settings.walk] || [30, 60];
   setTimeout(() => {
-    if (MODE === 'stepout' && ready && !busy && !dozing && !walking && !press && talk.hidden && !Body.patting()) D?.wander();
+    const may = WANDER_S[settings.walk] && !settings.quiet;
+    if (may && MODE === 'stepout' && ready && !busy && !dozing && !walking && !press && talk.hidden && !Body.patting()) D?.wander(pace);
     scheduleWander();
-  }, 25000 + Math.random() * 50000);
+  }, (range[0] + Math.random() * (range[1] - range[0])) * 1000);
 }
 
 // and in between, she fidgets: looks around, stretches, yawns,
@@ -455,6 +529,11 @@ async function goInside() {
     react('inside'),
     new Promise(r => setTimeout(r, 12000)),
   ]);
+  // she shrinks back into her window
+  shadow.classList.add('lifted');
+  stageEl.classList.remove('enter');
+  stageEl.classList.add('leave');
+  await new Promise(r => setTimeout(r, 480));
   D?.goInside();
 }
 
@@ -506,7 +585,15 @@ async function main() {
     return;
   }
   ready = true;
-  Body.init({ stageEl, faceAnchor: () => Live2D.faceAnchor(), onHeadpat });
+  Body.init({ stageEl, faceAnchor: () => Live2D.faceAnchor(), onHeadpat, onEmote: showEmote });
+  refreshMood();
+  setInterval(refreshMood, 5 * 60 * 1000);
+  // popping out of her window
+  if (MODE === 'stepout' && REASON === 'stepout') {
+    stageEl.classList.add('enter');
+    // measured mid-jump her feet are in the wrong place, measure again once she's down
+    stageEl.addEventListener('animationend', () => { stageEl.classList.remove('enter'); frame(); }, { once: true });
+  }
   frame();
   setTimeout(frame, 400);
   await loadConversation();

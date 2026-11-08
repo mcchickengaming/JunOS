@@ -55,6 +55,42 @@
   .zzz span { position: absolute; opacity: 0; animation: zzz 3.6s ease-in-out infinite; }
   .zzz span:nth-child(2) { animation-delay: 1.2s; font-size: 16px; }
   .zzz span:nth-child(3) { animation-delay: 2.4s; font-size: 24px; }
+  /* her shadow on the taskbar. placed at her feet by js/desktop.js */
+  .shadow { position: absolute; z-index: 0; pointer-events: none; height: 14px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0, 0, 0, .42), rgba(0, 0, 0, .18) 60%, transparent);
+    transform: translate(-50%, -50%) scale(1); transition: transform .25s ease, opacity .25s ease; }
+  .shadow.lifted { transform: translate(-50%, -50%) scale(.35); opacity: 0; }
+  .shadow[hidden] { display: none; }
+
+  /* the little thought icon over her head: ♪ ? ! ♥ … */
+  .emote { position: absolute; z-index: 5; pointer-events: none; min-width: 30px; height: 30px; padding: 0 6px; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center; font: 800 18px Arial, Helvetica, sans-serif; color: #fff;
+    background: #191233; border: 2px solid #ec0054; border-radius: 15px; transform: translate(-50%, -100%) scale(0); opacity: 0; }
+  .emote::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 10px; height: 10px; background: #191233;
+    border-right: 2px solid #ec0054; border-bottom: 2px solid #ec0054; transform: translateX(-50%) rotate(45deg); }
+  .emote.show { animation: emote-pop 1.9s ease forwards; }
+  @keyframes emote-pop {
+    0% { opacity: 0; transform: translate(-50%, -80%) scale(0); }
+    12% { opacity: 1; transform: translate(-50%, -105%) scale(1.15); }
+    20% { transform: translate(-50%, -100%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -120%) scale(.9); }
+  }
+
+  /* stepping out of her window, and climbing back in */
+  #stage.enter { animation: jun-enter .7s cubic-bezier(.2, .9, .3, 1.3) both; }
+  @keyframes jun-enter {
+    0% { transform: translateY(30%) scale(.4); opacity: 0; }
+    55% { transform: translateY(-8%) scale(1.04); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
+  #stage.leave { animation: jun-leave .5s ease-in both; }
+  @keyframes jun-leave {
+    0% { transform: none; opacity: 1; }
+    30% { transform: translateY(-6%) scale(1.03); }
+    100% { transform: translateY(25%) scale(.3); opacity: 0; }
+  }
+
   @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, -60px); } }
 </style>
 </head>
@@ -73,6 +109,8 @@
   </form>
 </div>
 <div id="stage"></div>
+<div class="shadow" id="shadow" hidden aria-hidden="true"></div>
+<div class="emote" id="emote" aria-hidden="true"></div>
 <div class="zzz" id="zzz" hidden aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
 <div class="note" id="note" hidden></div>
 
@@ -80,6 +118,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=8"></script>
+<script type="module" src="js/desktop.js?v=9"></script>
 </body>
 </html>

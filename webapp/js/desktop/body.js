@@ -66,6 +66,10 @@ const att = { cursorUntil: 0, boredUntil: 0, lastRoll: 0, gazeAt: 0 };
 const trail = [];
 let pat = null;           // headpat in progress
 let onPat = null;
+let emote = () => {};
+let mood = 'neutral';     // happy / neutral / upset / nervous / scared (core/mood-tier.js)
+let part = 'day';         // morning / day / evening / night
+let watch = 1;            // "Looks at your mouse": 0 never .. 1.6 often
 let busyMove = 0;         // an idle move is playing until this time
 let asleep = false;
 let lastMoving = 'walk';  // what the ease-out is easing out of
@@ -81,9 +85,10 @@ function setHeld(param, value, ms = 300) {
   Live2D.hold(param, ms);
 }
 
-export function init({ stageEl, faceAnchor, onHeadpat }) {
+export function init({ stageEl, faceAnchor, onHeadpat, onEmote }) {
   anchor = faceAnchor;
   onPat = onHeadpat;
+  if (onEmote) emote = onEmote;
   // the rig's canvas, or the placeholder art when the game files aren't extracted
   const find = () => { canvas = stageEl.querySelector('canvas, img.l2d-placeholder'); };
   find();
@@ -112,6 +117,7 @@ export function setCarried(on) {
     } };
     swing.x = swing.v = swing.lift = swing.lv = 0;
     for (const a of Actions.parseActions('[A:emote|surprised]')) Actions.applyAction(a);
+    emote('bang');
     Live2D.startLoop('ParamTailWiggle', 1, 380);
   } else {
     Live2D.stopLoop('ParamTailWiggle');
@@ -133,6 +139,24 @@ export function carryMove(sx, sy) {
   carry.lastY = sy;
   carry.lastT = now;
 }
+
+// thrown or falling (desktop/main.js): the window's speed in px/s
+export function flyVelocity(vx, vy) {
+  if (!carry) return;
+  carry.vx = vx;
+  carry.vy = vy;
+  carry.lastT = performance.now();
+}
+
+export function setMood(m, daypart) {
+  mood = m || 'neutral';
+  part = daypart || 'day';
+  // a happy walk is quicker on its feet, an upset one drags
+  const stride = { happy: 950, neutral: 1100, nervous: 1000, upset: 1350, scared: 1250 }[mood] || 1100;
+  TUNE.strideMs = stride;
+}
+
+export function setWatch(factor) { watch = Math.max(0, Number(factor) || 0); }
 
 // feet hit the taskbar: a squash, a little bounce, ears shake it off
 export function landed() {
@@ -168,7 +192,7 @@ export function cursor(x, y) {
   let travel = 0;
   for (let i = 1; i < trail.length; i++) travel += Math.hypot(trail[i].x - trail[i - 1].x, trail[i].y - trail[i - 1].y);
   const near = Math.hypot(x - a.x, y - a.y) < TUNE.noticeNear;
-  const chance = near ? TUNE.noticeNearChance : (travel > TUNE.noticeBigMove ? TUNE.noticeBigChance : 0);
+  const chance = watch * (near ? TUNE.noticeNearChance : (travel > TUNE.noticeBigMove ? TUNE.noticeBigChance : 0));
   if (Math.random() >= chance) return;
   att.cursorUntil = now + rand(TUNE.attendMs);
   gaze = { x, y, until: att.cursorUntil, why: 'cursor' };
@@ -230,6 +254,7 @@ export function pointerMove(x, y) {
   // two turns back and forth over her head is a pat, not a fly-by
   if (!pat.started && pat.flips >= 2 && pat.travel > 40) {
     pat.started = now;
+    emote('heart');
     Actions.applyAction({ name: 'receive_headpat', kwargs: {} });
   }
   if (pat.started) {
@@ -271,18 +296,31 @@ const MOVES = {
     { dt_ms: 0, params: { ParamBodyY: -0.9, ParamLegL: 0.35, ParamLegR: 0.35, ParamHeadY: -0.15 } },
     { dt_ms: 7000, params: { ParamBodyY: 0, ParamLegL: 0, ParamLegR: 0, ParamHeadY: 0 } },
   ],
+  lookAway: [
+    { dt_ms: 0, params: { ParamHeadX: -0.7, ParamHeadY: -0.25, ParamEyeballLX: -1, ParamEyeballRX: -1, ParamEyeballLY: -0.4, ParamEyeballRY: -0.4, ParamBodyX: -0.25 } },
+    { dt_ms: 2600, params: { ParamHeadX: 0, ParamHeadY: 0, ParamEyeballLX: 0, ParamEyeballRX: 0, ParamEyeballLY: 0, ParamEyeballRY: 0, ParamBodyX: 0 } },
+  ],
   sway: [
     { dt_ms: 0, params: { ParamBodyZ: 0.3, ParamHeadZ: -0.2, ParamLegL: 0.3 } },
     { dt_ms: 900, params: { ParamBodyZ: -0.3, ParamHeadZ: 0.2, ParamLegL: 0, ParamLegR: 0.3 } },
     { dt_ms: 900, params: { ParamBodyZ: 0, ParamHeadZ: 0, ParamLegR: 0 } },
   ],
 };
-const MOVE_MS = { lookAround: 2600, stretch: 2400, yawn: 2300, rest: 7500, sway: 2000, tail: 2000, wave: 1200, ears: 900 };
+const MOVE_MS = { lookAround: 2600, stretch: 2400, yawn: 2300, rest: 7500, sway: 2000, tail: 2000, wave: 1200, ears: 900, lookAway: 2900 };
+// the thought icon that goes with a move, if any
+const MOVE_EMOTE = { lookAround: 'question', yawn: 'dots', rest: 'dots', sway: 'note', wave: 'heart', lookAway: 'dots' };
 
 export function idleMove() {
   if (asleep || walkDir || carried || patting() || performance.now() < busyMove) return null;
+  // what she feels like doing depends on her mood and the hour
   const pool = ['lookAround', 'lookAround', 'stretch', 'yawn', 'rest', 'sway', 'tail', 'ears'];
-  if (cursorMovedWithin(4000)) pool.push('wave', 'wave');
+  const friendly = mood === 'happy' || mood === 'neutral';
+  if (friendly && cursorMovedWithin(4000)) pool.push('wave', 'wave');
+  if (mood === 'happy') pool.push('sway', 'sway', 'tail', 'tail', 'wave');
+  if (mood === 'upset') pool.push('lookAway', 'lookAway', 'lookAway', 'rest');
+  if (mood === 'nervous' || mood === 'scared') pool.push('lookAround', 'lookAround', 'ears', 'lookAway');
+  if (part === 'night') pool.push('yawn', 'yawn', 'yawn', 'rest', 'rest');
+  if (part === 'morning') pool.push('stretch', 'stretch');
   const kind = pool[Math.floor(Math.random() * pool.length)];
   play(kind);
   return kind;
@@ -290,6 +328,7 @@ export function idleMove() {
 
 export function play(kind) {
   busyMove = performance.now() + (MOVE_MS[kind] || 1500);
+  if (MOVE_EMOTE[kind] && Math.random() < 0.6) emote(MOVE_EMOTE[kind]);
   if (MOVES[kind]) Live2D.playSequence(MOVES[kind]);
   else if (kind === 'wave') { for (const a of Actions.parseActions('[A:wave] [A:emote|happy]')) Actions.applyAction(a); }
   else if (kind === 'tail') { Live2D.startLoop('ParamTailWiggle', 1, 600); setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 1800); }
@@ -327,7 +366,8 @@ function frame(t) {
       const push = clamp(-carry.vx * TUNE.swingGain, -1.2, 1.2);
       swing.v += (TUNE.swingSpring * (push - swing.x) - TUNE.swingDamp * swing.v) * dt;
       swing.x = clamp(swing.x + swing.v * dt, -1.5, 1.5);
-      const liftPush = clamp(-carry.vy * TUNE.liftGain, -0.6, 0.6);
+      // lifted fast the arms trail down, falling they float up
+      const liftPush = clamp(carry.vy * TUNE.liftGain, -0.6, 0.6);
       swing.lv += (TUNE.swingSpring * (liftPush - swing.lift) - TUNE.swingDamp * swing.lv) * dt;
       swing.lift = clamp(swing.lift + swing.lv * dt, -0.8, 0.8);
 

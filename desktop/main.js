@@ -32,7 +32,11 @@ const WALK_PX_PER_S = 70;
 // the hop in her walk: px high, seconds per step (matches strideMs / 2 in webapp/js/desktop/body.js)
 const HOP_PX = 4;
 const STEP_S = 0.55;
-const DOZE_AFTER_S = 5 * 60;
+// throwing her: px/s of the hand that counts as a throw, the most she
+// can fly, and gravity
+const THROW_MIN = 650;
+const THROW_MAX = 3200;
+const GRAVITY = 2600;
 
 app.setName('Jun');
 try { app.setPath('userData', path.join(JUN_HOME, 'runtime', 'desktop')); } catch (e) {}
@@ -42,13 +46,19 @@ const CFG_FILE = () => path.join(app.getPath('userData'), 'desktop.json');
 const DEFAULTS = {
   mode: 'window', inside: 'window', onTop: false, size: 'medium',
   window: null, compact: null, stepX: null, displayId: null, tipShown: false,
+  // "On the desktop" settings, the page reads them (jun:settings)
+  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false },
 };
+const WALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
+const DOZE_CHOICES = [[2, 'After 2 minutes'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [0, 'Never']];
+const WATCH_CHOICES = [['often', 'Often'], ['normal', 'Now and then'], ['rarely', 'Rarely'], ['never', 'Never']];
 let cfg = { ...DEFAULTS };
 function loadCfg() {
   try { cfg = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(CFG_FILE(), 'utf8')) }; } catch (e) { cfg = { ...DEFAULTS }; }
   if (!SIZES[cfg.size]) cfg.size = 'medium';
   if (!['window', 'compact', 'stepout'].includes(cfg.mode)) cfg.mode = 'window';
   if (!['window', 'compact'].includes(cfg.inside)) cfg.inside = 'window';
+  cfg.desk = { ...DEFAULTS.desk, ...(cfg.desk || {}) };
 }
 let saveTimer = null;
 function saveCfg() {
@@ -280,7 +290,10 @@ function openMode(mode, reason) {
     setTimeout(() => { if (!w.isDestroyed()) w.loadURL(url); }, 3000);
   });
   guardNavigation(w, mode);
-  if (mode !== 'window') setClickThrough(w, true);
+  if (mode !== 'window') {
+    setClickThrough(w, true);
+    w.webContents.on('did-finish-load', () => sendSettings());
+  }
 
   const remember = () => {
     if (w.isDestroyed() || w !== win) return;
@@ -374,10 +387,14 @@ function startDrag() {
   stopFall();
   const c = screen.getCursorScreenPoint();
   const b = win.getBounds();
-  drag = { dx: c.x - b.x, dy: c.y - b.y, timer: setInterval(() => {
+  drag = { dx: c.x - b.x, dy: c.y - b.y, hist: [], timer: setInterval(() => {
     if (!win || win.isDestroyed()) { stopDrag(); return; }
     const p = screen.getCursorScreenPoint();
     win.setPosition(p.x - drag.dx, p.y - drag.dy);
+    // the last tenth of a second of the hand, for a throw
+    const now = Date.now();
+    drag.hist.push({ x: p.x, y: p.y, t: now });
+    while (drag.hist.length > 2 && now - drag.hist[0].t > 100) drag.hist.shift();
   }, 16) };
 }
 
@@ -389,9 +406,17 @@ function stopDrag() {
 }
 
 function endDrag() {
+  const hist = drag ? drag.hist : [];
   if (!stopDrag() || !win || win.isDestroyed()) return;
   const b = win.getBounds();
   if (winMode === 'compact') { cfg.compact = { x: b.x, y: b.y }; saveCfg(); return; }
+  // let go while the hand is still moving fast: she flies
+  if (hist.length >= 2) {
+    const a = hist[0], z = hist[hist.length - 1];
+    const dt = Math.max(16, z.t - a.t) / 1000;
+    const vx = (z.x - a.x) / dt, vy = (z.y - a.y) / dt;
+    if (Math.hypot(vx, vy) > THROW_MIN) { fly(vx, vy); return; }
+  }
   // let go of her anywhere and she drops back down to the taskbar
   const display = displayFor(b);
   cfg.displayId = display.id;
@@ -405,11 +430,57 @@ function endDrag() {
     v += 2.2;
     y = y < target ? Math.min(target, y + v) : Math.max(target, y - 18);
     win.setPosition(x, Math.round(y));
+    send('jun:fly', { vx: 0, vy: v * 60 });
     if (y === target) { stopFall(); landed(x); }
   }, 16);
 }
 
 function stopFall() { if (fall) { clearInterval(fall); fall = null; } }
+
+// thrown: momentum, gravity, bounces off the screen edges and the
+// taskbar, then lands. the page swings her limbs off jun:fly
+function fly(vx, vy) {
+  const b = win.getBounds();
+  const display = displayFor(b);
+  cfg.displayId = display.id;
+  const wa = display.workArea;
+  const lo = clampX(display, -Infinity, b.width), hi = clampX(display, Infinity, b.width);
+  const floor = floorY(display, b.height);
+  const top = wa.y - b.height * 0.35;
+  const cap = (v) => Math.max(-THROW_MAX, Math.min(THROW_MAX, v));
+  let x = b.x, y = b.y, last = Date.now(), bounces = 0;
+  vx = cap(vx); vy = cap(vy);
+  stopFall();
+  send('jun:walk-state', { state: 'flying' });
+  fall = setInterval(() => {
+    if (!win || win.isDestroyed()) { stopFall(); return; }
+    const now = Date.now();
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    vy += GRAVITY * dt;
+    vx *= Math.pow(0.6, dt);         // air slows her a little
+    x += vx * dt;
+    y += vy * dt;
+    if (x < lo) { x = lo; vx = Math.abs(vx) * 0.55; send('jun:walk-state', { state: 'bonk' }); }
+    if (x > hi) { x = hi; vx = -Math.abs(vx) * 0.55; send('jun:walk-state', { state: 'bonk' }); }
+    if (y < top) { y = top; vy = Math.abs(vy) * 0.4; }
+    if (y >= floor) {
+      y = floor;
+      if (vy > 650 && bounces < 2) {
+        bounces++;
+        vy = -vy * 0.35;
+        vx *= 0.7;
+      } else {
+        stopFall();
+        win.setPosition(Math.round(x), floor);
+        landed(Math.round(x));
+        return;
+      }
+    }
+    win.setPosition(Math.round(x), Math.round(y));
+    send('jun:fly', { vx, vy });
+  }, 16);
+}
 
 function landed(x) {
   cfg.stepX = x;
@@ -417,8 +488,11 @@ function landed(x) {
   send('jun:walk-state', { state: 'landed' });
 }
 
-function startWander() {
+function startWander(opts = {}) {
   if (!win || win.isDestroyed() || winMode !== 'stepout' || drag || fall) return;
+  // her mood sets the pace (webapp/js/desktop.js)
+  const pace = Math.max(0.5, Math.min(1.6, Number(opts.speed) || 1));
+  const hopPx = Math.max(0, Math.min(10, Number(opts.hop) || HOP_PX));
   const b = win.getBounds();
   const display = displayFor(b);
   const wa = display.workArea;
@@ -449,12 +523,12 @@ function startWander() {
     // y wobbles with the hop, x is the only thing that walks
     const gone = Math.abs(win.getBounds().x - from);
     const left = dist - gone;
-    const speed = WALK_PX_PER_S * Math.max(0.25, Math.min(1, gone / EASE_PX + 0.25, left / EASE_PX + 0.15));
+    const speed = WALK_PX_PER_S * pace * Math.max(0.25, Math.min(1, gone / EASE_PX + 0.25, left / EASE_PX + 0.15));
     let x = win.getBounds().x + dir * Math.max(1, speed * dt);
     const done = dir > 0 ? x >= to : x <= to;
     if (done) x = to;
     // the hop in each step, one per footfall (two per stride)
-    const hop = done ? 0 : Math.round(Math.abs(Math.sin((t - TURN_S) * Math.PI / STEP_S)) * -HOP_PX);
+    const hop = done ? 0 : Math.round(Math.abs(Math.sin((t - TURN_S) * Math.PI * pace / STEP_S)) * -hopPx);
     win.setPosition(Math.round(x), baseY + hop);
     if (done) {
       stopWalk();
@@ -490,14 +564,16 @@ function stopWalk() {
 // ---------------------------------------------------------------
 // idle: she dozes off when he's been away from the keyboard
 
-let lastIdle = 0;
 function pollIdle() {
   let s = 0;
   try { s = powerMonitor.getSystemIdleTime(); } catch (e) { return; }
-  if (s >= DOZE_AFTER_S || lastIdle >= DOZE_AFTER_S || Math.abs(s - lastIdle) > 20) sendIdle(s);
-  lastIdle = s;
+  sendIdle(s);
 }
-function sendIdle(s) { send('jun:idle', { seconds: s, dozeAfter: DOZE_AFTER_S }); }
+function sendIdle(s) {
+  const mins = Number(cfg.desk.doze);
+  send('jun:idle', { seconds: s, dozeAfter: mins > 0 ? mins * 60 : Infinity });
+}
+function sendSettings() { send('jun:settings', { ...cfg.desk }); }
 
 function send(channel, data) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, data);
@@ -528,7 +604,8 @@ ipcMain.on('jun:feet', (e, px) => {
 });
 ipcMain.on('jun:walk', (e, what) => {
   if (!fromWin(e)) return;
-  if (what === 'wander') startWander(); else stopWalk();
+  if (what === 'wander' || (what && what.what === 'wander')) startWander(typeof what === 'object' ? what : {});
+  else stopWalk();
 });
 ipcMain.on('jun:mode', (e, mode) => {
   if (!fromWin(e)) return;
@@ -557,6 +634,7 @@ function windowMenu() {
       { type: 'separator' },
       { label: 'Keep her window on top', type: 'checkbox', checked: !!cfg.onTop, click: (i) => setOnTop(i.checked) },
       sizeMenu(),
+      deskMenu(),
       { type: 'separator' },
       { label: 'Hide (she stays by the clock)', accelerator: 'CmdOrCtrl+H', click: hideJun },
       { label: 'Close the desktop app', click: () => { quitting = true; app.quit(); } },
@@ -579,6 +657,26 @@ function setOnTop(on) {
   saveCfg();
   if (win && winMode === 'window') { win.setAlwaysOnTop(on); win.setMenu(windowMenu()); }
   rebuildTrayMenu();
+}
+
+// "On the desktop": how lively she is out there
+function deskMenu() {
+  const set = (k, v) => { cfg.desk[k] = v; saveCfg(); sendSettings(); rebuildMenus(); };
+  const radio = (k, choices) => choices.map(([v, label]) => ({
+    label, type: 'radio', checked: cfg.desk[k] === v, click: () => set(k, v),
+  }));
+  return { label: 'On the desktop', submenu: [
+    { label: 'Quiet mode (no wandering, no talking on her own)', type: 'checkbox', checked: !!cfg.desk.quiet, click: (i) => set('quiet', i.checked) },
+    { type: 'separator' },
+    { label: 'Walks around', submenu: radio('walk', WALK_CHOICES) },
+    { label: 'Dozes off when you are away', submenu: radio('doze', DOZE_CHOICES) },
+    { label: 'Looks at your mouse', submenu: radio('watch', WATCH_CHOICES) },
+  ] };
+}
+
+function rebuildMenus() {
+  rebuildTrayMenu();
+  if (win && !win.isDestroyed() && winMode === 'window') win.setMenu(windowMenu());
 }
 
 function sizeMenu() {
@@ -630,6 +728,7 @@ function rebuildTrayMenu() {
     { type: 'separator' },
     { label: 'Keep her window on top', type: 'checkbox', checked: !!cfg.onTop, click: (i) => setOnTop(i.checked) },
     sizeMenu(),
+    deskMenu(),
     { type: 'separator' },
     { label: 'Open her window when Jun starts', type: 'checkbox', checked: envDesktopOn(), click: (i) => setEnvDesktop(i.checked) },
     { label: 'Start Jun with Windows', type: 'checkbox', checked: fs.existsSync(startupLink()), enabled: process.platform === 'win32', click: (i) => {
