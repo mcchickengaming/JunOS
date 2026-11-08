@@ -54,6 +54,14 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   Devoted. XP from his messages, outings, daily return and warm replies; daily cap; never lost. Stage-ups are
   a moment in her reply, a memory note, a history event and a toast. Affection/trust are capped per stage in
   `relationship_get()` (35/50/65/80/90/100). Meter in Settings > Memory.
+- **Desktop window** (`desktop/` Electron app, `webapp/desktop.html` + `js/desktop.js`): start.ps1 opens it
+  instead of a browser tab (`JUN_DESKTOP`, default on). `desktop/launch.ps1` downloads a pinned Electron
+  (version + SHA-256 in that file) into `runtime\electron`. Modes from the tray: her window (index.html),
+  compact (frameless, on top), stepped out (on the taskbar: walks, dozes after 5 idle min, drag and drop,
+  click-through except over her). Desktop chat goes into her latest conversation; desktop reactions are
+  ephemeral OOC turns. Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
+  `start.ps1 stop` closes it, `start.ps1 desktop` opens it alone. Never run Electron in the cloud sandbox
+  (binary downloads are blocked); test the page with Playwright + Chrome and a mocked `window.junDesktop`.
 
 ## Content
 Claude builds engines, systems and regular content. Adult/rated content is out of scope for Claude: systems

@@ -111,9 +111,14 @@ if (Test-Path -LiteralPath $trustMark) {
 # Only shortcuts that point into this folder. Another install may
 # own a "Jun OS" shortcut of its own.
 $shell = New-Object -ComObject WScript.Shell
-foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-    if (-not $folder) { continue }
-    $path = Join-Path $folder 'Jun OS.lnk'
+# Jun.lnk is the desktop app's own (desktop\main.js writes it to the
+# Start menu, and to Startup when "Start Jun with Windows" is on).
+$links = @(foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
+    if ($folder) { Join-Path $folder 'Jun OS.lnk' }
+}) + @(foreach ($folder in @([Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('Startup'))) {
+    if ($folder) { Join-Path $folder 'Jun.lnk' }
+})
+foreach ($path in $links) {
     if (-not (Test-Path -LiteralPath $path)) { continue }
     $lnk = $shell.CreateShortcut($path)
     if ($lnk.WorkingDirectory -ieq $root -or $lnk.TargetPath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {

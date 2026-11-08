@@ -1,0 +1,9 @@
+{
+  "name": "jun-desktop",
+  "productName": "Jun",
+  "version": "1.0.0",
+  "description": "Jun's own window on the desktop: her window, compact mode, and stepping out onto the taskbar.",
+  "main": "main.js",
+  "private": true,
+  "license": "Apache-2.0"
+}

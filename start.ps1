@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    [ValidateSet('start', 'stop', 'status', 'trust', 'link', 'phone', 'bridge')]
+    [ValidateSet('start', 'stop', 'status', 'trust', 'link', 'phone', 'bridge', 'desktop')]
     [string]$Action = 'start',
     [switch]$NoBrowser,
     [switch]$IgnoreSecurity,
@@ -362,6 +362,27 @@ $PhpUrl    = "http://127.0.0.1:$PhpPort"
 $BindAddr  = if ($env:BIND_ADDR) { $env:BIND_ADDR.Trim() } else { '127.0.0.1' }
 $LanHosts  = @()
 
+# her own desktop window (desktop\launch.ps1, the Electron app in
+# desktop\) instead of a browser tab. JUN_DESKTOP=off goes back to
+# the tab. the app itself has a tray switch that writes this line.
+$DesktopOn = "$env:JUN_DESKTOP" -notmatch '^(off|0|false|no)$'
+function Start-JunDesktop {
+    $launcher = Join-Path $PSScriptRoot 'desktop\launch.ps1'
+    if (-not (Test-Path -LiteralPath $launcher)) { return $false }
+    try {
+        & $launcher -JunHome $PSScriptRoot -Url $SiteUrl | Out-Null
+        return $true
+    } catch {
+        Warn_ "her desktop window did not open: $($_.Exception.Message)"
+        return $false
+    }
+}
+if ($Action -eq 'desktop') {
+    Step 'her desktop window'
+    if (Start-JunDesktop) { Ok 'opened (if she is not up yet, it starts her)'; exit 0 }
+    exit 1
+}
+
 # this box's own addresses on the home network. skips the virtual
 # adapters Hyper-V, WSL and Docker Desktop leave lying around,
 # those aren't reachable from a phone and naming them just widens
@@ -474,10 +495,14 @@ function Get-TrackedProcess([object]$pids, [string]$name) {
 
 # what pids.json lost track of still holds JUN_PORT and the files
 # under runtime\, so the uninstaller can't delete caddy.exe
-function Stop-Strays([int[]]$keep = @()) {
+# -AndDesktop takes her desktop app (runtime\electron) down too. only
+# `stop` does: the app itself runs start.ps1 when it finds her
+# server down, and a start must not kill the window that asked.
+function Stop-Strays([int[]]$keep = @(), [switch]$AndDesktop) {
     $here = $PSScriptRoot.TrimEnd('\') + '\'
-    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue `
-        -Filter "Name='caddy.exe' OR Name='php.exe' OR Name='python.exe' OR Name='pythonw.exe' OR Name='llama-server.exe'" |
+    $filter = "Name='caddy.exe' OR Name='php.exe' OR Name='python.exe' OR Name='pythonw.exe' OR Name='llama-server.exe'"
+    if ($AndDesktop) { $filter += " OR Name='electron.exe'" }
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue -Filter $filter |
         Where-Object {
             $_.ProcessId -ne $PID -and $_.ProcessId -notin $keep -and $_.ParentProcessId -notin $keep -and (
                 ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($here, [StringComparison]::OrdinalIgnoreCase)) -or
@@ -635,7 +660,7 @@ if ($Action -eq 'stop') {
             Warn_ "could not stop $name (pid $($p.Id)): $($_.Exception.Message)"
         }
     }
-    Stop-Strays
+    Stop-Strays -AndDesktop
     Remove-Item $PidFile -ErrorAction SilentlyContinue
     Write-Host ''
     Ok 'all services stopped'
@@ -1229,5 +1254,7 @@ if (-not (Test-Path (Join-Path $CertDir 'trusted'))) {
 }
 Note 'stop with: ./start.ps1 stop   |   logs: runtime\logs\'
 if ($UpdateNote) { Warn_ $UpdateNote }
-if (-not $NoBrowser) { Start-Process $SiteUrl }
+if (-not $NoBrowser) {
+    if (-not $DesktopOn -or -not (Start-JunDesktop)) { Start-Process $SiteUrl }
+}
 exit 0
