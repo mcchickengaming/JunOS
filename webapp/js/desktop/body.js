@@ -642,7 +642,9 @@ function act(tags) { for (const a of Actions.parseActions(tags)) Actions.applyAc
 // hold her hand: the rig's own hand-holding, as long as he holds on
 let holdingHand = null;
 export function handhold(side, on) {
-  const s = side === 'left' ? 'left' : 'right';
+  // side is his: 'left' is the hand on the left of the screen. the rig's
+  // L and R are hers, and she faces him, so they're mirrored
+  const s = side === 'left' ? 'right' : 'left';
   Actions.applyAction({ name: 'handhold', kwargs: { side: s, enable: on ? 'true' : 'false' } });
   if (on) {
     holdingHand = s;

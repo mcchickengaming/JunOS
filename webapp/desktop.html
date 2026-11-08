@@ -197,6 +197,8 @@
     font: 800 12px Arial, Helvetica, sans-serif; color: var(--ink); background: var(--bubble-bg); border: 1px solid var(--edge); text-shadow: var(--outline);
     transform: translate(-50%, -100%) scale(.8); opacity: 0; }
   .action-label.on { animation: label-pop 1.25s ease forwards; }
+  .rub-label { transform: translate(-50%, -100%) scale(.9); transition: opacity .25s ease, transform .25s ease, left .2s ease, top .2s ease; }
+  .rub-label.on { animation: none; opacity: 1; transform: translate(-50%, -100%) scale(1); }
   @keyframes label-pop {
     0% { opacity: 0; transform: translate(-50%, -80%) scale(.8); }
     15% { opacity: 1; transform: translate(-50%, -100%) scale(1.05); }
@@ -229,6 +231,7 @@
 <div class="spots-view" id="spotsView" aria-hidden="true" hidden></div>
 <div class="ring" id="ring" aria-hidden="true"></div>
 <div class="action-label" id="actionLabel" aria-hidden="true"></div>
+<div class="action-label rub-label" id="rubLabel" aria-hidden="true"></div>
 <div class="zzz" id="zzz" hidden aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
 <div class="note" id="note" hidden></div>
 
@@ -236,6 +239,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=33"></script>
+<script type="module" src="js/desktop.js?v=35"></script>
 </body>
 </html>

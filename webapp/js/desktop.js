@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=26';
+import * as Body from './desktop/body.js?v=27';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -744,10 +744,10 @@ window.addEventListener('mousemove', (e) => {
   const region = ready && !onUi ? Body.regionAt(e.clientX, e.clientY) : null;
   if (ready) watchWaveBack(e.clientX, e.clientY);
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
-  if (rub) rubTrail(e.clientX, e.clientY);
+  if (rub) { rubTrail(e.clientX, e.clientY); rubLabel(rub, region); }
   if (rub && rub !== wasRubbing) {
     rubSince = Date.now();
-    if (!touched(rub === 'tail' ? 'tailrub' : rub)) actionLabel(RUB_LABEL[rub], e.clientX, e.clientY);
+    if (touched(rub === 'tail' ? 'tailrub' : rub)) rubLabel(null);
   }
   // a rub that keeps going for a couple of seconds might get a word
   if (rub && RUB_TALK[rub] && Date.now() - rubSince > 2200) { maybeSay(RUB_TALK[rub]); rubSince = Infinity; }
@@ -798,6 +798,37 @@ function rubTrail(x, y) {
   if (now - lastTrail < 140) return;
   lastTrail = now;
   particle('✦', x + (Math.random() - 0.5) * 14, y + (Math.random() - 0.5) * 10, 'spark-p', (Math.random() - 0.5) * 16, -18, 700);
+}
+
+// a rub's label: one steady tag above her head while the rub goes on.
+// its words change only once he's settled on a spot (head and ears sit
+// close together, a rub crosses between them all the time), it glides
+// with her instead of popping up again at the mouse, and fades a moment
+// after the rub stops
+const rubTag = document.getElementById('rubLabel');
+let rubShown = null, rubWant = null, rubWantSince = 0, rubHideTimer = null, rubSide = 1;
+const RUB_SETTLE_MS = 450;
+let rubQuietUntil = 0;
+function rubLabel(kind, region) {
+  clearTimeout(rubHideTimer);
+  const now = Date.now();
+  // a combo's own label is showing: stay out of its way for a moment
+  if (!kind) rubQuietUntil = now + 1300;
+  if (!kind || now < rubQuietUntil) { rubTag.classList.remove('on'); rubShown = null; return; }
+  if (kind !== rubWant) { rubWant = kind; rubWantSince = now; }
+  if (!rubShown || (kind !== rubShown && now - rubWantSince >= RUB_SETTLE_MS)) {
+    rubShown = kind;
+    rubTag.textContent = RUB_LABEL[kind] || '';
+    if (region && region.kind === kind) rubSide = region.side === 'left' ? -1 : region.side === 'right' ? 1 : (region.side || 1);
+  }
+  // just above the spot being rubbed; head and ears share one place, so
+  // crossing between them doesn't move it
+  const c = Body.spotCircle(rubShown === 'ear' ? 'head' : rubShown, rubSide);
+  const x = c ? c.x : lastX, y = c ? c.y - c.r - 8 : lastY - 26;
+  rubTag.style.left = Math.max(40, Math.min(window.innerWidth - 40, x)) + 'px';
+  rubTag.style.top = Math.max(26, y) + 'px';
+  rubTag.classList.add('on');
+  rubHideTimer = setTimeout(() => { rubTag.classList.remove('on'); rubShown = null; }, 900);
 }
 
 let labelTimer = null;
