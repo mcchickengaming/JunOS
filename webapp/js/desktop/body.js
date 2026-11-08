@@ -348,6 +348,8 @@ export function rubbing() { return rubLive(); }
 export const SPOT_DEFAULTS = {
   // w: how much wider than tall (an oval); the head is wide so a rub fits
   head: { dx: 0, dy: -0.05, r: 0.035, w: 2.4, pair: false, label: 'Headpat' },
+  // hold here for a hug: her torso only, not her head, hands or legs
+  hug: { dx: 0, dy: 0.3, r: 0.07, w: 1.15, pair: false, label: 'Hug' },
   nose: { dx: 0, dy: 0.085, r: 0.016, pair: false, label: 'Nose' },
   cheek: { dx: 0.05, dy: 0.1, r: 0.026, pair: true, label: 'Cheek' },
   ear: { dx: 0.115, dy: 0.05, r: 0.03, pair: true, label: 'Ear' },
@@ -430,7 +432,7 @@ export function regionAt(x, y) {
 
 // what the pointer looks like over each spot, so he can SEE what he
 // can do. an emoji drawn into an svg cursor, hotspot in the middle
-const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', body: '🤗' };
+const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', hug: '🤗', body: '💬' };
 const cursorCache = {};
 // a few more for what's going on, not where: holding hands, a hug
 CURSOR_ICON.holding = '🤝';

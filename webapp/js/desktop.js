@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=18';
+import * as Body from './desktop/body.js?v=19';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -720,7 +720,8 @@ window.addEventListener('pointerdown', (e) => {
   press = { x: e.screenX, y: e.screenY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
   const p = press;
   ripple(e.clientX, e.clientY);
-  if (region.kind === 'hand' || region.kind === 'body' || region.kind === 'side') {
+  // holds: her hand (hold hands) and her torso (a hug). nowhere else
+  if (region.kind === 'hand' || region.kind === 'hug') {
     // a ring fills around the pointer while the hold builds up, so it's
     // clear that keeping the button down does something
     holdRing(true, e.clientX, e.clientY, region.kind === 'hand' ? '🤝' : '🤗');
@@ -797,7 +798,8 @@ const endPress = (e) => {
   if (Body.rubbing()) return;
   if (e.type === 'pointercancel') return;
   const now = Date.now();
-  if (p.region.kind !== 'body') {
+  // the torso and the rest of her body: a tap to talk. everything else a poke
+  if (p.region.kind !== 'body' && p.region.kind !== 'hug') {
     // a spot on her: a poke, not a tap to talk
     lastTap = 0;
     if (dozing) wake(true);
