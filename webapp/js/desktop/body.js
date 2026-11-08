@@ -365,18 +365,20 @@ export function rubbing() { return rubLive(); }
 // the head is a circle too (high on her head, clear of the ears, so
 // headpat and ear rub don't fight), adjustable like the rest.
 export const SPOT_DEFAULTS = {
+  // the owner's own placement on her real rig (Nov 8), so a fresh
+  // install starts with spots that fit her.
   // w: how much wider than tall (an oval); the head is wide so a rub fits
-  head: { dx: 0, dy: -0.05, r: 0.035, w: 2.4, pair: false, label: 'Headpat' },
+  head: { dx: 0, dy: -0.011, r: 0.035, w: 2.4, pair: false, label: 'Headpat' },
   // hold here for a hug: her torso only, not her head, hands or legs
-  hug: { dx: 0, dy: 0.3, r: 0.07, w: 1.15, pair: false, label: 'Hug' },
-  nose: { dx: 0, dy: 0.085, r: 0.016, pair: false, label: 'Nose' },
-  cheek: { dx: 0.05, dy: 0.1, r: 0.026, pair: true, label: 'Cheek' },
-  ear: { dx: 0.115, dy: 0.05, r: 0.03, pair: true, label: 'Ear' },
-  shoulder: { dx: 0.12, dy: 0.22, r: 0.035, pair: true, label: 'Shoulder' },
-  side: { dx: 0.1, dy: 0.33, r: 0.035, pair: true, label: 'Side (tickle)' },
-  hand: { dx: 0.135, dy: 0.47, r: 0.035, pair: true, label: 'Hand' },
-  tail: { dx: 0.17, dy: 0.5, r: 0.04, pair: false, label: 'Tail' },
-  thigh: { dx: 0.045, dy: 0.58, r: 0.035, w: 0.9, pair: true, label: 'Thigh' },
+  hug: { dx: 0.004, dy: 0.365, r: 0.061, w: 1.15, pair: false, label: 'Hug' },
+  nose: { dx: -0.002, dy: 0.163, r: 0.016, pair: false, label: 'Nose' },
+  cheek: { dx: 0.066, dy: 0.138, r: 0.026, pair: true, label: 'Cheek' },
+  ear: { dx: 0.054, dy: 0.055, r: 0.03, pair: true, label: 'Ear' },
+  shoulder: { dx: 0.082, dy: 0.218, r: 0.026, pair: true, label: 'Shoulder' },
+  side: { dx: 0.116, dy: 0.307, r: 0.03, pair: true, label: 'Side (tickle)' },
+  hand: { dx: 0.118, dy: 0.464, r: 0.035, pair: true, label: 'Hand' },
+  tail: { dx: 0.134, dy: 0.556, r: 0.04, pair: false, label: 'Tail' },
+  thigh: { dx: 0.047, dy: 0.544, r: 0.035, w: 0.9, pair: true, label: 'Thigh' },
   feet: { dx: 0.05, dy: 0.82, r: 0.028, w: 1.3, pair: true, label: 'Foot' },
 };
 // v2: units changed from head widths to her height, older saves don't fit
