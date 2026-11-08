@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=27';
+import * as Body from './desktop/body.js?v=28';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -304,7 +304,17 @@ const PIN_ICON = { hand: '🤝', hug: '🤗', tailgrab: '✊', head: '✋', ear:
 function pinHand() {
   if (pin) { releasePin(); return true; }
   let next = null;
-  if (press && press.hold) {
+  if (press && press.hold === 'pat') {
+    const p = press;
+    press = null;
+    endHold(p);
+    const t0 = Date.now() - 2500;
+    next = { type: 'rub', step: 'head', kind: 'head', x: p.cx, y: p.cy };
+    next.timer = setInterval(() => {
+      const ms = Date.now() - t0;
+      Body.rubEffect('head', ms, next.x + Math.sin(ms / 140) * 14);
+    }, 120);
+  } else if (press && press.hold) {
     const p = press;
     const step = p.hold === 'tail' ? 'tailgrab' : p.hold;
     next = { type: 'hold', step, p, x: p.cx, y: p.cy };
@@ -615,12 +625,14 @@ async function refreshMood() {
 // ---------------------------------------------------------------
 // "On the desktop" settings from the tray (desktop/main.js)
 
-let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false };
+let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false, patFollow: 'normal' };
 const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
+const PAT_FOLLOW = { lots: 1.6, normal: 1, little: 0.45, none: 0 };
 const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
 D?.onSettings?.((s) => {
   settings = { ...settings, ...s };
   Body.setWatch(WATCH[settings.watch] ?? 1);
+  Body.setPatFollow(PAT_FOLLOW[settings.patFollow] ?? 1);
   if (settings.quiet) D?.stopWalk();
   showSpots(!!settings.showSpots);
 });
@@ -1104,11 +1116,29 @@ window.addEventListener('pointerdown', (e) => {
       }
     }, HOLD_MS);
   }
+  // her head: hold-to-pat, like the game. a short hold or the first
+  // bit of movement starts it, a quick click stays a poke
+  if (region.kind === 'head') p.patTimer = setTimeout(() => startPat(p, e.clientX, e.clientY), PAT_HOLD_MS);
   try { stageEl.setPointerCapture(e.pointerId); } catch (err) {}
 }, true);
 
+const PAT_HOLD_MS = 160;
+function startPat(p, x, y) {
+  clearTimeout(p.patTimer);
+  if (press !== p || p.hold || p.dragging) return;
+  if (dozing) wake(true);
+  D?.stopWalk();
+  p.hold = 'pat';
+  Body.patHoldStart(x, y);
+  document.body.style.cursor = Body.cursorFor('head');
+  if (!touched('head')) rubLabel('head', p.region);
+  else rubLabel(null);
+}
+
 function endHold(p) {
   clearTimeout(p.holdTimer);
+  clearTimeout(p.patTimer);
+  if (p.hold === 'pat') Body.patHoldEnd();
   clearTimeout(p.talkTimer);
   holdRing(false);
   hoverKind = undefined; // the cursor goes back to the spot's icon on the next move
@@ -1127,8 +1157,23 @@ window.addEventListener('pointermove', (e) => {
   if (press.dragging) Body.carryMove(e.screenX, e.screenY);
   // holding her hand or hugging her: the mouse can wander, she stays.
   // letting go of the button is the only way out of a hold
+  if (press.hold === 'pat') {
+    // the hand follows the mouse, her head goes with it
+    Body.patHoldMove(e.clientX, e.clientY);
+    rubTrail(e.clientX, e.clientY);
+    rubLabel('head', press.region);
+    return;
+  }
   if (press.hold) {
     if (press.hold === 'hand') Body.lookAtPoint(e.clientX, e.clientY, 600);
+    return;
+  }
+  // on her head, moving is patting, not picking her up
+  if (press.region.kind === 'head' && !press.dragging) {
+    if (Math.hypot(e.screenX - press.x, e.screenY - press.y) >= 3) {
+      startPat(press, press.cx, press.cy);
+      Body.patHoldMove(e.clientX, e.clientY);
+    }
     return;
   }
   if (press.dragging || Math.hypot(e.screenX - press.x, e.screenY - press.y) < 6) return;

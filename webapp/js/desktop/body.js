@@ -49,6 +49,17 @@ export const TUNE = {
   saccadePx: 90,          // her eyes jump to the cursor only once it's this far from where she's looking
   fixateMs: 400,          // and not more often than this
   glanceAwayChance: 0.5,  // when she stops looking, chance she glances off at something of her own
+  // hold-to-pat (press on her head and move the mouse): the hand follows
+  // the mouse and her head goes with it. reach = how far (in head widths)
+  // the mouse moves for the hand to reach the end of its range
+  patReach: 0.55,
+  patHandX: 1,        // ParamHeadpatX at the end of the range (the hand, sideways)
+  patHandY: 0.6,      // ParamHeadpatY (the hand, up and down)
+  patTilt: 0.5,       // ParamHeadZ: her head tilts with the hand
+  patTurn: 0.25,      // ParamHeadX: and turns a little with it
+  patBody: 0.12,      // ParamBodyZ: her body sways along
+  patDip: 0.15,       // ParamHeadY: her head dips a little under the hand
+  patEase: 0.35,      // 0..1 how quickly her head catches up with the hand (lower = softer, lazier)
 };
 
 let canvas = null;
@@ -324,7 +335,7 @@ export function rubEffect(kind, ms, x) {
     const a = anchor();
     if (!a) return;
     setHeld('ParamHeadpat', 1, 700);
-    setHeld('ParamHeadpatY', clamp((x - a.x) / (a.headW * 0.5), -1, 1) * 0.35, 700);
+    setHeld('ParamHeadpatX', clamp((x - a.x) / (a.headW * 0.5), -1, 1) * 0.6, 700);
     setHeld('ParamEyesHappy', 1, 900);
     setHeld('ParamBlush', 0.6, 1500);
     if (onPat) onPat(ms);
@@ -347,7 +358,93 @@ function endPat() {
 }
 // a rub counts as going on for a moment after the pointer last moved
 const rubLive = () => !!(pat && pat.started && performance.now() - pat.last < 400);
-export function patting() { return rubLive() && pat.kind === 'head'; }
+export function patting() { return !!hp || (rubLive() && pat.kind === 'head'); }
+
+// ---------------------------------------------------------------
+// hold-to-pat, like the game: press on her head, the petting hand
+// comes down on it, and while the button stays down the hand follows
+// the mouse left and right (and a bit up and down). her head tilts
+// and turns with the hand, her body sways along, she melts the longer
+// it goes. letting go lifts the hand and her head settles back.
+// desktop.js decides when it starts and ends, this is how it looks.
+
+let hp = null;            // hold-pat in progress
+let patFollow = 1;        // "Headpat: her head follows your hand" (0 = only the hand moves)
+export function setPatFollow(f) { patFollow = Math.max(0, Number(f) || 0); }
+
+export function patHoldStart(x, y) {
+  if (hp) patHoldEnd();
+  const now = performance.now();
+  hp = { x0: x, y0: y, ox: 0, oy: 0, hx: 0, hy: 0, started: now, lastMove: now, timer: null };
+  Live2D.cancelPending('ParamHeadpat');
+  Live2D.setTarget('ParamHeadpat', 1);
+  Live2D.hold('ParamHeadpat', 600);
+  Actions.applyAction({ name: 'receive_headpat', kwargs: {} });
+  emote('heart');
+  hp.timer = setInterval(patHoldTick, 60);
+  patHoldTick();
+}
+
+export function patHoldMove(x, y) {
+  if (!hp) return;
+  const a = anchor();
+  if (!a) return;
+  const reach = Math.max(20, a.headW * TUNE.patReach);
+  // the hand stops at the end of its range; the range slides along with
+  // the mouse so turning back moves the hand again right away
+  let ox = (x - hp.x0) / reach;
+  if (ox > 1) { hp.x0 = x - reach; ox = 1; } else if (ox < -1) { hp.x0 = x + reach; ox = -1; }
+  let oy = (hp.y0 - y) / reach;
+  if (oy > 1) { hp.y0 = y + reach; oy = 1; } else if (oy < -1) { hp.y0 = y - reach; oy = -1; }
+  hp.ox = ox;
+  hp.oy = oy;
+  hp.lastMove = performance.now();
+}
+
+function patHoldTick() {
+  if (!hp) return;
+  const now = performance.now();
+  const ms = now - hp.started;
+  // the hand goes where the mouse is; her head eases after it, so it
+  // reads as being pushed gently, not glued on
+  hp.hx += (hp.ox - hp.hx) * clamp(TUNE.patEase, 0.02, 1);
+  hp.hy += (hp.oy - hp.hy) * clamp(TUNE.patEase, 0.02, 1);
+  const f = patFollow;
+  const set = (p, v, ms = 300) => { Live2D.setTarget(p, v); Live2D.hold(p, ms); };
+  Live2D.hold('ParamHeadpat', 600);
+  set('ParamHeadpatX', hp.ox * TUNE.patHandX);
+  set('ParamHeadpatY', hp.oy * TUNE.patHandY);
+  set('ParamHeadZ', hp.hx * TUNE.patTilt * f);
+  set('ParamHeadX', hp.hx * TUNE.patTurn * f);
+  set('ParamBodyZ', hp.hx * TUNE.patBody * f);
+  set('ParamHeadY', (-TUNE.patDip + hp.hy * TUNE.patDip) * f);
+  // she looks up toward the hand a little, happy eyes, the blush builds
+  for (const p of ['ParamEyeballLY', 'ParamEyeballRY']) set(p, 0.35);
+  for (const p of ['ParamEyeballLX', 'ParamEyeballRX']) set(p, hp.hx * 0.3);
+  setHeld('ParamEyesHappy', 1, 400);
+  setHeld('ParamBlush', Math.min(0.9, 0.35 + ms / 6000), 600);
+  if (onPat) onPat(ms);
+}
+
+export function patHoldEnd() {
+  if (!hp) return;
+  clearInterval(hp.timer);
+  const s = Math.sign(hp.hx) || 1;
+  const big = Math.abs(hp.hx) > 0.3;
+  hp = null;
+  // the hand lifts off. ParamHeadpat rests at -1 (at 0 it's half there)
+  Live2D.cancelPending('ParamHeadpat');
+  Live2D.setNow('ParamHeadpat', -1);
+  for (const p of ['ParamHeadpatX', 'ParamHeadpatY', 'ParamHeadX', 'ParamHeadY', 'ParamBodyZ',
+    'ParamEyeballLX', 'ParamEyeballRX', 'ParamEyeballLY', 'ParamEyeballRY']) Live2D.setTarget(p, 0);
+  // her head settles back with a little follow-through
+  Live2D.playSequence([
+    { dt_ms: 0, params: { ParamHeadZ: big ? -0.08 * s : 0 } },
+    { dt_ms: 260, params: { ParamHeadZ: 0 } },
+  ]);
+  setHeld('ParamEyesHappy', 0.7, 1200);
+}
+export function patHolding() { return !!hp; }
 export function rubbing() { return rubLive(); }
 
 // ---------------------------------------------------------------
