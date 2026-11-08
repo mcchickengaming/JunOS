@@ -1,0 +1,61 @@
+# Jun OS (personal fork)
+
+A personal fork of [efficiencyx/JunOS](https://github.com/efficiencyx/JunOS) (Apache 2.0), a self-hosted AI
+companion of Jun from *My Dystopian Robot Girlfriend*. This fork adds features from the owner's design doc
+("Jun OS — Capabilities & Framework" in the claude.ai project "MDRG Prototype"). Keep `LICENSE` and `NOTICE`.
+
+## The owner
+- Not a programmer. Explain steps in plain words, give exact commands to paste, one step at a time.
+- Runs Windows. Install: `E:\MDRG Proto\JunOS 1.3.2`. GPU RTX 4060 (8 GB VRAM), 16 GB RAM.
+- Brain: llama.cpp with the E4B Q4_K_M fine-tune. Don't add anything that needs more VRAM at the same time
+  as the brain; load heavy tools on demand and unload after.
+
+## Workflow
+- All work goes on branch **`jun-dev`**. `main` mirrors upstream and stays untouched.
+- Commit as `mcchickengaming <mcchickengaming@users.noreply.github.com>`, push to `origin jun-dev`.
+- The owner updates his PC with, in the install folder:
+  ```
+  git pull
+  .\start.ps1 stop
+  .\start.ps1
+  ```
+  then Ctrl+F5 in the browser. Never tell him to use the Jun OS app's **Update** button: it switches the
+  install back to upstream release tags.
+
+## Rules that bite
+- **Cache-busters.** Webapp JS/CSS is served `immutable` by its `?v=` URL. After changing any JS/CSS file run
+  `python3 tools/bump-versions.py webapp <path relative to webapp>...` (cascades to every importer), then
+  `bash .github/scripts/check-cache-busters.sh`. Small new styles can go inline in `webapp/index.html`
+  (never cached) to avoid renumbering stylesheets.
+- **New `.env` knobs** go in `.env.example` AND `docs/configuration.md`, or `check-consistency.sh` fails.
+- **Migrations**: `webapp/api/migrations/NNN_name.sql`, next free number, ending with
+  `INSERT INTO schema_version(v) VALUES (NNN);`. They run automatically on the next request.
+- **Factory reset**: a new per-user table must be added to the delete list in `webapp/api/auth.php`.
+- **Game art never enters git** (`webapp/assets/` is ignored; it's rebuilt from the owner's game copy).
+- Her prompt: persona in `webapp/system_prompt.txt`; per-turn live context in
+  `webapp/api/lib/chat/context.php` (`chat_live_context`). New behavior usually belongs in the live context,
+  behind an `.env` switch that defaults on.
+
+## Before every push
+```
+for f in $(git diff --name-only origin/jun-dev -- '*.php'); do php -l "$f"; done
+bash .github/scripts/check-cache-busters.sh
+bash .github/scripts/check-consistency.sh
+python3 .github/scripts/check-refs.py
+php .github/scripts/lib.test.php
+php .github/scripts/migrations.test.php
+php .github/scripts/bond.test.php
+```
+New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
+temp sqlite, real migrations, stubbed app functions) and a step in `.github/workflows/ci.yml`.
+
+## Fork features so far
+- **Bond stages** (`webapp/api/lib/bond.php`, migration 028): Stranger → Familiar → Friend → Close → Partner →
+  Devoted. XP from his messages, outings, daily return and warm replies; daily cap; never lost. Stage-ups are
+  a moment in her reply, a memory note, a history event and a toast. Affection/trust are capped per stage in
+  `relationship_get()` (35/50/65/80/90/100). Meter in Settings > Memory.
+
+## Content
+Claude builds engines, systems and regular content. Adult/rated content is out of scope for Claude: systems
+that could carry it (content packs, image tools) support a rating tag the owner controls, and the rated
+content itself is the owner's to make.
