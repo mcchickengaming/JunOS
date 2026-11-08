@@ -185,6 +185,11 @@ export function flyVelocity(vx, vy) {
   carry.lastT = performance.now();
 }
 
+// how close they are, for touches she isn't fond of yet: 1 = Stranger/
+// Familiar, 2 = Friend, 3 = Close and up (desktop.js from the bond stage)
+let close = 2;
+export function setCloseness(c) { close = c; }
+
 export function setMood(m, daypart) {
   mood = m || 'neutral';
   part = daypart || 'day';
@@ -343,8 +348,23 @@ export function pointerMove(x, y) {
     }
   }
   if (!pat.started) return null;
+  // her feet: slow is a foot rub, quick little back-and-forths are a
+  // tickle. it takes a few quick turns to switch over, and a calm
+  // moment to switch back, so it doesn't flicker between the two
+  if (kind === 'feet') {
+    if (now < feetAway) { endPat(); return null; }
+    // five turns inside 0.6 s (a jiggle) is a tickle; a normal rub is
+    // a few hundred ms per stroke
+    const quick = pat.flips.filter(t => now - t < 600).length;
+    if (!pat.tickly && quick >= 5) { pat.tickly = true; pat.tickleAt = now; }
+    else if (pat.tickly && quick <= 1) pat.tickly = false;
+    if (pat.tickly) {
+      feetTickle(now - pat.tickleAt);
+      return now < feetAway ? null : 'feettickle';
+    }
+  }
   rubEffect(kind, now - pat.started, x);
-  return kind;
+  return kind === 'feet' && now < feetAway ? null : kind;
 }
 
 const hoverHand = { x: 0, t: 0 };
@@ -376,6 +396,8 @@ export function rubEffect(kind, ms, x) {
     thighRub(ms);
   } else if (kind === 'feet') {
     feetRub(ms);
+  } else if (kind === 'feettickle') {
+    feetTickle(ms);
   } else if (kind === 'tail') {
     Live2D.holdTail(700);
     tailRub(ms);
@@ -656,6 +678,7 @@ const cursorCache = {};
 CURSOR_ICON.holding = '🤝';
 CURSOR_ICON.hugging = '🤗';
 CURSOR_ICON.squishing = '🤏';
+CURSOR_ICON.feettickle = '🪶';
 export function cursorFor(kind) {
   if (!kind || !CURSOR_ICON[kind]) return '';
   if (!cursorCache[kind]) {
@@ -760,8 +783,9 @@ export function poke(region) {
       emote('bang');
       break;
     case 'feet':
-      // ticklish feet: she pulls the foot back with a giggle
-      act('[A:emote|laughing]');
+      // ticklish feet: she pulls the foot back with a giggle. from a
+      // stranger it's a startled flinch, no giggle
+      act(close <= 1 ? '[A:emote|surprised]' : '[A:emote|laughing]');
       Live2D.playSequence([
         { dt_ms: 0, params: { [s < 0 ? 'ParamLegL' : 'ParamLegR']: -0.6, ParamBodyZ: 0.12 * s } },
         { dt_ms: 400, params: { [s < 0 ? 'ParamLegL' : 'ParamLegR']: 0, ParamBodyZ: 0 } },
@@ -1052,14 +1076,62 @@ export function combo(id) {
 }
 
 // a foot rub: she relaxes, eyes closed, a happy little sway
+// her feet, by how close they are. a stranger pulls her foot away; a
+// friend lets a foot rub happen, a tickle makes her giggle until it's
+// too much; close, a foot rub melts her and she takes a long tickle
+// fight before she begs off. pulling away keeps her feet out of reach
+// for a few seconds (feetAway)
+let feetAway = 0;
+function pullFootAway(ms, mad) {
+  feetAway = performance.now() + ms;
+  act(mad ? '[A:emote|angry]' : '[A:emote|pout]');
+  emote(mad ? 'anger' : 'sweat');
+  Live2D.playSequence([
+    { dt_ms: 0, params: { ParamLegL: -0.6, ParamLegR: -0.6, ParamBodyY: 0.25 } },
+    { dt_ms: 450, params: { ParamLegL: 0, ParamLegR: 0, ParamBodyY: 0 } },
+  ]);
+}
+export function feetPulledAway() { return performance.now() < feetAway; }
+
 export function feetRub(ms) {
   const now = performance.now();
   busyMove = now + 800;
+  if (close <= 1) {
+    // not from him, not yet
+    setHeld('ParamBlush', 0.4, 900);
+    setHeld('ParamHeadY', -0.3, 600);
+    if (ms > 1000) pullFootAway(4000, false);
+    return;
+  }
   setHeld('ParamEyesHappy', 1, 900);
-  setHeld('ParamEyeOpen', -0.6, 700);
-  setHeld('ParamHeadZ', 0.12, 700);
-  setHeld('ParamBlush', 0.3, 1200);
-  if (ms > 3000 && Math.random() < 0.02) emote('note');
+  setHeld('ParamEyeOpen', close >= 3 ? -0.85 : -0.5, 700);
+  setHeld('ParamHeadZ', close >= 3 ? 0.18 : 0.1, 700);
+  setHeld('ParamBlush', close >= 3 ? 0.5 : 0.3, 1200);
+  if (ms > 3000 && Math.random() < (close >= 3 ? 0.04 : 0.02)) emote(close >= 3 ? 'heart' : 'note');
+}
+
+// a quick tickle on her feet: she squirms, giggles, kicks a little
+let feetTickleLaughAt = 0;
+export function feetTickle(ms) {
+  const now = performance.now();
+  busyMove = now + 1000;
+  if (close <= 1) {
+    // she jerks the foot back right away
+    if (now >= feetAway) pullFootAway(5000, ms > 300);
+    return;
+  }
+  setHeld('ParamEyesHappy', 1, 600);
+  setHeld('ParamBlush', Math.min(1, 0.4 + ms / 4000), 900);
+  setHeld('ParamBodyZ', 0.2 * Math.sin(now / 90), 250);
+  setHeld('ParamHeadZ', 0.12 * Math.sin(now / 120), 250);
+  setHeld(Math.sin(now / 150) > 0 ? 'ParamLegL' : 'ParamLegR', -0.35, 250);
+  if (now - feetTickleLaughAt > 1400) {
+    feetTickleLaughAt = now;
+    act('[A:emote|laughing]');
+    emote('laugh');
+  }
+  // too much: a friend begs off sooner, close she can take a real tickle fight
+  if (ms > (close >= 3 ? 6000 : 3000)) pullFootAway(close >= 3 ? 3000 : 5000, false);
 }
 
 // rubbing her ear: ears flutter, eyes go soft

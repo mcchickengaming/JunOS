@@ -24,6 +24,7 @@ const TOUCH_KINDS = [
     'tickle'       => ['did' => 'tickled your side', 'noun' => 'tickles', 'now' => 'is tickling your side', 'warm' => false],
     'thighrub'     => ['did' => 'rubbed your thigh', 'noun' => 'thigh rubs', 'now' => 'is rubbing your thigh', 'warm' => false],
     'footrub'      => ['did' => 'gave you a foot rub', 'noun' => 'foot rubs', 'now' => 'is giving you a foot rub', 'warm' => true],
+    'foottickle'   => ['did' => 'tickled your feet', 'noun' => 'foot tickles', 'now' => 'is tickling your feet', 'warm' => false],
     'headpoke'     => ['did' => 'poked the top of your head', 'noun' => 'head pokes', 'now' => '', 'warm' => false],
     'cheekpoke'    => ['did' => 'poked your cheek', 'noun' => 'cheek pokes', 'now' => '', 'warm' => false],
     'boop'         => ['did' => 'booped your nose', 'noun' => 'boops', 'now' => '', 'warm' => false],

@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=34';
+import * as Body from './desktop/body.js?v=36';
 import * as TouchLog from './core/touch-log.js?v=1';
 
 const D = window.junDesktop || null;
@@ -209,6 +209,7 @@ const TOUCH_NOTES = {
   thighrub: 'Anon is rubbing your thigh',
   thighsquish: 'Anon is squishing your thigh with his hand and not letting go',
   feetrub: 'Anon is giving you a foot rub',
+  feettickle: 'Anon is tickling your feet',
   feet: 'Anon poked your foot and found out it is ticklish',
   waveback: 'you waved at Anon and he waved back',
   tailgrab: 'Anon grabbed your tail and is holding on to it',
@@ -224,7 +225,7 @@ const TOUCH_NOTES = {
 // than a passing poke
 const TOUCH_CHANCE = {
   hug: 0.5, hand: 0.45, squeeze: 0.2, tickle: 0.35, thighsquish: 0.35, ear: 0.35, earflick: 0.2, nose: 0.25, cheek: 0.2,
-  shoulder: 0.2, tail: 0.3, thighpoke: 0.3, thighrub: 0.5, feetrub: 0.4, feet: 0.3, waveback: 0.5,
+  shoulder: 0.2, tail: 0.3, thighpoke: 0.3, thighrub: 0.5, feetrub: 0.4, feettickle: 0.35, feet: 0.3, waveback: 0.5,
   tailgrab: 0.45, tailrub: 0.4,
   // combos are rarer and mean more, so they're likelier to get a word
   'combo:melt': 0.8, 'combo:patboop': 0.5, 'combo:handhug': 0.8, 'combo:cozy': 0.6, 'combo:tickleattack': 0.7, 'combo:tailtease': 0.6,
@@ -232,9 +233,9 @@ const TOUCH_CHANCE = {
 const TALK = { often: 1.6, sometimes: 1, rarely: 0.35, never: 0 };
 const POKE_TALK = { cheek: 'cheek', nose: 'nose', ear: 'earflick', shoulder: 'shoulder', tail: 'tail', hand: 'squeeze',
   side: 'tickle', thigh: 'thighpoke', feet: 'feet' };
-const RUB_TALK = { ear: 'ear', side: 'tickle', thigh: 'thighrub', feet: 'feetrub', tail: 'tailrub' };
+const RUB_TALK = { ear: 'ear', side: 'tickle', thigh: 'thighrub', feet: 'feetrub', feettickle: 'feettickle', tail: 'tailrub' };
 // what each touch is called in her tally (core/touch-log.js, lib/touch.php TOUCH_KINDS)
-const RUB_KIND = { head: 'headpat', ear: 'earrub', side: 'tickle', thigh: 'thighrub', feet: 'footrub', tail: 'tailrub' };
+const RUB_KIND = { head: 'headpat', ear: 'earrub', side: 'tickle', thigh: 'thighrub', feet: 'footrub', feettickle: 'foottickle', tail: 'tailrub' };
 const POKE_KIND = { head: 'headpoke', cheek: 'cheekpoke', nose: 'boop', ear: 'earflick', shoulder: 'shouldertap',
   tail: 'tailtug', hand: 'squeeze', side: 'sidepoke', thigh: 'thighpoke', feet: 'footpoke' };
 const lastTouchTalk = {};
@@ -623,8 +624,11 @@ function sound(kind) {
 // her mood and the hour shape how lively she is out here
 
 let pace = { speed: 1, hop: 4 };
+// how close they are, for touches she isn't fond of yet (body.js)
+const closeness = () => (Gauges.bondStage <= 2 ? 1 : Gauges.bondStage === 3 ? 2 : 3);
 async function refreshMood() {
   try { await Gauges.fetchGauges(); } catch (e) {}
+  Body.setCloseness(closeness());
   const m = moodTier({ affection: Gauges.affection, trust: Gauges.trust, tension: Gauges.tension });
   const part = daypart();
   Body.setMood(m, part);
@@ -778,7 +782,8 @@ window.addEventListener('mousemove', (e) => {
   }
   if (rub && rub !== wasRubbing) {
     rubSince = Date.now();
-    if (touched(rub === 'tail' ? 'tailrub' : rub)) rubLabel(null);
+    // a foot tickle counts as "feet" for the tickle attack combo
+    if (touched(rub === 'tail' ? 'tailrub' : rub === 'feettickle' ? 'feet' : rub)) rubLabel(null);
   }
   // a rub that keeps going for a couple of seconds might get a word
   if (rub && RUB_TALK[rub] && Date.now() - rubSince > 2200) { maybeSay(RUB_TALK[rub]); rubSince = Infinity; }
@@ -800,7 +805,7 @@ document.addEventListener('mouseleave', () => { if (!press) { setThrough(true); 
 
 const POKE_LABEL = { head: 'Poke!', cheek: 'Cheek poke', nose: 'Boop!', ear: 'Ear flick', shoulder: 'Tap tap',
   tail: 'Tail tug!', hand: 'Squeeze', side: 'Tickle!', thigh: 'Thigh poke', feet: 'Ticklish feet!' };
-const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!', thigh: 'Thigh rub', feet: 'Foot rub', tail: 'Tail rub' };
+const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!', thigh: 'Thigh rub', feet: 'Foot rub', feettickle: 'Foot tickle!', tail: 'Tail rub' };
 
 function ripple(x, y) {
   const el = document.createElement('div');
@@ -1124,8 +1129,7 @@ window.addEventListener('pointerdown', (e) => {
         TouchLog.begin('hold', 'thighsquish');
         const combo = touched('thighsquish');
         p.talkTimer = setTimeout(() => { if (p.hold === 'thigh') maybeSay('thighsquish'); }, 1800);
-        const stage = Gauges.bondStage;
-        Body.thighSquish(true, region.side, stage <= 2 ? 1 : stage === 3 ? 2 : 3);
+        Body.thighSquish(true, region.side, closeness());
         document.body.style.cursor = Body.cursorFor('squishing');
         if (!combo) actionLabel('Thigh squish', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => {
