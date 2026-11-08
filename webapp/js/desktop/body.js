@@ -274,6 +274,64 @@ function endPat() {
 export function patting() { return !!(pat && pat.started); }
 
 // ---------------------------------------------------------------
+// pokes: a tap on her head, her cheek or her shoulder gets its own
+// little reaction. anywhere else is a tap to talk (desktop.js)
+
+let pokes = [];
+export function pokeRegion(x, y) {
+  const a = anchor();
+  if (!a) return null;
+  const dx = x - a.x, H = a.modelH;
+  const top = a.y - H * 0.09;
+  if (y >= top && y < a.y - H * 0.02 && Math.abs(dx) < a.headW * 0.55) return { kind: 'head', side: 0 };
+  if (y >= a.y - H * 0.02 && y < a.y + H * 0.12 && Math.abs(dx) < a.headW * 0.45) return { kind: 'cheek', side: Math.sign(dx) || 1 };
+  if (y >= a.y + H * 0.12 && y < a.y + H * 0.24 && Math.abs(dx) > a.headW * 0.4 && Math.abs(dx) < a.modelW * 0.45) {
+    return { kind: 'shoulder', side: Math.sign(dx) };
+  }
+  return null;
+}
+
+// returns true when she's had enough pokes for one minute
+export function poke(region) {
+  const now = performance.now();
+  pokes = pokes.filter(t => now - t < 5000);
+  pokes.push(now);
+  busyMove = now + 1500;
+  if (pokes.length >= 4) {
+    pokes = [];
+    for (const a of Actions.parseActions('[A:emote|angry] [A:look_at|user]')) Actions.applyAction(a);
+    setHeld('ParamBlush', 0.5, 2500);
+    emote('bonk');
+    return true;
+  }
+  if (region.kind === 'head') {
+    for (const a of Actions.parseActions('[A:emote|happy] [A:ear_wiggle]')) Actions.applyAction(a);
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamHeadY: -0.35, ParamEyeOpen: -0.7 } },
+      { dt_ms: 260, params: { ParamHeadY: 0, ParamEyeOpen: 0 } },
+    ]);
+    emote('note');
+  } else if (region.kind === 'cheek') {
+    for (const a of Actions.parseActions('[A:emote|pout] [A:look_at|user]')) Actions.applyAction(a);
+    setHeld('ParamBlush', 0.8, 2000);
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamHeadZ: -0.25 * region.side, ParamHeadX: -0.2 * region.side } },
+      { dt_ms: 900, params: { ParamHeadZ: 0, ParamHeadX: 0 } },
+    ]);
+    emote('bang');
+  } else {
+    // a tap on the shoulder: she turns to see who it is
+    const s = region.side;
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamHeadX: 0.7 * s, ParamBodyX: 0.25 * s, ParamEyeballLX: s, ParamEyeballRX: s } },
+      { dt_ms: 1400, params: { ParamHeadX: 0, ParamBodyX: 0, ParamEyeballLX: 0, ParamEyeballRX: 0 } },
+    ]);
+    emote('question');
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------
 // the things she does while standing around
 
 const MOVES = {

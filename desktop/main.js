@@ -222,6 +222,43 @@ function clampX(display, x, width) {
   return Math.max(wa.x - width * 0.3, Math.min(x, wa.x + wa.width - width * 0.7));
 }
 
+// monitors standing side by side, edges touching, are one long strip
+// of taskbar she can walk and fly along. a monitor off on its own, or
+// above another one, is a separate strip
+function stripOf(display) {
+  const all = screen.getAllDisplays().slice().sort((a, b) => a.bounds.x - b.bounds.x);
+  const touches = (a, b) => Math.abs(a.bounds.x + a.bounds.width - b.bounds.x) <= 2
+    && a.bounds.y < b.bounds.y + b.bounds.height && b.bounds.y < a.bounds.y + a.bounds.height;
+  let l = all.findIndex(d => d.id === display.id);
+  if (l < 0) return [display];
+  let r = l;
+  while (l > 0 && touches(all[l - 1], all[l])) l--;
+  while (r < all.length - 1 && touches(all[r], all[r + 1])) r++;
+  return all.slice(l, r + 1);
+}
+
+function stripRange(display, width) {
+  const strip = stripOf(display);
+  const first = strip[0].workArea, last = strip[strip.length - 1].workArea;
+  return {
+    strip,
+    lo: first.x - width * 0.3,
+    hi: last.x + last.width - width * 0.7,
+    top: Math.min(...strip.map(d => d.workArea.y)),
+  };
+}
+
+// the monitor under her middle, and its taskbar
+function displayAtX(strip, x, width) {
+  const cx = x + width / 2;
+  return strip.find(d => cx >= d.workArea.x && cx < d.workArea.x + d.workArea.width)
+    || strip.reduce((best, d) => {
+      const dist = Math.min(Math.abs(cx - d.workArea.x), Math.abs(cx - d.workArea.x - d.workArea.width));
+      return !best || dist < best.dist ? { d, dist } : best;
+    }, null).d;
+}
+function floorAt(strip, x, width, height) { return floorY(displayAtX(strip, x, width), height); }
+
 function openMode(mode, reason) {
   if (mode === 'inside') mode = cfg.inside;
   stopWalk();
@@ -418,10 +455,9 @@ function endDrag() {
     if (Math.hypot(vx, vy) > THROW_MIN) { fly(vx, vy); return; }
   }
   // let go of her anywhere and she drops back down to the taskbar
-  const display = displayFor(b);
-  cfg.displayId = display.id;
-  const x = Math.round(clampX(display, b.x, b.width));
-  const target = floorY(display, b.height);
+  const range = stripRange(displayFor(b), b.width);
+  const x = Math.round(Math.max(range.lo, Math.min(range.hi, b.x)));
+  const target = floorAt(range.strip, x, b.width, b.height);
   let y = b.y, v = 0;
   stopFall();
   if (Math.abs(target - y) < 3) { win.setPosition(x, target); landed(x); return; }
@@ -441,12 +477,8 @@ function stopFall() { if (fall) { clearInterval(fall); fall = null; } }
 // taskbar, then lands. the page swings her limbs off jun:fly
 function fly(vx, vy) {
   const b = win.getBounds();
-  const display = displayFor(b);
-  cfg.displayId = display.id;
-  const wa = display.workArea;
-  const lo = clampX(display, -Infinity, b.width), hi = clampX(display, Infinity, b.width);
-  const floor = floorY(display, b.height);
-  const top = wa.y - b.height * 0.35;
+  const { strip, lo, hi, top: roof } = stripRange(displayFor(b), b.width);
+  const top = roof - b.height * 0.35;
   const cap = (v) => Math.max(-THROW_MAX, Math.min(THROW_MAX, v));
   let x = b.x, y = b.y, last = Date.now(), bounces = 0;
   vx = cap(vx); vy = cap(vy);
@@ -464,6 +496,7 @@ function fly(vx, vy) {
     if (x < lo) { x = lo; vx = Math.abs(vx) * 0.55; send('jun:walk-state', { state: 'bonk' }); }
     if (x > hi) { x = hi; vx = -Math.abs(vx) * 0.55; send('jun:walk-state', { state: 'bonk' }); }
     if (y < top) { y = top; vy = Math.abs(vy) * 0.4; }
+    const floor = floorAt(strip, x, b.width, b.height);
     if (y >= floor) {
       y = floor;
       if (vy > 650 && bounces < 2) {
@@ -484,6 +517,7 @@ function fly(vx, vy) {
 
 function landed(x) {
   cfg.stepX = x;
+  if (win && !win.isDestroyed()) cfg.displayId = displayFor(win.getBounds()).id;
   saveCfg();
   send('jun:walk-state', { state: 'landed' });
 }
@@ -496,16 +530,19 @@ function startWander(opts = {}) {
   const b = win.getBounds();
   const display = displayFor(b);
   const wa = display.workArea;
-  const lo = clampX(display, -Infinity, b.width), hi = clampX(display, Infinity, b.width);
-  // a stroll, not a sprint across three monitors
-  const span = Math.min(hi - lo, Math.max(180, wa.width * 0.35));
+  const { strip, lo, hi } = stripRange(display, b.width);
+  // mostly a stroll; now and then a long walk, which on more than one
+  // monitor can take her over to the next screen
+  const far = strip.length > 1 && Math.random() < 0.2;
+  const span = Math.min(hi - lo, far ? wa.width * 0.9 : Math.max(180, wa.width * 0.35));
   let to = b.x + (Math.random() < 0.5 ? -1 : 1) * (span * (0.4 + Math.random() * 0.6));
   if (to < lo || to > hi) to = b.x - (to - b.x);
   to = Math.max(lo, Math.min(hi, to));
   if (Math.abs(to - b.x) < 40) { send('jun:walk-state', { state: 'stopped' }); return; }
   stopWalk();
   const dir = to > b.x ? 1 : -1;
-  const baseY = floorY(display, b.height);
+  // her floor, eased toward the taskbar of whichever monitor she's on
+  let baseY = floorY(display, b.height);
   const from = b.x, dist = Math.abs(to - b.x);
   let t = 0, last = Date.now();
   // she turns first (the page does that), then sets off. speeds up
@@ -529,7 +566,9 @@ function startWander(opts = {}) {
     if (done) x = to;
     // the hop in each step, one per footfall (two per stride)
     const hop = done ? 0 : Math.round(Math.abs(Math.sin((t - TURN_S) * Math.PI * pace / STEP_S)) * -hopPx);
-    win.setPosition(Math.round(x), baseY + hop);
+    const floorHere = floorAt(strip, x, b.width, b.height);
+    baseY += Math.max(-12, Math.min(12, floorHere - baseY));
+    win.setPosition(Math.round(x), Math.round(baseY) + hop);
     if (done) {
       stopWalk();
       cfg.stepX = Math.round(x);

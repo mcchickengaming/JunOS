@@ -66,7 +66,9 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   compact (frameless, on top), stepped out (on the taskbar: walks, dozes after 5 idle min, drag and drop,
   click-through except over her). Desktop chat goes into her latest conversation; desktop reactions are
   ephemeral OOC turns. Her moves on the desktop (walk cycle + 3D paper turn, carried/landing, cursor
-  watching, headpats, idle fidgets) live in `webapp/js/desktop/body.js`, every number in its `TUNE`. Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
+  attention, headpats, pokes, mood/time-of-day idles, thought icons) live in `webapp/js/desktop/body.js`,
+  every number in its `TUNE`. main.js does throwing (momentum, bounces), side-by-side monitors as one strip,
+  and the tray/Jun menu "On the desktop" settings (quiet mode, walk/doze/watch frequency). Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
   `start.ps1 stop` closes it, `start.ps1 desktop` opens it alone. Never run Electron in the cloud sandbox
   (binary downloads are blocked); test the page with Playwright + Chrome and a mocked `window.junDesktop`.
 

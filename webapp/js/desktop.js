@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=7';
+import * as Body from './desktop/body.js?v=8';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -47,6 +47,7 @@ const NOTES = {
   stepout: `${OOC}you just climbed out of your app window and are now standing on the taskbar at the bottom of Anon's computer screen, out on his desktop. React out loud to being out here, one short line, in character. No narration.)`,
   inside: `${OOC}you are climbing back into your app window from Anon's desktop. Say one short line out loud as you go, in character. No narration.)`,
   wake: `${OOC}you dozed off on the taskbar while Anon was away from his computer, and he just came back. Wake up and say one short line out loud, in character. No narration.)`,
+  poked: `${OOC}Anon keeps poking you with his mouse cursor, over and over. React out loud, one short line, in character. No narration.)`,
   thrown: `${OOC}Anon just grabbed you with his mouse cursor and flung you across his screen. You flew, bounced and landed back on the taskbar. React out loud, one short line, in character. No narration.)`,
   headpat: `${OOC}Anon is patting your head with his mouse cursor while you stand on his taskbar. React out loud, one short line, in character. No narration.)`,
   dropped: `${OOC}Anon just grabbed you with his mouse cursor, carried you across his screen and dropped you back down on the taskbar. React out loud, one short line, in character. No narration.)`,
@@ -59,6 +60,7 @@ const FALLBACK = {
   dropped: 'Hey! Warn me first!',
   headpat: 'Mm... okay, you can keep doing that.',
   thrown: "Did you just THROW me?!",
+  poked: 'Okay, okay! Stop poking me!',
   talk: "Sorry, I zoned out for a second. Say that again?",
 };
 
@@ -395,6 +397,15 @@ const endPress = (e) => {
   if (Body.patting()) return;
   if (e.type === 'pointercancel') return;
   const now = Date.now();
+  // her head, cheek or shoulder: a poke, not a tap to talk
+  const region = Body.pokeRegion(e.clientX, e.clientY);
+  if (region) {
+    lastTap = 0;
+    if (dozing) wake(true);
+    D?.stopWalk();
+    if (Body.poke(region)) react('poked');
+    return;
+  }
   if (now - lastTap < 350) {
     lastTap = 0;
     if (MODE === 'stepout') goInside(); else D?.openWindow();
