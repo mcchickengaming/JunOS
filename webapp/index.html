@@ -644,12 +644,17 @@ html[data-pre-auth] #app { visibility: hidden; }
   .bond-track { height: 10px; border-radius: 999px; background: var(--track-empty, rgba(255,255,255,.1)); overflow: hidden; }
   .bond-fill { height: 100%; width: 0; border-radius: inherit; background: var(--accent, #e58cd2); transition: width .6s ease; }
   .bond-next { margin-top: 6px; }
+  .touch-block { margin: 0 0 16px; }
+  .touch-today { margin: 4px 0 6px; padding-left: 18px; }
+  .touch-today li { margin: 2px 0; }
+  .touch-forget { margin-top: 4px; font: inherit; font-size: .85em; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--accent, #e58cd2); background: transparent; color: var(--accent, #e58cd2); cursor: pointer; }
 </style>
 <noscript><link rel="stylesheet" href="styles.css?v=75"></noscript>
 
 <script type="module" src="js/core/pwa.js?v=2"></script>
 <script src="js/boot-gate.js?v=29"></script>
-<script type="module" src="js/app.js?v=148"></script>
+<script type="module" src="js/app.js?v=150"></script>
 </head>
 <body>
 
@@ -1064,6 +1069,13 @@ html[data-pre-auth] #app { visibility: hidden; }
             </div>
             <div class="bond-track" aria-hidden="true"><div class="bond-fill" id="bondFill"></div></div>
             <div class="set-row-desc bond-next" id="bondNext"></div>
+          </div>
+          <div class="touch-block" id="touchBlock" hidden>
+            <div class="bond-head"><span class="bond-label">Today's touches</span></div>
+            <ul class="touch-today" id="touchToday"></ul>
+            <div class="set-row-desc" id="touchEmpty">No headpats yet today.</div>
+            <div class="set-row-desc" id="touchOff" hidden>She isn't told about these right now (TOUCH_AWARE=off).</div>
+            <button type="button" class="touch-forget" id="touchForget" hidden>Forget today's touches</button>
           </div>
           <div class="mood-controls">
             <div class="mood-row mood-row--affection">

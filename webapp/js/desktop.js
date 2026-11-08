@@ -13,7 +13,7 @@
 
 import * as Auth from './core/auth.js?v=1';
 import { api, apiJson } from './core/api.js?v=1';
-import * as ChatAPI from './core/chat-api.js?v=7';
+import * as ChatAPI from './core/chat-api.js?v=8';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
@@ -26,6 +26,7 @@ import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
 import * as Body from './desktop/body.js?v=33';
+import * as TouchLog from './core/touch-log.js?v=1';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -181,7 +182,7 @@ async function react(kind) {
   lastReactAt = Date.now();
   const touch = TOUCH_NOTES[kind];
   const note = touch
-    ? `${OOC}${touch}, with his mouse cursor, while you're out on his desktop. React out loud in one short line, in character, the way you honestly feel about him and about this right now. No narration.)`
+    ? `${OOC}${touch}, with his mouse cursor, while you're out on his desktop. React out loud in one short line, in character, the way you honestly feel about him and about this right now. If his touches today show he has been doing this a lot, you can notice that. No narration.)`
     : NOTES[kind];
   await ask(note, { ephemeral: true, fallback: touch ? '' : FALLBACK[kind] });
 }
@@ -231,6 +232,10 @@ const TALK = { often: 1.6, sometimes: 1, rarely: 0.35, never: 0 };
 const POKE_TALK = { cheek: 'cheek', nose: 'nose', ear: 'earflick', shoulder: 'shoulder', tail: 'tail', hand: 'squeeze',
   side: 'tickle', thigh: 'thighpoke', feet: 'feet' };
 const RUB_TALK = { ear: 'ear', side: 'tickle', thigh: 'thighrub', feet: 'feetrub', tail: 'tailrub' };
+// what each touch is called in her tally (core/touch-log.js, lib/touch.php TOUCH_KINDS)
+const RUB_KIND = { head: 'headpat', ear: 'earrub', side: 'tickle', thigh: 'thighrub', feet: 'footrub', tail: 'tailrub' };
+const POKE_KIND = { head: 'headpoke', cheek: 'cheekpoke', nose: 'boop', ear: 'earflick', shoulder: 'shouldertap',
+  tail: 'tailtug', hand: 'squeeze', side: 'sidepoke', thigh: 'thighpoke', feet: 'footpoke' };
 const lastTouchTalk = {};
 
 // ---------------------------------------------------------------
@@ -289,6 +294,7 @@ function fireCombo(c, now) {
   Body.combo(c.id);
   if (a) actionLabel(c.label, a.x, a.y - a.modelH * 0.12);
   sparkles(5);
+  TouchLog.tap('combo_' + c.id);
   maybeSay('combo:' + c.id);
 }
 
@@ -307,6 +313,7 @@ function pinHand() {
   if (press && press.hold === 'pat') {
     const p = press;
     press = null;
+    TouchLog.move('hold', 'pin');
     endHold(p);
     const t0 = Date.now() - 2500;
     next = { type: 'rub', step: 'head', kind: 'head', x: p.cx, y: p.cy };
@@ -318,12 +325,16 @@ function pinHand() {
     const p = press;
     const step = p.hold === 'tail' ? 'tailgrab' : p.hold;
     next = { type: 'hold', step, p, x: p.cx, y: p.cy };
+    // the hold carries on in the pinned hand; its count ends with the pin
+    p.pinned = true;
+    TouchLog.move('hold', 'pin');
     // the button is still down: this press is over, the hold carries on
     press = null;
   } else if (wasRubbing) {
     const kind = wasRubbing;
     const t0 = Date.now() - 2500;
     next = { type: 'rub', step: kind === 'tail' ? 'tailrub' : kind, kind, x: lastX, y: lastY };
+    TouchLog.move('rub', 'pin');
     next.timer = setInterval(() => {
       const ms = Date.now() - t0;
       Body.rubEffect(kind, ms, next.x + Math.sin(ms / 140) * 14);
@@ -347,6 +358,7 @@ function pinHand() {
 function releasePin() {
   if (!pin) return;
   if (pin.type === 'hold') endHold(pin.p);
+  TouchLog.end('pin');
   clearInterval(pin.timer);
   if (pin.el) pin.el.remove();
   pin = null;
@@ -745,6 +757,7 @@ function watchWaveBack(x, y) {
     Body.wavedBack();
     maybeSay('waveback');
     touched('waveback');
+    TouchLog.tap('waveback');
   }
 }
 
@@ -757,6 +770,11 @@ window.addEventListener('mousemove', (e) => {
   if (ready) watchWaveBack(e.clientX, e.clientY);
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
   if (rub) { rubTrail(e.clientX, e.clientY); rubLabel(rub, region); }
+  // the tally: a rub is one touch, however long it goes on
+  if (rub !== wasRubbing) {
+    if (rub) TouchLog.begin('rub', RUB_KIND[rub]);
+    else TouchLog.end('rub');
+  }
   if (rub && rub !== wasRubbing) {
     rubSince = Date.now();
     if (touched(rub === 'tail' ? 'tailrub' : rub)) rubLabel(null);
@@ -1091,6 +1109,7 @@ window.addEventListener('pointerdown', (e) => {
       if (region.kind === 'tail') {
         p.hold = 'tail';
         p.holdAt = Date.now();
+        TouchLog.begin('hold', 'tailgrab');
         const combo = touched('tailgrab');
         p.talkTimer = setTimeout(() => { if (p.hold === 'tail') maybeSay('tailgrab'); }, 2000);
         Body.tailGrab(true);
@@ -1098,6 +1117,7 @@ window.addEventListener('pointerdown', (e) => {
         if (!combo) actionLabel('Tail grab', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => Body.tailGrabTick(Date.now() - p.holdAt), 260);
       } else if (region.kind === 'hand') {
+        TouchLog.begin('hold', 'hand');
         const combo = touched('hand');
         p.hold = 'hand';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hand') maybeSay('hand'); }, 2200);
@@ -1106,6 +1126,7 @@ window.addEventListener('pointerdown', (e) => {
         if (!combo) actionLabel('Holding hands', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { if (Math.random() < 0.3) floatHearts(1); }, 700);
       } else {
+        TouchLog.begin('hold', 'hug');
         const combo = touched('hug');
         p.hold = 'hug';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hug') maybeSay('hug'); }, 1800);
@@ -1129,6 +1150,7 @@ function startPat(p, x, y) {
   if (dozing) wake(true);
   D?.stopWalk();
   p.hold = 'pat';
+  TouchLog.begin('hold', 'headpat');
   Body.patHoldStart(x, y);
   document.body.style.cursor = Body.cursorFor('head');
   if (!touched('head')) rubLabel('head', p.region);
@@ -1139,6 +1161,7 @@ function endHold(p) {
   clearTimeout(p.holdTimer);
   clearTimeout(p.patTimer);
   if (p.hold === 'pat') Body.patHoldEnd();
+  if (!p.pinned) TouchLog.end('hold');
   clearTimeout(p.talkTimer);
   holdRing(false);
   hoverKind = undefined; // the cursor goes back to the spot's icon on the next move
@@ -1215,6 +1238,7 @@ const endPress = (e) => {
     if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); }
     else maybeSay(POKE_TALK[p.region.kind]);
     touched(p.region.kind);
+    TouchLog.tap(POKE_KIND[p.region.kind]);
     return;
   }
   if (now - lastTap < 350) {

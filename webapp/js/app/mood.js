@@ -200,7 +200,38 @@ export async function loadMood() {
     const r = await fetch('/api/relationship.php', { credentials: 'same-origin' });
     if (r.ok) renderMood(await r.json());
   } catch (e) { /* offline: leave the gauges as-is */ }
+  loadTouches();
 }
+
+// today's touches, in words (lib/touch.php). she remembers these, so
+// he can make her forget today's if he'd rather she didn't
+const tz = () => -new Date().getTimezoneOffset();
+async function loadTouches() {
+  const block = document.getElementById('touchBlock');
+  if (!block) return;
+  try {
+    const r = await fetch('/api/touch.php?tz=' + tz(), { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const t = await r.json();
+    block.hidden = false;
+    const list = document.getElementById('touchToday');
+    list.textContent = '';
+    for (const line of t.items || []) {
+      const li = document.createElement('li');
+      li.textContent = line + '.';
+      list.appendChild(li);
+    }
+    document.getElementById('touchEmpty').hidden = (t.items || []).length > 0;
+    document.getElementById('touchForget').hidden = !(t.items || []).length;
+    document.getElementById('touchOff').hidden = t.enabled !== false;
+  } catch (e) { /* offline */ }
+}
+document.getElementById('touchForget')?.addEventListener('click', async () => {
+  try {
+    await fetch('/api/touch.php?tz=' + tz(), { method: 'DELETE', credentials: 'same-origin' });
+  } catch (e) {}
+  loadTouches();
+});
 export function setMoodEditingEnabled(enabled) {
   for (const input of Object.values(moodInputs)) {
     if (input) input.disabled = !enabled;

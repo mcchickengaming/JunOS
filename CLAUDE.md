@@ -51,6 +51,7 @@ python3 .github/scripts/check-refs.py
 php .github/scripts/lib.test.php
 php .github/scripts/migrations.test.php
 php .github/scripts/bond.test.php
+php .github/scripts/touch.test.php
 ```
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
 temp sqlite, real migrations, stubbed app functions) and a step in `.github/workflows/ci.yml`.
@@ -86,6 +87,19 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   ball. Settings window `webapp/desktop-settings.html` (how to play, colors, spots). Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
   `start.ps1 stop` closes it, `start.ps1 desktop` opens it alone. Never run Electron in the cloud sandbox
   (binary downloads are blocked); test the page with Playwright + Chrome and a mocked `window.junDesktop`.
+- **The chat knows (touch tally)** (`webapp/api/lib/touch.php`, migration 029, `api/touch.php`,
+  `js/core/touch-log.js`): the desktop and the main window log touches (`TouchLog.tap` for pokes, `begin/end` by
+  slot for rubs and holds, `move` when a hand is pinned; kinds = `TOUCH_KINDS`, desktop names via `RUB_KIND` /
+  `POKE_KIND`). Batches ride along with every chat turn (`touches`, `touch_now` in chat-api.js) or go alone every
+  20 s / on pagehide. Per day per kind (his local day via `tz`), two weeks kept, all-time totals. Her live context
+  (`touch_context`, after the bond block): today's and yesterday's touches in WORDS with the exact count in
+  brackets for her eyes only, what his hands are doing right now as he talks, habits over two weeks (favorite
+  touch, time of day), all-time milestones (100th headpat...: the one time she says the number, plus a memory
+  note), and once a day at Friend+ after 3 pm a shy "not that I was waiting" slip on a day with no touches.
+  Notable days become a memory note the next day. Warm touches nudge her mood a little (-1 tension per 45 s,
+  +1 affection per 90 s, caps 4/3 a day; nothing at Stranger, only tension at Familiar). Settings > Memory:
+  "Today's touches" in words + "Forget today's touches". `TOUCH_AWARE=off` leaves it out of her prompt and mood.
+  Tests: `.github/scripts/touch.test.php`.
 
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings

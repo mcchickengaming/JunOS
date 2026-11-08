@@ -50,6 +50,9 @@ if ($req['invite'] === '' && !$req['idle'] && !$req['ephemeral']) {
 $toolsOffered = provider_tools_enabled();
 
 [$convSummary, $summaryCoveredCount] = chat_conversation_summary($convId, (int)$user['id']);
+// his touches since the last turn go in first, so this reply already
+// knows them and a long cuddle has already eased her a little
+touch_record((int)$user['id'], $req['touches'], $req['tz']);
 $rel = relationship_get((int)$user['id']);
 // bond xp for his turn, before her prompt is built, so a stage he
 // just reached is already in the reply this message gets. idle

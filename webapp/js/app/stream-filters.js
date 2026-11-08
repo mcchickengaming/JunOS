@@ -1,5 +1,5 @@
 import { logAction } from './logging.js?v=78';
-import { noteEmotionTint } from './mood.js?v=94';
+import { noteEmotionTint } from './mood.js?v=95';
 import * as Names from '../core/names.js?v=1';
 import * as Actions from '../live2d/actions.js?v=102';
 

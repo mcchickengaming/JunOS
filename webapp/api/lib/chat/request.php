@@ -115,6 +115,11 @@ function chat_parse_request(string $provider): array {
     $idle = isset($body['idle']) && $body['idle'] === true;
     $ephemeral = !empty($body['ephemeral']) || $watch !== null;
     $regenerate = !$idle && !$ephemeral && ($body['regenerate'] ?? false) === true;
+    // his hands since the last turn, and what they're doing right now
+    // (lib/touch.php). both come from her desktop and her main window
+    $touches = $body['touches'] ?? [];
+    $touchNow = $body['touch_now'] ?? null;
+
     $invite = isset($body['invite']) && in_array($body['invite'], TRIP_TOOLS, true) ? (string)$body['invite'] : '';
 
     return [
@@ -122,7 +127,7 @@ function chat_parse_request(string $provider): array {
         'model' => $model, 'reasoning' => $reasoning, 'outfit_context' => $outfitContext,
         'mod_items' => $modItems, 'client_time' => $clientTime, 'tz' => $tz, 'idle' => $idle,
         'ephemeral' => $ephemeral, 'invite' => $invite, 'regenerate' => $regenerate,
-        'watch' => $watch, 'frames' => $frames,
+        'watch' => $watch, 'frames' => $frames, 'touches' => $touches, 'touch_now' => $touchNow,
     ];
 }
 

@@ -1,5 +1,9 @@
 import * as Actions from './actions.js?v=102';
 import * as Live2D from './live2d.js?v=92';
+import * as TouchLog from '../core/touch-log.js?v=1';
+
+// her touch tally (core/touch-log.js): the same kinds her desktop counts
+const TALLY_KIND = { head: 'headpat', face: 'cheekrub', hand: 'hand' };
 
 let sendEvent = null;
 let isBusy = () => false;
@@ -93,6 +97,7 @@ function begin(kind, side, e) {
     Actions.applyAction({ name: 'handhold', kwargs: { side, enable: 'true' } });
   }
   document.body.classList.add('l2d-touching');
+  TouchLog.begin('main', TALLY_KIND[kind]);
   tickTimer = setInterval(tick, 250);
   if (onTouch) onTouch();
   tryNotify(performance.now());
@@ -137,6 +142,7 @@ function end() {
     Actions.applyAction({ name: 'handhold', kwargs: { side, enable: 'false' } });
   }
   active = null;
+  TouchLog.end('main');
   document.body.classList.remove('l2d-touching');
   clearInterval(tickTimer);
   tickTimer = null;

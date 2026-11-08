@@ -1,4 +1,5 @@
 import { api, apiJson } from './api.js?v=1';
+import * as TouchLog from './touch-log.js?v=1';
 
 export async function listModels() {
   const r = await api('models.php');
@@ -13,7 +14,10 @@ export function chat({ messages, model, reasoning, think, outfit_context, mod_it
     try {
       const res = await apiJson('chat.php',
         { messages, model, reasoning, think, outfit_context, mod_items, conversation_id, idle, ephemeral, client_time, audio, voice, hear_all, invite, tts: !!tts, regenerate: !!regenerate, frames, watch,
-          tz: -new Date().getTimezoneOffset() },
+          tz: -new Date().getTimezoneOffset(),
+          // his touches since the last turn, and what his hands are doing
+          // right now, so this reply already knows (lib/touch.php)
+          touches: TouchLog.takeBatch(), touch_now: TouchLog.now() },
         { signal: ctrl.signal });
       if (!res.ok || !res.body) {
         const error = new Error(`http ${res.status}`);
