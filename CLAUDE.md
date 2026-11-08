@@ -71,7 +71,9 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   (`SPOT_DEFAULTS`, owner-adjustable via Jun menu > On the desktop > Adjust touch spots, saved in
   localStorage `desktop.touchSpots.v2`; pairs mirror unless unlinked, then `left` holds its own place, so
   nothing assumes she's symmetrical), head on the rig's headpat area, else body; click
-  = poke, hold = hand-hold or hug, rub = headpat/ear rub/tickle, drag = carry; cursor icon + glow show the spot.
+  = poke, hold = hand-hold / hug (torso) / tail grab, rub = headpat/ear rub/tickle/thigh/foot/tail rub, drag =
+  carry; cursor icon + glow show the spot. Combos (`COMBOS` in js/desktop.js: steps in order + time window,
+  effects in body.js `combo()`), spoken touch reactions by chance (`TOUCH_NOTES`/`TOUCH_CHANCE`, ephemeral OOC).
   main.js does throwing (momentum, bounces, part-off-screen + peek), side-by-side monitors as one strip, and
   the "On the desktop" settings (quiet, walk/doze/watch, sounds). `desktop/props.js`: her spots (cushion,
   dog bed, beanbag, armchair; back+front windows so she sits IN them; "stay" keeps her there) and the fetch

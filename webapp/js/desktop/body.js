@@ -275,7 +275,7 @@ export function pointerMove(x, y) {
   if (carried) return null;
   const now = performance.now();
   const region = regionAt(x, y);
-  const kind = region && ['head', 'ear', 'side', 'thigh', 'feet'].includes(region.kind) ? region.kind : null;
+  const kind = region && ['head', 'ear', 'side', 'thigh', 'feet', 'tail'].includes(region.kind) ? region.kind : null;
   if (!kind || (pat && pat.kind !== kind)) {
     if (pat && now - pat.last > 500) endPat();
     if (!kind) return null;
@@ -306,6 +306,8 @@ export function pointerMove(x, y) {
       emote('bang');
     } else if (kind === 'feet') {
       emote('note');
+    } else if (kind === 'tail') {
+      emote('heart');
     }
   }
   if (!pat.started) return null;
@@ -322,6 +324,8 @@ export function pointerMove(x, y) {
     thighRub(now - pat.started);
   } else if (kind === 'feet') {
     feetRub(now - pat.started);
+  } else if (kind === 'tail') {
+    tailRub(now - pat.started);
   } else {
     tickle();
   }
@@ -442,7 +446,8 @@ export function regionAt(x, y) {
 
 // what the pointer looks like over each spot, so he can SEE what he
 // can do. an emoji drawn into an svg cursor, hotspot in the middle
-const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', hug: '🤗', thigh: '👆', feet: '✋', body: '💬' };
+const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '✋', hug: '🤗', thigh: '👆', feet: '✋', body: '💬' };
+CURSOR_ICON.tailgrab = '✊';
 const cursorCache = {};
 // a few more for what's going on, not where: holding hands, a hug
 CURSOR_ICON.holding = '🤝';
@@ -650,6 +655,103 @@ export function thighRub(ms) {
     thighWarned = now;
     act('[A:emote|pout]');
     emote('sweat');
+  }
+}
+
+// rubbing her tail: it sways happily under the hand, eyes soft, ears flick
+export function tailRub(ms) {
+  const now = performance.now();
+  busyMove = now + 800;
+  setHeld('ParamTailWiggle', 0.6 * Math.sin(now / 160), 300);
+  setHeld('ParamEyesHappy', 1, 900);
+  setHeld('ParamEyeOpen', -0.4, 700);
+  setHeld('ParamBlush', Math.min(0.8, 0.3 + ms / 5000), 1200);
+  if (Math.random() < 0.01) act('[A:ear_wiggle]');
+}
+
+// grabbing her tail and holding on: she stiffens, ears up, eyes wide,
+// a blush; the tail tries to wriggle free now and then
+let tailHeld = false;
+export function tailGrab(on) {
+  tailHeld = on;
+  if (on) {
+    act('[A:emote|surprised]');
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamBodyY: 0.45, ParamEarL: 1, ParamEarR: 1 } },
+      { dt_ms: 300, params: { ParamBodyY: 0.1 } },
+    ]);
+    emote('bang');
+  } else {
+    Live2D.playSequence([
+      { dt_ms: 0, params: { Param_Angle_Rotation_1_TailMain: -20, ParamBodyY: 0 } },
+      { dt_ms: 250, params: { Param_Angle_Rotation_1_TailMain: 10 } },
+      { dt_ms: 250, params: { Param_Angle_Rotation_1_TailMain: 0, ParamEarL: 0, ParamEarR: 0 } },
+    ]);
+  }
+}
+export function tailGrabTick(ms) {
+  if (!tailHeld) return;
+  setHeld('Param_Angle_Rotation_1_TailMain', 18, 500);
+  setHeld('ParamEarL', 0.8, 500);
+  setHeld('ParamEarR', 0.8, 500);
+  setHeld('ParamBlush', Math.min(1, 0.5 + ms / 4000), 800);
+  setHeld('ParamIrisZoom', 0.4, 500);
+  // every couple of seconds a wriggle
+  if (Math.floor(ms / 1800) !== Math.floor((ms - 260) / 1800)) {
+    Live2D.startLoop('ParamTailWiggle', 1, 160);
+    setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 500);
+  }
+}
+
+// combos: two or three touches in a row that mean more together
+// (desktop.js COMBOS decides when). each is its own little moment
+export function combo(id) {
+  busyMove = performance.now() + 2500;
+  switch (id) {
+    case 'melt':
+      // tail held, then a headpat: she melts
+      act('[A:heart_eyes] [A:emote|happy]');
+      setHeld('ParamBlush', 1, 3000);
+      setHeld('ParamEyesHappy', 1, 3000);
+      Live2D.playSequence([
+        { dt_ms: 0, params: { ParamBodyY: -0.5, ParamHeadZ: 0.2 } },
+        { dt_ms: 1800, params: { ParamBodyY: 0, ParamHeadZ: 0 } },
+      ]);
+      emote('hearts');
+      break;
+    case 'patboop':
+      act('[A:emote|laughing]');
+      emote('sparkle');
+      break;
+    case 'handhug':
+      act('[A:heart_eyes]');
+      setHeld('ParamHeart', 1, 2500);
+      setHeld('ParamBlush', 0.9, 2500);
+      emote('hearts');
+      break;
+    case 'cozy':
+      // ear rub then headpat: drowsy and content
+      setHeld('ParamEyeOpen', -0.85, 2500);
+      setHeld('ParamEyesHappy', 1, 2500);
+      setHeld('ParamHeadZ', 0.2, 2500);
+      Live2D.startLoop('ParamTailWiggle', 0.4, 700);
+      setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 2500);
+      emote('note');
+      break;
+    case 'tickleattack':
+      act('[A:emote|laughing]');
+      Live2D.startLoop('ParamBodyZ', 0.45, 150);
+      Live2D.startLoop('ParamHeadZ', 0.25, 190);
+      setTimeout(() => { Live2D.stopLoop('ParamBodyZ'); Live2D.stopLoop('ParamHeadZ'); act('[A:emote|pout]'); }, 1800);
+      emote('laugh');
+      break;
+    case 'tailtease':
+      act('[A:emote|pout]');
+      setHeld('ParamBlush', 1, 2500);
+      emote('anger');
+      break;
+    default:
+      emote('heart');
   }
 }
 

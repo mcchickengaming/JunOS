@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=100';
-import * as Body from './desktop/body.js?v=21';
+import * as Body from './desktop/body.js?v=22';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -209,18 +209,71 @@ const TOUCH_NOTES = {
   feetrub: 'Anon is giving you a foot rub',
   feet: 'Anon poked your foot and found out it is ticklish',
   waveback: 'you waved at Anon and he waved back',
+  tailgrab: 'Anon grabbed your tail and is holding on to it',
+  tailrub: 'Anon is rubbing your tail',
+  'combo:melt': 'Anon is holding your tail and giving you headpats at the same time',
+  'combo:patboop': 'Anon gave you a headpat and then booped your nose',
+  'combo:handhug': 'Anon held your hand and then pulled you into a hug',
+  'combo:cozy': 'Anon rubbed your ear and then gave you headpats',
+  'combo:tickleattack': 'Anon launched a full tickle attack on you, sides and feet',
+  'combo:tailtease': 'Anon rubbed your tail and then grabbed it',
 };
 // chance per touch at "Sometimes"; a long hug is likelier to get a word
 // than a passing poke
 const TOUCH_CHANCE = {
   hug: 0.5, hand: 0.45, squeeze: 0.2, tickle: 0.35, ear: 0.35, earflick: 0.2, nose: 0.25, cheek: 0.2,
   shoulder: 0.2, tail: 0.3, thighpoke: 0.3, thighrub: 0.5, feetrub: 0.4, feet: 0.3, waveback: 0.5,
+  tailgrab: 0.45, tailrub: 0.4,
+  // combos are rarer and mean more, so they're likelier to get a word
+  'combo:melt': 0.8, 'combo:patboop': 0.5, 'combo:handhug': 0.8, 'combo:cozy': 0.6, 'combo:tickleattack': 0.7, 'combo:tailtease': 0.6,
 };
 const TALK = { often: 1.6, sometimes: 1, rarely: 0.35, never: 0 };
 const POKE_TALK = { cheek: 'cheek', nose: 'nose', ear: 'earflick', shoulder: 'shoulder', tail: 'tail', hand: 'squeeze',
   side: 'tickle', thigh: 'thighpoke', feet: 'feet' };
-const RUB_TALK = { ear: 'ear', side: 'tickle', thigh: 'thighrub', feet: 'feetrub' };
+const RUB_TALK = { ear: 'ear', side: 'tickle', thigh: 'thighrub', feet: 'feetrub', tail: 'tailrub' };
 const lastTouchTalk = {};
+
+// ---------------------------------------------------------------
+// combos: touches in a row that mean more together. a list, so a new
+// one is one line: the steps in order and how fast they have to come.
+// step names: head (headpat), ear (ear rub), nose, cheek, shoulder,
+// hand (hold), hug, side (tickle), thigh, feet, tailgrab, tailrub,
+// waveback
+
+const COMBOS = [
+  { id: 'melt', steps: ['tailgrab', 'head'], within: 6000, label: 'Combo: tail + headpat' },
+  { id: 'patboop', steps: ['head', 'nose'], within: 4000, label: 'Combo: pat and boop' },
+  { id: 'handhug', steps: ['hand', 'hug'], within: 6000, label: 'Combo: hand, then a hug' },
+  { id: 'cozy', steps: ['ear', 'head'], within: 5000, label: 'Combo: ear rub + headpat' },
+  { id: 'tickleattack', steps: ['side', 'side', 'feet'], within: 7000, label: 'Combo: tickle attack!' },
+  { id: 'tailtease', steps: ['tailrub', 'tailgrab'], within: 5000, label: 'Combo: tail tease' },
+];
+const touchLog = [];
+const comboAt = {};
+function touched(kind) {
+  const now = Date.now();
+  touchLog.push({ kind, t: now });
+  while (touchLog.length && now - touchLog[0].t > 10000) touchLog.shift();
+  for (const c of COMBOS) {
+    if (now - (comboAt[c.id] || 0) < 20000) continue;
+    // the steps, in order, ending with this touch, inside the time window
+    let i = c.steps.length - 1;
+    for (let j = touchLog.length - 1; j >= 0 && i >= 0; j--) {
+      if (now - touchLog[j].t > c.within) break;
+      if (touchLog[j].kind === c.steps[i]) i--;
+      else if (i === c.steps.length - 1) break; // the last step has to be this touch
+    }
+    if (i >= 0) continue;
+    comboAt[c.id] = now;
+    touchLog.length = 0;
+    const a = Live2D.faceAnchor();
+    Body.combo(c.id);
+    if (a) actionLabel(c.label, a.x, a.y - a.modelH * 0.12);
+    sparkles(5);
+    maybeSay('combo:' + c.id);
+    return;
+  }
+}
 function maybeSay(kind) {
   if (!kind || !TOUCH_NOTES[kind] || settings.quiet) return;
   const f = TALK[settings.talk] ?? 1;
@@ -566,6 +619,7 @@ function watchWaveBack(x, y) {
     waveTrail.flips = [];
     Body.wavedBack();
     maybeSay('waveback');
+    touched('waveback');
   }
 }
 
@@ -576,7 +630,11 @@ window.addEventListener('mousemove', (e) => {
   if (ready) watchWaveBack(e.clientX, e.clientY);
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
   if (rub) rubTrail(e.clientX, e.clientY);
-  if (rub && rub !== wasRubbing) { actionLabel(RUB_LABEL[rub], e.clientX, e.clientY); rubSince = Date.now(); }
+  if (rub && rub !== wasRubbing) {
+    actionLabel(RUB_LABEL[rub], e.clientX, e.clientY);
+    rubSince = Date.now();
+    touched(rub === 'tail' ? 'tailrub' : rub);
+  }
   // a rub that keeps going for a couple of seconds might get a word
   if (rub && RUB_TALK[rub] && Date.now() - rubSince > 2200) { maybeSay(RUB_TALK[rub]); rubSince = Infinity; }
   if (rub && !wasRubbing) {
@@ -597,7 +655,7 @@ document.addEventListener('mouseleave', () => { if (!press) { setThrough(true); 
 
 const POKE_LABEL = { head: 'Poke!', cheek: 'Cheek poke', nose: 'Boop!', ear: 'Ear flick', shoulder: 'Tap tap',
   tail: 'Tail tug!', hand: 'Squeeze', side: 'Tickle!', thigh: 'Thigh poke', feet: 'Ticklish feet!' };
-const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!', thigh: 'Thigh rub', feet: 'Foot rub' };
+const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!', thigh: 'Thigh rub', feet: 'Foot rub', tail: 'Tail rub' };
 
 function ripple(x, y) {
   const el = document.createElement('div');
@@ -776,17 +834,27 @@ window.addEventListener('pointerdown', (e) => {
   press = { x: e.screenX, y: e.screenY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
   const p = press;
   ripple(e.clientX, e.clientY);
-  // holds: her hand (hold hands) and her torso (a hug). nowhere else
-  if (region.kind === 'hand' || region.kind === 'hug') {
+  // holds: her hand (hold hands), her torso (a hug), her tail (grab it)
+  if (region.kind === 'hand' || region.kind === 'hug' || region.kind === 'tail') {
     // a ring fills around the pointer while the hold builds up, so it's
     // clear that keeping the button down does something
-    holdRing(true, e.clientX, e.clientY, region.kind === 'hand' ? '🤝' : '🤗');
+    holdRing(true, e.clientX, e.clientY, { hand: '🤝', hug: '🤗', tail: '✊' }[region.kind]);
     p.holdTimer = setTimeout(() => {
       if (press !== p || p.dragging) return;
       if (dozing) wake(true);
       D?.stopWalk();
       holdRing(false);
-      if (region.kind === 'hand') {
+      if (region.kind === 'tail') {
+        p.hold = 'tail';
+        p.holdAt = Date.now();
+        touched('tailgrab');
+        p.talkTimer = setTimeout(() => { if (p.hold === 'tail') maybeSay('tailgrab'); }, 2000);
+        Body.tailGrab(true);
+        document.body.style.cursor = Body.cursorFor('tailgrab');
+        actionLabel('Tail grab', e.clientX, e.clientY);
+        p.hugTimer = setInterval(() => Body.tailGrabTick(Date.now() - p.holdAt), 260);
+      } else if (region.kind === 'hand') {
+        touched('hand');
         p.hold = 'hand';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hand') maybeSay('hand'); }, 2200);
         Body.handhold(region.side, true);
@@ -794,6 +862,7 @@ window.addEventListener('pointerdown', (e) => {
         actionLabel('Holding hands', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { if (Math.random() < 0.3) floatHearts(1); }, 700);
       } else {
+        touched('hug');
         p.hold = 'hug';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hug') maybeSay('hug'); }, 1800);
         Body.hug(true);
@@ -814,6 +883,7 @@ function endHold(p) {
   clearInterval(p.hugTimer);
   if (p.hold === 'hand') Body.handhold(p.region.side, false);
   if (p.hold === 'hug') Body.hug(false);
+  if (p.hold === 'tail') Body.tailGrab(false);
   const had = p.hold;
   p.hold = null;
   return had;
@@ -866,6 +936,7 @@ const endPress = (e) => {
     actionLabel(POKE_LABEL[p.region.kind] || 'Poke', e.clientX, e.clientY);
     if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); }
     else maybeSay(POKE_TALK[p.region.kind]);
+    touched(p.region.kind);
     return;
   }
   if (now - lastTap < 350) {
