@@ -11,7 +11,7 @@
 // every number that shapes a move is in TUNE, so a walk that looks
 // off on the real rig is a one-line change.
 
-import * as Actions from '../live2d/actions.js?v=99';
+import * as Actions from '../live2d/actions.js?v=100';
 import * as Live2D from '../live2d/live2d.js?v=90';
 
 export const TUNE = {

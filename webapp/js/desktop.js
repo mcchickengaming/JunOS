@@ -20,12 +20,12 @@ import { moodTier, daypart } from './core/mood-tier.js?v=2';
 import * as Gauges from './core/speech-card.js?v=19';
 import { configureTts, say } from './core/speech-card.js?v=19';
 import { localTimeString } from './core/util.js?v=1';
-import * as Actions from './live2d/actions.js?v=99';
+import * as Actions from './live2d/actions.js?v=100';
 import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
-import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=20';
+import * as Outfit from './outfit/outfit.js?v=100';
+import * as Body from './desktop/body.js?v=21';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -145,7 +145,9 @@ function speak(raw, fallback) {
   const spoken = Actions.stripActions(raw)
     .replace(/\[\s*A(?:CTIONS?)?\s*:[^\]]*\]/gi, '')
     .replace(/\s+/g, ' ').replace(/^[\s,.;:]+/, '').trim();
-  return say(Names.apply(spoken) || fallback);
+  const line = Names.apply(spoken) || fallback;
+  // a touch reaction with nothing back from her brain: she just doesn't say anything
+  return line ? say(line) : Promise.resolve();
 }
 
 async function ask(content, { ephemeral, fallback }) {
@@ -177,7 +179,57 @@ async function react(kind) {
   if (settings.quiet) return;
   if (kind !== 'inside' && Date.now() - lastReactAt < 20000) return;
   lastReactAt = Date.now();
-  await ask(NOTES[kind], { ephemeral: true, fallback: FALLBACK[kind] });
+  const touch = TOUCH_NOTES[kind];
+  const note = touch
+    ? `${OOC}${touch}, with his mouse cursor, while you're out on his desktop. React out loud in one short line, in character, the way you honestly feel about him and about this right now. No narration.)`
+    : NOTES[kind];
+  await ask(note, { ephemeral: true, fallback: touch ? '' : FALLBACK[kind] });
+}
+
+// ---------------------------------------------------------------
+// she says something about a touch now and then, never every time.
+// what she says comes from her brain with her current feelings and
+// bond stage in it (chat_live_context), so the same hug gets a shy
+// line from a Stranger and a warm one from Devoted. how often:
+// Jun menu > On the desktop > Talks about your touches
+
+const TOUCH_NOTES = {
+  hug: 'Anon is hugging you',
+  hand: 'Anon is holding your hand',
+  squeeze: 'Anon gave your hand a quick squeeze',
+  tickle: 'Anon is tickling your side',
+  ear: 'Anon is rubbing your ear',
+  earflick: 'Anon flicked your ear',
+  nose: 'Anon booped your nose',
+  cheek: 'Anon poked your cheek',
+  shoulder: 'Anon tapped you on the shoulder',
+  tail: 'Anon tugged your tail',
+  thighpoke: 'Anon poked your thigh',
+  thighrub: 'Anon is rubbing your thigh',
+  feetrub: 'Anon is giving you a foot rub',
+  feet: 'Anon poked your foot and found out it is ticklish',
+  waveback: 'you waved at Anon and he waved back',
+};
+// chance per touch at "Sometimes"; a long hug is likelier to get a word
+// than a passing poke
+const TOUCH_CHANCE = {
+  hug: 0.5, hand: 0.45, squeeze: 0.2, tickle: 0.35, ear: 0.35, earflick: 0.2, nose: 0.25, cheek: 0.2,
+  shoulder: 0.2, tail: 0.3, thighpoke: 0.3, thighrub: 0.5, feetrub: 0.4, feet: 0.3, waveback: 0.5,
+};
+const TALK = { often: 1.6, sometimes: 1, rarely: 0.35, never: 0 };
+const POKE_TALK = { cheek: 'cheek', nose: 'nose', ear: 'earflick', shoulder: 'shoulder', tail: 'tail', hand: 'squeeze',
+  side: 'tickle', thigh: 'thighpoke', feet: 'feet' };
+const RUB_TALK = { ear: 'ear', side: 'tickle', thigh: 'thighrub', feet: 'feetrub' };
+const lastTouchTalk = {};
+function maybeSay(kind) {
+  if (!kind || !TOUCH_NOTES[kind] || settings.quiet) return;
+  const f = TALK[settings.talk] ?? 1;
+  const now = Date.now();
+  // the same touch twice in a row doesn't get two remarks
+  if (now - (lastTouchTalk[kind] || 0) < 90000) return;
+  if (Math.random() > (TOUCH_CHANCE[kind] || 0.25) * f) return;
+  lastTouchTalk[kind] = now;
+  react(kind);
 }
 
 form.addEventListener('submit', async (e) => {
@@ -438,7 +490,7 @@ async function refreshMood() {
 // ---------------------------------------------------------------
 // "On the desktop" settings from the tray (desktop/main.js)
 
-let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow' };
+let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes' };
 const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
 const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
 D?.onSettings?.((s) => {
@@ -463,6 +515,7 @@ function overHer(x, y) {
 
 let through = null;
 let wasRubbing = null;
+let rubSince = 0;
 function setThrough(on) {
   if (on === through) return;
   through = on;
@@ -512,6 +565,7 @@ function watchWaveBack(x, y) {
   if (waveTrail.flips.length >= 3) {
     waveTrail.flips = [];
     Body.wavedBack();
+    maybeSay('waveback');
   }
 }
 
@@ -522,7 +576,9 @@ window.addEventListener('mousemove', (e) => {
   if (ready) watchWaveBack(e.clientX, e.clientY);
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
   if (rub) rubTrail(e.clientX, e.clientY);
-  if (rub && rub !== wasRubbing) actionLabel(RUB_LABEL[rub], e.clientX, e.clientY);
+  if (rub && rub !== wasRubbing) { actionLabel(RUB_LABEL[rub], e.clientX, e.clientY); rubSince = Date.now(); }
+  // a rub that keeps going for a couple of seconds might get a word
+  if (rub && RUB_TALK[rub] && Date.now() - rubSince > 2200) { maybeSay(RUB_TALK[rub]); rubSince = Infinity; }
   if (rub && !wasRubbing) {
     // a rub stops whatever she was doing, and wakes her up
     D?.stopWalk();
@@ -732,12 +788,14 @@ window.addEventListener('pointerdown', (e) => {
       holdRing(false);
       if (region.kind === 'hand') {
         p.hold = 'hand';
+        p.talkTimer = setTimeout(() => { if (p.hold === 'hand') maybeSay('hand'); }, 2200);
         Body.handhold(region.side, true);
         document.body.style.cursor = Body.cursorFor('holding');
         actionLabel('Holding hands', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { if (Math.random() < 0.3) floatHearts(1); }, 700);
       } else {
         p.hold = 'hug';
+        p.talkTimer = setTimeout(() => { if (p.hold === 'hug') maybeSay('hug'); }, 1800);
         Body.hug(true);
         document.body.style.cursor = Body.cursorFor('hugging');
         actionLabel('Hug', e.clientX, e.clientY);
@@ -750,6 +808,7 @@ window.addEventListener('pointerdown', (e) => {
 
 function endHold(p) {
   clearTimeout(p.holdTimer);
+  clearTimeout(p.talkTimer);
   holdRing(false);
   hoverKind = undefined; // the cursor goes back to the spot's icon on the next move
   clearInterval(p.hugTimer);
@@ -806,6 +865,7 @@ const endPress = (e) => {
     D?.stopWalk();
     actionLabel(POKE_LABEL[p.region.kind] || 'Poke', e.clientX, e.clientY);
     if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); }
+    else maybeSay(POKE_TALK[p.region.kind]);
     return;
   }
   if (now - lastTap < 350) {
@@ -992,7 +1052,7 @@ function onHeadpat(ms) {
     sparkles(2);
     if (ms > 3000 && Math.random() < 0.4) floatHearts(1);
   }
-  if (ms > 2500 && Date.now() - patSpoke > 120000 && Math.random() < 0.5) {
+  if (ms > 2500 && Date.now() - patSpoke > 120000 && Math.random() < 0.5 * (TALK[settings.talk] ?? 1)) {
     patSpoke = Date.now();
     react('headpat');
   }

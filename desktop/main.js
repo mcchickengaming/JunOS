@@ -51,10 +51,11 @@ const DEFAULTS = {
   mode: 'window', inside: 'window', onTop: false, size: 'medium',
   window: null, compact: null, stepX: null, displayId: null, tipShown: false,
   // "On the desktop" settings, the page reads them (jun:settings)
-  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow' },
+  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes' },
 };
 const WALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
 const DOZE_CHOICES = [[2, 'After 2 minutes'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [0, 'Never']];
+const TALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
 const WATCH_CHOICES = [['often', 'Often'], ['normal', 'Now and then'], ['rarely', 'Rarely'], ['never', 'Never']];
 let cfg = { ...DEFAULTS };
 function loadCfg() {
@@ -840,6 +841,7 @@ function deskMenu() {
     { label: 'Walks around', submenu: radio('walk', WALK_CHOICES) },
     { label: 'Dozes off when you are away', submenu: radio('doze', DOZE_CHOICES) },
     { label: 'Looks at your mouse', submenu: radio('watch', WATCH_CHOICES) },
+    { label: 'Talks about your touches', submenu: radio('talk', TALK_CHOICES) },
     { type: 'separator' },
     { label: 'Little sounds (steps, landing, squeaks)', type: 'checkbox', checked: !!cfg.desk.sounds, click: (i) => set('sounds', i.checked) },
     { label: 'Touch hints', submenu: [

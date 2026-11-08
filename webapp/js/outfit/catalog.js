@@ -32,7 +32,7 @@ export const ITEMS = [
     colorPatterns: ['shoe_l'], visibilityPatterns: ['shoe_l'], visOn: 1, visOff: 0 },
   { key: 'shoe_r', label: 'Right shoe', param: 'ParamShoeROn', defaultOn: true,
     colorPatterns: ['shoe_r'], visibilityPatterns: ['shoe_r'], visOn: 1, visOff: 0 },
-  { key: 'stockings', label: 'Stockings', defaultOn: true,
+  { key: 'stockings', label: 'Socks & stockings', defaultOn: true,
     colorPatterns: ['stocking'], visibilityPatterns: ['stocking'], visOn: 1, visOff: 0 },
   { key: 'headband', label: 'Headband', defaultOn: false, excludes: ['wizard_hat'],
     colorPatterns: ['headband'], visibilityPatterns: ['headband'], visOn: 1, visOff: 0 },

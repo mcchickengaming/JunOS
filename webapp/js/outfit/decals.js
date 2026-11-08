@@ -1,9 +1,9 @@
 import * as Live2D from '../live2d/live2d.js?v=90';
-import * as Mods from '../mods/mods.js?v=100';
+import * as Mods from '../mods/mods.js?v=101';
 import { bakeDrawable } from '../mods/layers.js?v=18';
-import { ITEMS, VARIANTS, VARIANT_OWNER, colorGroup } from './catalog.js?v=4';
+import { ITEMS, VARIANTS, VARIANT_OWNER, colorGroup } from './catalog.js?v=5';
 import { hexToRgb01 } from './colors.js?v=1';
-import { colors, state, variantState } from './current.js?v=4';
+import { colors, state, variantState } from './current.js?v=5';
 
 const rgbToHex = (rgb) => '#' + rgb.map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
 
