@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ball</title>
+<!-- the fetch ball (desktop/props.js): drag it, throw it, she chases it -->
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; user-select: none; }
+  svg { display: block; width: 100%; height: 100%; cursor: grab; }
+  #spin { transform-origin: 50px 50px; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 100 100">
+  <g id="spin">
+    <circle cx="50" cy="50" r="46" fill="#ffffff"/>
+    <path d="M50,4 A46,46 0 0 1 96,50 L50,50Z" fill="#ec0054"/>
+    <path d="M50,96 A46,46 0 0 1 4,50 L50,50Z" fill="#ec0054"/>
+    <path d="M96,50 A46,46 0 0 1 50,96 L50,50Z" fill="#ffd34d"/>
+    <path d="M4,50 A46,46 0 0 1 50,4 L50,50Z" fill="#3fa9f5"/>
+    <circle cx="50" cy="50" r="7" fill="#ffffff"/>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="2"/>
+  </g>
+  <ellipse cx="36" cy="30" rx="14" ry="8" fill="#fff" opacity=".45"/>
+</svg>
+<script>
+const P = window.junProp;
+P && P.setClickThrough(false);
+window.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  P && P.dragStart();
+  const up = () => { P && P.dragEnd(); window.removeEventListener('pointerup', up); };
+  window.addEventListener('pointerup', up);
+});
+window.addEventListener('contextmenu', (e) => { e.preventDefault(); P && P.menu(); });
+// it rolls: spin by how far the window moved
+let lastX = window.screenX, angle = 0;
+setInterval(() => {
+  const x = window.screenX;
+  angle += (x - lastX) * 2.2;
+  lastX = x;
+  document.getElementById('spin').setAttribute('transform', `rotate(${angle} 50 50)`);
+}, 33);
+</script>
+</body>
+</html>

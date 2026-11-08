@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jun's spot</title>
+<!-- one half of a spot (desktop/props.js): ?type=cushion|bed|beanbag|chair
+     &part=back|front&main=#hex&trim=#hex. original drawings, plain svg -->
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; user-select: none; }
+  svg { display: block; width: 100%; height: 100%; }
+  .grab { cursor: grab; }
+</style>
+</head>
+<body>
+<svg id="art" preserveAspectRatio="none"></svg>
+<script>
+const P = window.junProp;
+const VIEW = { cushion: 26, bed: 33, beanbag: 49, chair: 76 };
+const shade = (hex, k) => {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k))));
+  return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+};
+function draw(q) {
+  const { type, part } = q;
+  const main = /^#[0-9a-f]{6}$/i.test(q.main) ? q.main : '#888888';
+  const trim = /^#[0-9a-f]{6}$/i.test(q.trim) ? q.trim : '#dddddd';
+  const dark = shade(main, -0.25), light = shade(main, 0.25);
+  const H = VIEW[type] || 30;
+  const art = document.getElementById('art');
+  art.setAttribute('viewBox', `0 0 100 ${H}`);
+  let g = '';
+  const shadowEl = (cy) => `<ellipse cx="50" cy="${cy}" rx="47" ry="2.6" fill="rgba(0,0,0,.28)"/>`;
+  if (type === 'cushion') {
+    g = shadowEl(23.6)
+      + `<path class="grab" d="M4,14 Q4,4 50,4 Q96,4 96,14 Q96,24 50,24 Q4,24 4,14Z" fill="${main}"/>`
+      + `<ellipse cx="50" cy="9.5" rx="38" ry="4" fill="${light}" opacity=".6"/>`
+      + `<path d="M4,14 Q4,4 50,4 Q96,4 96,14 Q96,24 50,24 Q4,24 4,14Z" fill="none" stroke="${trim}" stroke-width="1.2"/>`
+      + `<circle cx="50" cy="14" r="1.6" fill="${trim}"/><circle cx="30" cy="14.5" r="1.2" fill="${trim}"/><circle cx="70" cy="14.5" r="1.2" fill="${trim}"/>`;
+  } else if (type === 'bed') {
+    g = part === 'back'
+      ? shadowEl(30.5)
+        + `<path class="grab" d="M3,21 Q3,3 50,3 Q97,3 97,21 Q97,29 50,29 Q3,29 3,21Z" fill="${main}"/>`
+        + `<ellipse cx="50" cy="20" rx="38" ry="8" fill="${trim}"/>`
+        + `<ellipse cx="50" cy="18" rx="30" ry="5" fill="${shade(trim, 0.3)}" opacity=".7"/>`
+      : `<path d="M2,20 Q50,13 98,20 Q100,31 50,32 Q0,31 2,20Z" fill="${main}"/>`
+        + `<path d="M4,20.5 Q50,14 96,20.5" fill="none" stroke="${light}" stroke-width="1.6" opacity=".8"/>`
+        + `<path d="M8,25 Q50,21 92,25" fill="none" stroke="${trim}" stroke-width=".9" stroke-dasharray="2 1.6"/>`;
+  } else if (type === 'beanbag') {
+    g = part === 'back'
+      ? shadowEl(46.5)
+        + `<path class="grab" d="M8,42 C1,22 20,3 50,4 C80,3 99,22 92,42 Z" fill="${main}"/>`
+        + `<ellipse cx="38" cy="15" rx="18" ry="6" fill="${light}" opacity=".5"/>`
+        + `<path d="M22,8 Q50,22 78,8" fill="none" stroke="${trim}" stroke-width=".8" opacity=".7"/>`
+      : `<path d="M3,37 C9,28 40,30 50,33 C60,30 91,28 97,37 C99,47 70,48 50,48 C30,48 1,47 3,37Z" fill="${main}"/>`
+        + `<path d="M10,37 C25,32 42,34 50,36 C58,34 75,32 90,37" fill="none" stroke="${trim}" stroke-width=".8" opacity=".8"/>`
+        + `<path d="M3,37 C9,28 40,30 50,33" fill="none" stroke="${light}" stroke-width="1.2" opacity=".6"/>`;
+  } else if (type === 'chair') {
+    g = part === 'back'
+      ? shadowEl(74)
+        + `<rect class="grab" x="13" y="3" width="74" height="50" rx="11" fill="${main}"/>`
+        + `<rect x="21" y="10" width="58" height="36" rx="7" fill="${trim}"/>`
+        + `<rect x="21" y="10" width="58" height="12" rx="6" fill="${shade(trim, 0.3)}" opacity=".6"/>`
+      : `<rect x="16" y="60" width="5" height="14" rx="1.5" fill="${shade(main, -0.55)}"/>`
+        + `<rect x="79" y="60" width="5" height="14" rx="1.5" fill="${shade(main, -0.55)}"/>`
+        + `<rect x="10" y="45" width="80" height="17" rx="5" fill="${main}"/>`
+        + `<rect x="12" y="46" width="76" height="4" rx="2" fill="${light}" opacity=".7"/>`
+        + `<rect x="3" y="30" width="15" height="33" rx="7" fill="${dark}"/>`
+        + `<rect x="82" y="30" width="15" height="33" rx="7" fill="${dark}"/>`
+        + `<rect x="4" y="31" width="13" height="5" rx="2.5" fill="${trim}" opacity=".8"/>`
+        + `<rect x="83" y="31" width="13" height="5" rx="2.5" fill="${trim}" opacity=".8"/>`;
+  }
+  art.innerHTML = g;
+  // whatever she can be grabbed by in this half
+  art.querySelectorAll('path, rect, ellipse, circle').forEach(el => { if (!el.getAttribute('fill')?.startsWith('rgba')) el.classList.add('grab'); });
+}
+const q = Object.fromEntries(new URLSearchParams(location.search));
+draw(q);
+if (P) P.onColors((next) => draw(next));
+
+// clicks only on the drawing, the rest of the box lets them through
+let through = null;
+const solid = (t) => t && t !== document.getElementById('art') && t.classList && t.classList.contains('grab');
+window.addEventListener('mousemove', (e) => {
+  const on = !solid(e.target);
+  if (on !== through) { through = on; P && P.setClickThrough(on); }
+});
+window.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || !solid(e.target)) return;
+  e.preventDefault();
+  P && P.dragStart();
+  const up = () => { P && P.dragEnd(); window.removeEventListener('pointerup', up); };
+  window.addEventListener('pointerup', up);
+});
+window.addEventListener('contextmenu', (e) => { e.preventDefault(); if (solid(e.target)) P && P.menu(); });
+</script>
+</body>
+</html>

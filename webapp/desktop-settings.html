@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jun on the desktop</title>
+<link rel="icon" type="image/png" href="jun_os.png">
+<!-- the desktop app's settings window (desktop/main.js openSettings):
+     how to play with her, her colors, her spots. the color picker is
+     the closet's own (js/wardrobe/color-picker.js) -->
+<link rel="stylesheet" href="css/pages/wardrobe.css?v=3">
+<style>
+  body { overflow: auto; padding: 0 0 24px; }
+  header { padding: 18px 20px 8px; }
+  h1 { margin: 0; font: 600 20px/1.2 var(--serif); }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  nav { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 2; }
+  nav button { border: 0; background: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; }
+  nav button.on { color: var(--fg); background: var(--bg-3); }
+  section { padding: 12px 20px; }
+  section[hidden] { display: none; }
+  h2 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin: 6px 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; }
+  .row .what { flex: 1; min-width: 0; }
+  .row .what b { display: block; font-weight: 600; }
+  .row .what span { color: var(--muted); font-size: 12.5px; }
+  .gesture { width: 34px; text-align: center; font-size: 22px; }
+  .ds-swatch { position: relative; display: flex; overflow: hidden; padding: 0; width: 34px; height: 34px; flex: 0 0 auto;
+    border-radius: 50%; border: 1px solid var(--border-2); cursor: pointer;
+    background: radial-gradient(circle at center, var(--bg-3) 0 42%, transparent 45%), conic-gradient(#f66, #fc6, #7d6, #6cf, #a6f, #f66);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .45); transition: transform .15s; }
+  .ds-swatch:hover { transform: scale(1.1); }
+  .ds-swatch.set { border-color: rgba(255, 255, 255, .55); }
+  input[type=range] { width: 140px; accent-color: var(--accent); }
+  .btn { border: 1px solid var(--border-2); background: var(--bg-3); color: var(--fg); padding: 7px 12px; border-radius: 8px; }
+  .btn:hover { background: var(--bg-4); }
+  .btn.danger:hover { border-color: #f66a; }
+  .adds { display: flex; flex-wrap: wrap; gap: 8px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin: 6px 0; }
+  .stay { font-size: 12px; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Jun on the desktop</h1>
+  <p class="sub">How to play with her, her colors, and her spots.</p>
+</header>
+<nav>
+  <button type="button" data-tab="help">How to play</button>
+  <button type="button" data-tab="colors">Colors</button>
+  <button type="button" data-tab="spots">Her spots</button>
+</nav>
+
+<section id="tab-help" hidden>
+  <p class="hint">Move your mouse over her: the cursor and a soft glow show what a click will do there.</p>
+  <h2>Touch</h2>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>Headpat</b><span>Rub back and forth over the top of her head.</span></div></div>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>Ear rub</b><span>Rub back and forth over one of her ears.</span></div></div>
+  <div class="row"><div class="gesture">🤏</div><div class="what"><b>Tickle</b><span>Wiggle quickly over her side, or click it.</span></div></div>
+  <div class="row"><div class="gesture">🤝</div><div class="what"><b>Hold her hand</b><span>Press and hold on her hand. Let go to let go.</span></div></div>
+  <div class="row"><div class="gesture">💬</div><div class="what"><b>Hug</b><span>Press and hold on her body.</span></div></div>
+  <h2>Pokes (one click)</h2>
+  <div class="row"><div class="gesture">👆</div><div class="what"><b>Head, cheek, nose, ear, shoulder, tail, hand</b><span>Each one gets its own little reaction. Too many pokes and she gets annoyed.</span></div></div>
+  <h2>Moving her</h2>
+  <div class="row"><div class="gesture">✊</div><div class="what"><b>Pick her up</b><span>Click and drag. Let go to drop her on the taskbar, or onto one of her spots.</span></div></div>
+  <div class="row"><div class="gesture">🤾</div><div class="what"><b>Throw her</b><span>Let go while the mouse is still moving.</span></div></div>
+  <div class="row"><div class="gesture">👋</div><div class="what"><b>Wave back</b><span>When she waves, wiggle your mouse near her.</span></div></div>
+  <h2>Talking</h2>
+  <div class="row"><div class="gesture">💬</div><div class="what"><b>Chat</b><span>Click her body once. Double-click to send her back inside.</span></div></div>
+  <div class="row"><div class="gesture">🖱️</div><div class="what"><b>Her menu</b><span>Right-click her: talk, spots, go back inside, hide.</span></div></div>
+</section>
+
+<section id="tab-colors" hidden>
+  <p class="hint">Click a color wheel to pick. Right-click it to go back to the default.</p>
+  <div id="colorRows"></div>
+  <h2>Shadow</h2>
+  <div class="row"><div class="what"><b>Shadow under her feet</b><span>How dark it is.</span></div><input type="range" id="shadowRange" min="0" max="0.8" step="0.02"></div>
+  <p><button type="button" class="btn danger" id="resetColors">Reset all colors</button></p>
+</section>
+
+<section id="tab-spots" hidden>
+  <p class="hint">A spot gives her a place to stay out of your way. Drag a spot to move it, right-click it for more. Drop her onto a spot and she'll stay there.</p>
+  <h2>Add a spot</h2>
+  <div class="adds" id="spotAdds"></div>
+  <h2>Her spots</h2>
+  <div id="spotRows"></div>
+  <p class="hint" id="noSpots">No spots yet.</p>
+  <h2>Where she stays</h2>
+  <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
+</section>
+
+<script type="module" src="js/desktop-settings.js?v=2"></script>
+</body>
+</html>

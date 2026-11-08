@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('junDesktop', {
   // stands ON the taskbar and not half a leg above it
   reportFeet: (px) => ipcRenderer.send('jun:feet', Number(px) || 0),
   // opts: { speed, hop }, her mood sets them
-  wander: (opts) => ipcRenderer.send('jun:walk', { what: 'wander', speed: Number(opts?.speed) || 1, hop: Number(opts?.hop) || 0 }),
+  wander: (opts) => ipcRenderer.send('jun:walk', { what: 'wander', speed: Number(opts?.speed) || 1, hop: Number(opts?.hop) || 0, back: !!opts?.back }),
   stopWalk: () => ipcRenderer.send('jun:walk', 'stop'),
   goInside: () => ipcRenderer.send('jun:mode', 'inside'),
   stepOut: () => ipcRenderer.send('jun:mode', 'stepout'),
@@ -37,5 +37,8 @@ contextBridge.exposeInMainWorld('junDesktop', {
   onFly: on('jun:fly'),
   // the tray's "On the desktop" settings
   onSettings: on('jun:settings'),
+  // the settings window (webapp/desktop-settings.html)
+  spots: (action, a, b, c) => ipcRenderer.invoke('jun:spots', action, a, b, c),
+  onSettingsTab: on('jun:settings-tab'),
   onCommand: on('jun:command'),
 });

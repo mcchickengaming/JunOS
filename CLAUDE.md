@@ -67,10 +67,19 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   click-through except over her). Desktop chat goes into her latest conversation; desktop reactions are
   ephemeral OOC turns. Her moves on the desktop (walk cycle + 3D paper turn, carried/landing, cursor
   attention, headpats, pokes, mood/time-of-day idles, thought icons) live in `webapp/js/desktop/body.js`,
-  every number in its `TUNE`. main.js does throwing (momentum, bounces), side-by-side monitors as one strip,
-  and the tray/Jun menu "On the desktop" settings (quiet mode, walk/doze/watch frequency). Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
+  every number in its `TUNE`. Touch spots (`regionAt`): head/ear/cheek/nose/shoulder/hand/side/tail/body; click
+  = poke, hold = hand-hold or hug, rub = headpat/ear rub/tickle, drag = carry; cursor icon + glow show the spot.
+  main.js does throwing (momentum, bounces, part-off-screen + peek), side-by-side monitors as one strip, and
+  the "On the desktop" settings (quiet, walk/doze/watch, sounds). `desktop/props.js`: her spots (cushion,
+  dog bed, beanbag, armchair; back+front windows so she sits IN them; "stay" keeps her there) and the fetch
+  ball. Settings window `webapp/desktop-settings.html` (how to play, colors, spots). Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
   `start.ps1 stop` closes it, `start.ps1 desktop` opens it alone. Never run Electron in the cloud sandbox
   (binary downloads are blocked); test the page with Playwright + Chrome and a mocked `window.junDesktop`.
+
+## Everything is customizable
+The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings
+page using the closet's picker (`makeItemColorButton` from `js/wardrobe/color-picker.js`), like
+`desktop-settings.js` GROUPS. Desktop colors live in `localStorage['desktop.theme']`.
 
 ## Content
 Claude builds engines, systems and regular content. Adult/rated content is out of scope for Claude: systems

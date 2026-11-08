@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=8';
+import * as Body from './desktop/body.js?v=11';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -41,6 +41,20 @@ const zzz = document.getElementById('zzz');
 const shadow = document.getElementById('shadow');
 const emoteEl = document.getElementById('emote');
 const note = document.getElementById('note');
+
+// her colors: Jun menu > Customize colors (desktop-settings.html) keeps
+// them in localStorage, the same origin as this page, and the storage
+// event brings a change over live
+const THEME_KEY = 'desktop.theme';
+function applyTheme() {
+  let t = {};
+  try { t = JSON.parse(localStorage.getItem(THEME_KEY) || '{}'); } catch (e) {}
+  const root = document.documentElement;
+  root.removeAttribute('style');
+  for (const [k, v] of Object.entries(t)) if (/^--[a-z-]+$/.test(k)) root.style.setProperty(k, String(v));
+}
+applyTheme();
+window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) applyTheme(); });
 
 const OOC = '(OOC stage direction, not spoken by Anon: ';
 const NOTES = {
@@ -137,15 +151,18 @@ async function ask(content, { ephemeral, fallback }) {
   busy = true;
   talk.classList.add('thinking');
   input.placeholder = '…';
+  thinking(true);
   D?.stopWalk();
   try {
     if (!ephemeral || !conversationId) await loadConversation();
     const raw = await turn(content, ephemeral);
+    thinking(false);
     talk.classList.remove('thinking');
     input.placeholder = 'Say something…';
     await speak(raw, fallback);
   } finally {
     busy = false;
+    thinking(false);
     talk.classList.remove('thinking');
     input.placeholder = 'Say something…';
   }
@@ -280,19 +297,125 @@ function reportFeet() {
 // ---------------------------------------------------------------
 // the thought icon over her head
 
-const EMOTES = { note: '♪', question: '?', bang: '!', heart: '♥', dots: '…', bonk: '!!', zzz: 'z' };
+// symbols in the bubble, a few small pictures, and some that are
+// effects instead (a burst of hearts, the thinking cloud)
+const EMOTES = {
+  note: '♪', question: '?', bang: '!', heart: '♥', dots: '…', bonk: '!!', zzz: 'z',
+  anger: '💢', sparkle: '✨', laugh: 'ha!', sweat: '💧', coffee: '☕', moon: '🌙', star: '⭐', flower: '🌸',
+};
 let emoteTimer = null;
-function showEmote(kind) {
+function headTop() {
   const a = ready && Live2D.faceAnchor();
-  if (!a || !EMOTES[kind]) return;
+  return a ? { a, x: a.x + a.headW * 0.45, y: a.y - a.modelH * 0.09 } : null;
+}
+function showEmote(kind) {
+  if (kind === 'hearts') { floatHearts(4); kind = 'heart'; }
+  const t = headTop();
+  if (!t || !EMOTES[kind]) return;
   emoteEl.textContent = EMOTES[kind];
-  emoteEl.style.left = (a.x + a.headW * 0.45) + 'px';
-  emoteEl.style.top = (a.y - a.modelH * 0.09) + 'px';
+  emoteEl.classList.toggle('pic', EMOTES[kind].length > 1 || /\p{Extended_Pictographic}/u.test(EMOTES[kind]));
+  emoteEl.style.left = t.x + 'px';
+  emoteEl.style.top = t.y + 'px';
   emoteEl.classList.remove('show');
   void emoteEl.offsetWidth; // restart the animation
   emoteEl.classList.add('show');
   clearTimeout(emoteTimer);
   emoteTimer = setTimeout(() => emoteEl.classList.remove('show'), 2000);
+  if (kind === 'sparkle') sparkles(4);
+  sound(kind === 'bang' || kind === 'bonk' ? 'squeak' : 'pop');
+}
+
+// the thinking cloud while her brain works on a reply
+const cloud = document.getElementById('cloud');
+function thinking(on) {
+  const t = headTop();
+  if (on && t) {
+    cloud.style.left = t.x + 'px';
+    cloud.style.top = t.y + 'px';
+  }
+  cloud.classList.toggle('on', !!on && !!t);
+}
+
+// little particles: hearts drifting up, sparkles, dust at her feet
+function particle(text, x, y, cls, dx = 0, dy = -60, ms = 1400) {
+  const el = document.createElement('span');
+  el.className = 'particle ' + cls;
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.setProperty('--dx', dx + 'px');
+  el.style.setProperty('--dy', dy + 'px');
+  el.style.animationDuration = ms + 'ms';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), ms + 50);
+}
+function floatHearts(n) {
+  const a = ready && Live2D.faceAnchor();
+  if (!a) return;
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => particle('♥', a.x + (Math.random() - 0.5) * a.headW * 1.4, a.y + a.modelH * 0.1,
+      'heart-p', (Math.random() - 0.5) * 40, -70 - Math.random() * 50, 1500 + Math.random() * 500), i * 140);
+  }
+}
+function sparkles(n) {
+  const a = ready && Live2D.faceAnchor();
+  if (!a) return;
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => particle('✦', a.x + (Math.random() - 0.5) * a.headW * 1.6, a.y - a.modelH * 0.06 + (Math.random() - 0.5) * a.headW,
+      'spark-p', (Math.random() - 0.5) * 20, -20 - Math.random() * 20, 900), i * 110);
+  }
+}
+function dust(strength) {
+  const a = ready && Live2D.faceAnchor();
+  if (!a || MODE !== 'stepout') return;
+  const feet = a.y - a.modelH * 0.09 + a.modelH;
+  const n = Math.round(3 + strength * 5);
+  for (let i = 0; i < n; i++) {
+    const side = i % 2 ? 1 : -1;
+    particle('●', a.x + side * a.modelW * (0.08 + Math.random() * 0.12), feet - 4, 'dust-p',
+      side * (20 + Math.random() * 40 * (1 + strength)), -6 - Math.random() * 14, 600 + Math.random() * 300);
+  }
+}
+
+// ---------------------------------------------------------------
+// sounds: tiny made-up ones, no files. off unless he turns them on
+
+let audio = null;
+function sound(kind) {
+  if (!settings.sounds) return;
+  try {
+    audio = audio || new AudioContext();
+    const t = audio.currentTime;
+    const g = audio.createGain();
+    g.connect(audio.destination);
+    if (kind === 'step' || kind === 'land') {
+      // a soft thud: a short burst of low noise
+      const len = kind === 'land' ? 0.12 : 0.05;
+      const buf = audio.createBuffer(1, Math.floor(audio.sampleRate * len), audio.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const src = audio.createBufferSource();
+      src.buffer = buf;
+      const f = audio.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = kind === 'land' ? 260 : 500;
+      src.connect(f);
+      f.connect(g);
+      g.gain.value = kind === 'land' ? 0.5 : 0.08;
+      src.start(t);
+    } else {
+      const o = audio.createOscillator();
+      o.type = 'sine';
+      const [f0, f1, dur, vol] = kind === 'squeak' ? [700, 1300, 0.12, 0.12] : [500, 900, 0.07, 0.06];
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
+      o.connect(g);
+      o.start(t);
+      o.stop(t + dur + 0.06);
+    }
+  } catch (e) {}
 }
 
 // ---------------------------------------------------------------
@@ -314,7 +437,7 @@ async function refreshMood() {
 // ---------------------------------------------------------------
 // "On the desktop" settings from the tray (desktop/main.js)
 
-let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false };
+let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false };
 const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
 const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
 D?.onSettings?.((s) => {
@@ -331,52 +454,130 @@ window.addEventListener('resize', () => setTimeout(frame, 60));
 // whatever is under the window
 
 function overUi(t) {
-  return !!(t && t.closest && t.closest('.talk, .tools, .note'));
+  return !!(t && t.closest && t.closest('.talk, .tools, .note, .help'));
 }
 function overHer(x, y) {
-  return ready && Live2D.isOverModel(x, y);
+  return ready && !!Body.regionAt(x, y);
 }
 
 let through = null;
-let wasPatting = false;
+let wasRubbing = null;
 function setThrough(on) {
   if (on === through) return;
   through = on;
   D?.setClickThrough(on);
 }
+
+// what's under the pointer shows in the cursor and a soft glow, so
+// it's clear what a click there will do
+const glow = document.getElementById('glow');
+let hoverKind = null;
+let glowTimer = null;
+function showHover(region) {
+  const kind = region ? region.kind : null;
+  if (kind === hoverKind) return;
+  hoverKind = kind;
+  document.body.style.cursor = Body.cursorFor(kind);
+  const g = Body.regionGlow(region);
+  clearTimeout(glowTimer);
+  if (!g || dozing) { glow.classList.remove('on'); return; }
+  glow.style.left = g.x + 'px';
+  glow.style.top = g.y + 'px';
+  glow.style.width = glow.style.height = Math.round(g.r * 2) + 'px';
+  glow.classList.add('on');
+  glowTimer = setTimeout(() => glow.classList.remove('on'), 1400);
+}
+
+// waving back: a few quick turns of the pointer near her while she waves
+let waveTrail = { dir: 0, flips: [], x: 0 };
+function watchWaveBack(x, y) {
+  if (!Body.waveBackWindow()) return;
+  const a = Live2D.faceAnchor();
+  if (!a || Math.hypot(x - a.x, y - a.y) > 320) return;
+  const now = Date.now();
+  const d = Math.sign(x - waveTrail.x);
+  if (d && waveTrail.dir && d !== waveTrail.dir) waveTrail.flips.push(now);
+  if (d) waveTrail.dir = d;
+  waveTrail.x = x;
+  waveTrail.flips = waveTrail.flips.filter(t => now - t < 1500);
+  if (waveTrail.flips.length >= 3) {
+    waveTrail.flips = [];
+    Body.wavedBack();
+  }
+}
+
 window.addEventListener('mousemove', (e) => {
   if (press) return;
-  const pat = ready && !overUi(e.target) && Body.pointerMove(e.clientX, e.clientY);
-  if (pat && !wasPatting) {
-    // a headpat stops whatever she was doing, and wakes her up
+  const onUi = overUi(e.target);
+  const region = ready && !onUi ? Body.regionAt(e.clientX, e.clientY) : null;
+  if (ready) watchWaveBack(e.clientX, e.clientY);
+  const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
+  if (rub && !wasRubbing) {
+    // a rub stops whatever she was doing, and wakes her up
     D?.stopWalk();
     if (dozing) wake(true);
   }
-  wasPatting = pat;
-  setThrough(!(overUi(e.target) || overHer(e.clientX, e.clientY)));
+  wasRubbing = rub;
+  showHover(region);
+  setThrough(!(onUi || region));
 }, true);
-document.addEventListener('mouseleave', () => { if (!press) setThrough(true); });
+document.addEventListener('mouseleave', () => { if (!press) { setThrough(true); showHover(null); } });
 
+// a press on her: a click (poke or talk), a hold (hand, hug) or a
+// drag (pick her up). which one is decided by what the pointer does
+// next, never by guessing up front
+const HOLD_MS = 450;
 let press = null;
 let lastTap = 0;
 window.addEventListener('pointerdown', (e) => {
-  if (overUi(e.target) || !overHer(e.clientX, e.clientY)) return;
+  if (overUi(e.target)) return;
+  const region = ready ? Body.regionAt(e.clientX, e.clientY) : null;
+  if (!region) return;
   // ours, not live2d/input.js's: that one drags her around INSIDE
   // the canvas, here a drag carries the whole window
   e.stopPropagation();
   e.preventDefault();
   if (e.button !== 0) return;
-  press = { x: e.screenX, y: e.screenY, dragging: false, id: e.pointerId };
+  press = { x: e.screenX, y: e.screenY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
+  const p = press;
+  if (region.kind === 'hand' || region.kind === 'body' || region.kind === 'side') {
+    p.holdTimer = setTimeout(() => {
+      if (press !== p || p.dragging) return;
+      if (dozing) wake(true);
+      D?.stopWalk();
+      if (region.kind === 'hand') {
+        p.hold = 'hand';
+        Body.handhold(region.side, true);
+      } else {
+        p.hold = 'hug';
+        Body.hug(true);
+        p.hugTimer = setInterval(() => { Body.hugTick(); floatHearts(1); }, 260);
+      }
+    }, HOLD_MS);
+  }
   try { stageEl.setPointerCapture(e.pointerId); } catch (err) {}
 }, true);
+
+function endHold(p) {
+  clearTimeout(p.holdTimer);
+  clearInterval(p.hugTimer);
+  if (p.hold === 'hand') Body.handhold(p.region.side, false);
+  if (p.hold === 'hug') Body.hug(false);
+  const had = p.hold;
+  p.hold = null;
+  return had;
+}
 
 window.addEventListener('pointermove', (e) => {
   if (!press || e.pointerId !== press.id) return;
   e.stopPropagation();
   if (press.dragging) Body.carryMove(e.screenX, e.screenY);
-  if (press.dragging || Math.hypot(e.screenX - press.x, e.screenY - press.y) < 5) return;
+  if (press.dragging || Math.hypot(e.screenX - press.x, e.screenY - press.y) < 6) return;
+  // moving lets go of a hand or a hug and picks her up instead
+  endHold(press);
   press.dragging = true;
   if (dozing) wake(false);
+  showHover(null);
   D?.dragStart();
   Body.setCarried(true);
   shadow.classList.add('lifted');
@@ -387,23 +588,23 @@ const endPress = (e) => {
   e.stopPropagation();
   const p = press;
   press = null;
+  if (endHold(p)) return;
   if (p.dragging) {
     D?.dragEnd();
     // compact doesn't fall, it just stays where it was put
     if (MODE !== 'stepout') { Body.landed(); shadow.classList.remove('lifted'); }
     return;
   }
-  // a click at the end of a headpat is part of the pat
-  if (Body.patting()) return;
+  // a click at the end of a rub is part of the rub
+  if (Body.rubbing()) return;
   if (e.type === 'pointercancel') return;
   const now = Date.now();
-  // her head, cheek or shoulder: a poke, not a tap to talk
-  const region = Body.pokeRegion(e.clientX, e.clientY);
-  if (region) {
+  if (p.region.kind !== 'body') {
+    // a spot on her: a poke, not a tap to talk
     lastTap = 0;
     if (dozing) wake(true);
     D?.stopWalk();
-    if (Body.poke(region)) react('poked');
+    if (Body.poke(p.region)) react('poked');
     return;
   }
   if (now - lastTap < 350) {
@@ -438,20 +639,63 @@ document.getElementById('toHide').addEventListener('click', () => D?.hide());
 // out on the desktop: walking, dozing, being carried
 
 let thrown = false;
-D?.onWalk(({ state, dir }) => {
+// footstep sounds in time with her stride
+let stepTimer = null;
+function startSteps() {
+  stopSteps();
+  if (!settings.sounds) return;
+  stepTimer = setInterval(() => sound('step'), Body.TUNE.strideMs / 2);
+}
+function stopSteps() { clearInterval(stepTimer); stepTimer = null; }
+D?.onWalk(({ state, dir, speed, edge, kind }) => {
   if (state === 'walking') {
     walking = true;
     Body.walking(dir || 1);
+    shadow.classList.add('walking');
+    shadow.style.setProperty('--step', (Body.TUNE.strideMs / 2) + 'ms');
+    startSteps();
     if (Math.random() < 0.25 && pace.speed >= 1.2) showEmote('note');
     return;
   }
   if (state === 'flying') { thrown = true; shadow.classList.add('lifted'); return; }
+  if (state === 'onspot') {
+    // hopped into one of her spots: she settles in, the spot's her floor now
+    thrown = false;
+    walking = false;
+    Body.walking(0);
+    Body.landed();
+    Body.sit(kind);
+    sound('land');
+    setTimeout(() => showEmote(kind === 'bed' ? 'zzz' : 'note'), 500);
+    return;
+  }
+  if (state === 'offspot') {
+    Body.sit(null);
+    shadow.classList.remove('lifted');
+    return;
+  }
   if (state === 'bonk') { showEmote('bonk'); return; }
   walking = false;
   Body.walking(0);
+  shadow.classList.remove('walking');
+  stopSteps();
   if (state === 'landed') {
     Body.landed();
     shadow.classList.remove('lifted');
+    // the harder she comes down, the more dust and squash
+    const hard = Math.min(1, Math.max(0, ((speed || 0) - 300) / 1500));
+    dust(hard);
+    sound('land');
+    if (hard > 0.4) {
+      stageEl.classList.remove('squash');
+      void stageEl.offsetWidth;
+      stageEl.classList.add('squash');
+    }
+    // thrown half off the screen: she peeks back in, then walks back
+    if (edge) {
+      setTimeout(() => { Body.peek(edge); showEmote('question'); }, 700);
+      setTimeout(() => D?.wander({ ...pace, back: true }), 2600);
+    }
   }
   if (state === 'landed' && MODE === 'stepout') {
     // not every single time he moves her, that gets old
@@ -497,6 +741,8 @@ D?.onIdle(({ seconds, dozeAfter }) => {
   if (!ready) return;
   // at night she nods off sooner
   if (daypart() === 'night' && Number.isFinite(dozeAfter)) dozeAfter = Math.min(dozeAfter, 120);
+  // and in her bed sooner still
+  if (Body.sittingIn() === 'bed' && Number.isFinite(dozeAfter)) dozeAfter = Math.min(dozeAfter, Math.max(60, dozeAfter / 2));
   if (seconds >= dozeAfter) doze();
   else if (dozing && seconds < 30) wake(true);
 });
@@ -515,14 +761,36 @@ function scheduleWander() {
 // rests her legs, waves at the cursor when it's moving
 function scheduleMoves() {
   setTimeout(() => {
-    if (ready && !busy && !dozing && !walking && !press) Body.idleMove();
+    if (ready && !busy && !dozing && !walking && !press) {
+      // now and then a thought of her own instead of a move
+      const part = daypart();
+      const mood = Body.currentMood();
+      if (Math.random() < 0.18) {
+        const pool = [];
+        if (part === 'morning') pool.push('coffee', 'coffee');
+        if (part === 'night') pool.push('moon', 'moon', 'zzz');
+        if (mood === 'happy') pool.push('note', 'flower', 'star', 'hearts');
+        if (mood === 'nervous' || mood === 'scared') pool.push('sweat', 'sweat');
+        if (mood === 'upset') pool.push('dots', 'anger');
+        pool.push('question', 'note', 'dots');
+        showEmote(pool[Math.floor(Math.random() * pool.length)]);
+      } else {
+        Body.idleMove();
+      }
+    }
     scheduleMoves();
   }, 12000 + Math.random() * 22000);
 }
 
 // a long enough headpat gets a word out of her, now and then
 let patSpoke = 0;
+let lastSparkle = 0;
 function onHeadpat(ms) {
+  if (ms > 1500 && Date.now() - lastSparkle > 700) {
+    lastSparkle = Date.now();
+    sparkles(2);
+    if (ms > 3000 && Math.random() < 0.4) floatHearts(1);
+  }
   if (ms > 2500 && Date.now() - patSpoke > 120000 && Math.random() < 0.5) {
     patSpoke = Date.now();
     react('headpat');
@@ -553,6 +821,7 @@ D?.onCursor?.(({ x, y }) => { if (ready && !press) Body.cursor(x, y); });
 
 D?.onCommand((cmd) => {
   if (cmd === 'go-inside') goInside();
+  else if (cmd === 'kick') { Body.kick(); showEmote(Math.random() < 0.5 ? 'star' : 'note'); sound('pop'); }
   else if (cmd === 'talk') openTalk();
 });
 

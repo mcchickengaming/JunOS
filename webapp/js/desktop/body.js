@@ -97,11 +97,23 @@ export function init({ stageEl, faceAnchor, onHeadpat, onEmote }) {
 }
 
 export function walking(dir) {
+  const was = walkDir;
   walkDir = dir ? Math.sign(dir) : 0;
   if (walkDir) {
     Live2D.startLoop('ParamTailWiggle', TUNE.tail, TUNE.strideMs / 2);
   } else {
     Live2D.stopLoop('ParamTailWiggle');
+    // stopping: her body carries on a little and sways back, the tail
+    // and hair follow through (the rig's physics ride on BodyZ/X)
+    if (was) {
+      setTimeout(() => Live2D.playSequence([
+        { dt_ms: 0, params: { ParamBodyZ: 0.25 * was, ParamBodyX: 0.15 * was } },
+        { dt_ms: 220, params: { ParamBodyZ: -0.12 * was, ParamBodyX: -0.05 * was } },
+        { dt_ms: 260, params: { ParamBodyZ: 0, ParamBodyX: 0 } },
+      ]), 260);
+      Live2D.startLoop('ParamTailWiggle', 0.6, 500);
+      setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 1100);
+    }
   }
 }
 
@@ -154,6 +166,35 @@ export function setMood(m, daypart) {
   // a happy walk is quicker on its feet, an upset one drags
   const stride = { happy: 950, neutral: 1100, nervous: 1000, upset: 1350, scared: 1250 }[mood] || 1100;
   TUNE.strideMs = stride;
+}
+
+export function currentMood() { return mood; }
+
+// in one of her spots (desktop/props.js): settled down, legs tucked,
+// the spot's front hides the rest
+let sitting = null;
+export function sit(kind) { sitting = kind || null; }
+export function sittingIn() { return sitting; }
+
+// the ball: a little run-up kick
+export function kick() {
+  busyMove = performance.now() + 1200;
+  act('[A:emote|excited]');
+  Live2D.playSequence([
+    { dt_ms: 0, params: { ParamLegR: -0.5, ParamBodyZ: -0.15, ParamArmLRot: 0.3 } },
+    { dt_ms: 180, params: { ParamLegR: 0.8, ParamBodyZ: 0.2, ParamArmLRot: -0.3 } },
+    { dt_ms: 300, params: { ParamLegR: 0, ParamBodyZ: 0, ParamArmLRot: 0 } },
+  ]);
+}
+
+// landed half off the screen: she leans back in to look at where she is
+export function peek(edge) {
+  const s = -Math.sign(edge);
+  busyMove = performance.now() + 1800;
+  Live2D.playSequence([
+    { dt_ms: 0, params: { ParamHeadX: 0.8 * s, ParamBodyX: 0.35 * s, ParamHeadZ: 0.25 * s, ParamEyeballLX: s, ParamEyeballRX: s } },
+    { dt_ms: 1500, params: { ParamHeadX: 0, ParamBodyX: 0, ParamHeadZ: 0, ParamEyeballLX: 0, ParamEyeballRX: 0 } },
+  ]);
 }
 
 export function setWatch(factor) { watch = Math.max(0, Number(factor) || 0); }
@@ -226,109 +267,337 @@ export function cursorMovedWithin(ms) {
 // ---------------------------------------------------------------
 // headpats: rub the top of her head back and forth with the mouse
 
-function overHead(x, y) {
-  const a = anchor();
-  if (!a) return false;
-  const top = a.y - a.modelH * 0.09;
-  return Math.abs(x - a.x) < a.headW * 0.55 && y > top - 10 && y < a.y + a.modelH * 0.05;
-}
 
+// hovering (no button): a rub back and forth. on her head it's a
+// headpat, on an ear an ear rub, on her side (fast) a tickle.
+// returns the kind of rub going on, or null
 export function pointerMove(x, y) {
-  if (carried) return false;
+  if (carried) return null;
   const now = performance.now();
-  if (!overHead(x, y)) {
+  const region = regionAt(x, y);
+  const kind = region && ['head', 'ear', 'side'].includes(region.kind) ? region.kind : null;
+  if (!kind || (pat && pat.kind !== kind)) {
     if (pat && now - pat.last > 500) endPat();
-    return false;
+    if (!kind) return null;
   }
-  if (!pat || now - pat.last > 600) {
-    pat = { started: 0, last: now, lastX: x, dir: 0, flips: 0, flipAt: now, travel: 0 };
-    return false;
+  if (!pat || pat.kind !== kind || now - pat.last > 600) {
+    pat = { kind, started: 0, last: now, lastX: x, dir: 0, flips: [], travel: 0 };
+    return null;
   }
   const dx = x - pat.lastX;
   pat.travel += Math.abs(dx);
   const dir = Math.sign(dx);
-  if (dir && pat.dir && dir !== pat.dir) { pat.flips++; pat.flipAt = now; }
+  if (dir && pat.dir && dir !== pat.dir) pat.flips.push(now);
+  pat.flips = pat.flips.filter(t => now - t < 1200);
   if (dir) pat.dir = dir;
   pat.lastX = x;
   pat.last = now;
-  // two turns back and forth over her head is a pat, not a fly-by
-  if (!pat.started && pat.flips >= 2 && pat.travel > 40) {
+  // two turns back and forth is a rub, not a fly-by. a tickle wants
+  // it quick: four turns inside a bit over a second
+  const need = kind === 'side' ? 4 : 2;
+  if (!pat.started && pat.flips.length >= need && pat.travel > 40) {
     pat.started = now;
-    emote('heart');
-    Actions.applyAction({ name: 'receive_headpat', kwargs: {} });
+    if (kind === 'head') {
+      emote('heart');
+      Actions.applyAction({ name: 'receive_headpat', kwargs: {} });
+    } else if (kind === 'ear') {
+      emote('heart');
+    }
   }
-  if (pat.started) {
+  if (!pat.started) return null;
+  if (kind === 'head') {
     const a = anchor();
     setHeld('ParamHeadpat', 1, 700);
     setHeld('ParamHeadpatY', clamp((x - a.x) / (a.headW * 0.5), -1, 1) * 0.35, 700);
     setHeld('ParamEyesHappy', 1, 900);
     setHeld('ParamBlush', 0.6, 1500);
     if (onPat) onPat(now - pat.started);
+  } else if (kind === 'ear') {
+    earRub();
+  } else {
+    tickle();
   }
-  return !!pat.started;
+  return kind;
 }
 
 function endPat() {
   pat = null;
 }
-export function patting() { return !!(pat && pat.started); }
+// a rub counts as going on for a moment after the pointer last moved
+const rubLive = () => !!(pat && pat.started && performance.now() - pat.last < 400);
+export function patting() { return rubLive() && pat.kind === 'head'; }
+export function rubbing() { return rubLive(); }
 
 // ---------------------------------------------------------------
-// pokes: a tap on her head, her cheek or her shoulder gets its own
-// little reaction. anywhere else is a tap to talk (desktop.js)
+// touch: where on her the pointer is, and what each spot does.
+//   click        a poke: head, cheek, nose, ear, shoulder, tail, hand
+//   hold         hold her hand (on a hand), a hug (on her body)
+//   rub          headpat (head), ear rub (ear), tickle (her side, fast)
+//   drag         pick her up (desktop.js)
+// on the real rig head, face and hands come from its own hit areas
+// (same ones live2d/touch.js uses), the rest from her proportions.
+// only these spots exist here, anything else on her is "body".
 
-let pokes = [];
-export function pokeRegion(x, y) {
-  const a = anchor();
-  if (!a) return null;
-  const dx = x - a.x, H = a.modelH;
-  const top = a.y - H * 0.09;
-  if (y >= top && y < a.y - H * 0.02 && Math.abs(dx) < a.headW * 0.55) return { kind: 'head', side: 0 };
-  if (y >= a.y - H * 0.02 && y < a.y + H * 0.12 && Math.abs(dx) < a.headW * 0.45) return { kind: 'cheek', side: Math.sign(dx) || 1 };
-  if (y >= a.y + H * 0.12 && y < a.y + H * 0.24 && Math.abs(dx) > a.headW * 0.4 && Math.abs(dx) < a.modelW * 0.45) {
-    return { kind: 'shoulder', side: Math.sign(dx) };
-  }
-  return null;
+let rigRegions = null;
+function buildRigRegions() {
+  const hands = Live2D.findDrawables(['armlhand', 'armrhand'], []);
+  if (!hands.length) return null;
+  return {
+    hands: new Set(hands),
+    tail: new Set(Live2D.findDrawables(['tail'], [])),
+    ears: new Set(Live2D.findDrawables(['ear'], ['earring'])),
+  };
 }
 
-// returns true when she's had enough pokes for one minute
+export function regionAt(x, y) {
+  const a = anchor();
+  if (!a) return null;
+  const dx = x - a.x, H = a.modelH, W = a.modelW, hw = a.headW;
+  const top = a.y - H * 0.09;
+  // her middle (the rig's own test, narrow) or one of the spots out at
+  // her sides: hands, sides, tail
+  const inBox = Math.abs(dx) < W * 0.5 && y >= top && y <= top + H;
+  if (!Live2D.isOverModel(x, y) && !(inBox && sideSpot(dx, y, a)) && !nearTail(x, y, a)) return null;
+  const side = Math.sign(dx) || 1;
+  if (Live2D.hasModel()) {
+    if (!rigRegions) rigRegions = buildRigRegions();
+    if (rigRegions) {
+      const hand = Live2D.drawableAt(x, y, rigRegions.hands, 12);
+      if (hand) return { kind: 'hand', side: hand.toLowerCase().includes('armlhand') ? 'left' : 'right' };
+      if (rigRegions.tail.size && Live2D.drawableAt(x, y, rigRegions.tail, 6)) return { kind: 'tail', side };
+      if (rigRegions.ears.size && Live2D.drawableAt(x, y, rigRegions.ears, 6)) return { kind: 'ear', side };
+    }
+  }
+  // the nose is a small spot in the middle of the face
+  if (Math.abs(dx) < hw * 0.09 && y > a.y + H * 0.025 && y < a.y + H * 0.06) return { kind: 'nose', side: 0 };
+  if (Live2D.hasModel() && Live2D.hitTest(x, y, HIT_FACE)) return { kind: 'cheek', side };
+  if (Live2D.hasModel() && Live2D.hitTest(x, y, HIT_HEAD)) return { kind: 'head', side: 0 };
+  // proportions, for the placeholder and whatever the rig's areas miss
+  if (y >= top && y < top + H * 0.045 && Math.abs(dx) > hw * 0.3 && Math.abs(dx) < hw * 0.7) return { kind: 'ear', side };
+  if (y >= top && y < a.y - H * 0.02 && Math.abs(dx) < hw * 0.55) return { kind: 'head', side: 0 };
+  if (y >= a.y - H * 0.02 && y < a.y + H * 0.12 && Math.abs(dx) < hw * 0.45) return { kind: 'cheek', side };
+  if (y >= a.y + H * 0.12 && y < a.y + H * 0.22 && Math.abs(dx) > hw * 0.4 && Math.abs(dx) < W * 0.45) return { kind: 'shoulder', side };
+  if (y >= a.y + H * 0.33 && y < a.y + H * 0.46 && Math.abs(dx) > W * 0.27 && Math.abs(dx) < W * 0.5) {
+    return { kind: 'hand', side: dx < 0 ? 'left' : 'right' };
+  }
+  if (y >= a.y + H * 0.2 && y < a.y + H * 0.36 && Math.abs(dx) > W * 0.16 && Math.abs(dx) < W * 0.33) return { kind: 'side', side };
+  if (nearTail(x, y, a)) return { kind: 'tail', side: 1 };
+  return { kind: 'body', side };
+}
+
+// the spots that stick out past the rig's narrow middle hit test
+function sideSpot(dx, y, a) {
+  const H = a.modelH, W = a.modelW, ax = Math.abs(dx);
+  return (y >= a.y + H * 0.12 && y < a.y + H * 0.46 && ax < W * 0.5);
+}
+
+const HIT_FACE = new Set(['HitAreaFaceStroke']);
+const HIT_HEAD = new Set(['HitAreaHeadpat']);
+// where her tail sticks out, for the placeholder (the rig has drawables)
+function nearTail(x, y, a) {
+  if (Live2D.hasModel()) return false;
+  const dx = x - a.x;
+  return dx > a.modelW * 0.28 && dx < a.modelW * 0.5 && y > a.y + a.modelH * 0.42 && y < a.y + a.modelH * 0.58;
+}
+
+// what the pointer looks like over each spot, so he can SEE what he
+// can do. an emoji drawn into an svg cursor, hotspot in the middle
+const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', body: '💬' };
+const cursorCache = {};
+export function cursorFor(kind) {
+  if (!kind || !CURSOR_ICON[kind]) return '';
+  if (!cursorCache[kind]) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><text x="16" y="24" font-size="22" text-anchor="middle">${CURSOR_ICON[kind]}</text></svg>`;
+    cursorCache[kind] = `url("data:image/svg+xml,${encodeURIComponent(svg)}") 16 16, pointer`;
+  }
+  return cursorCache[kind];
+}
+
+// a soft glow on the spot under the pointer: center + size, window px
+export function regionGlow(region) {
+  const a = anchor();
+  if (!a || !region) return null;
+  const H = a.modelH, W = a.modelW, hw = a.headW, s = region.side === 'left' ? -1 : region.side === 'right' ? 1 : region.side;
+  switch (region.kind) {
+    case 'head': return { x: a.x, y: a.y - H * 0.06, r: hw * 0.5 };
+    case 'ear': return { x: a.x + s * hw * 0.5, y: a.y - H * 0.075, r: hw * 0.22 };
+    case 'cheek': return { x: a.x + s * hw * 0.25, y: a.y + H * 0.06, r: hw * 0.2 };
+    case 'nose': return { x: a.x, y: a.y + H * 0.045, r: hw * 0.1 };
+    case 'shoulder': return { x: a.x + s * W * 0.3, y: a.y + H * 0.17, r: hw * 0.28 };
+    case 'hand': return { x: a.x + s * W * 0.38, y: a.y + H * 0.4, r: hw * 0.25 };
+    case 'side': return { x: a.x + s * W * 0.25, y: a.y + H * 0.28, r: hw * 0.26 };
+    case 'tail': return { x: a.x + W * 0.38, y: a.y + H * 0.5, r: hw * 0.25 };
+    default: return null;
+  }
+}
+
+let pokes = [];
+let tickles = 0;
+let lastWave = 0;
+
+// a click on one spot. true when she's had enough poking for now
 export function poke(region) {
   const now = performance.now();
   pokes = pokes.filter(t => now - t < 5000);
   pokes.push(now);
   busyMove = now + 1500;
-  if (pokes.length >= 4) {
+  if (pokes.length >= 5) {
     pokes = [];
-    for (const a of Actions.parseActions('[A:emote|angry] [A:look_at|user]')) Actions.applyAction(a);
+    act('[A:emote|angry] [A:look_at|user]');
     setHeld('ParamBlush', 0.5, 2500);
-    emote('bonk');
+    emote('anger');
     return true;
   }
-  if (region.kind === 'head') {
-    for (const a of Actions.parseActions('[A:emote|happy] [A:ear_wiggle]')) Actions.applyAction(a);
-    Live2D.playSequence([
-      { dt_ms: 0, params: { ParamHeadY: -0.35, ParamEyeOpen: -0.7 } },
-      { dt_ms: 260, params: { ParamHeadY: 0, ParamEyeOpen: 0 } },
-    ]);
-    emote('note');
-  } else if (region.kind === 'cheek') {
-    for (const a of Actions.parseActions('[A:emote|pout] [A:look_at|user]')) Actions.applyAction(a);
-    setHeld('ParamBlush', 0.8, 2000);
-    Live2D.playSequence([
-      { dt_ms: 0, params: { ParamHeadZ: -0.25 * region.side, ParamHeadX: -0.2 * region.side } },
-      { dt_ms: 900, params: { ParamHeadZ: 0, ParamHeadX: 0 } },
-    ]);
-    emote('bang');
-  } else {
-    // a tap on the shoulder: she turns to see who it is
-    const s = region.side;
-    Live2D.playSequence([
-      { dt_ms: 0, params: { ParamHeadX: 0.7 * s, ParamBodyX: 0.25 * s, ParamEyeballLX: s, ParamEyeballRX: s } },
-      { dt_ms: 1400, params: { ParamHeadX: 0, ParamBodyX: 0, ParamEyeballLX: 0, ParamEyeballRX: 0 } },
-    ]);
-    emote('question');
+  const s = region.side === 'left' ? -1 : region.side === 'right' ? 1 : (region.side || 1);
+  switch (region.kind) {
+    case 'head':
+      act('[A:emote|happy] [A:ear_wiggle]');
+      Live2D.playSequence([
+        { dt_ms: 0, params: { ParamHeadY: -0.35, ParamEyeOpen: -0.7 } },
+        { dt_ms: 260, params: { ParamHeadY: 0, ParamEyeOpen: 0 } },
+      ]);
+      emote('note');
+      break;
+    case 'cheek':
+      act('[A:emote|pout] [A:look_at|user]');
+      setHeld('ParamBlush', 0.8, 2000);
+      Live2D.playSequence([
+        { dt_ms: 0, params: { ParamHeadZ: -0.25 * s, ParamHeadX: -0.2 * s } },
+        { dt_ms: 900, params: { ParamHeadZ: 0, ParamHeadX: 0 } },
+      ]);
+      emote('bang');
+      break;
+    case 'nose':
+      // boop: eyes cross, a squint, then a giggle
+      act('[A:shocked]');
+      Live2D.playSequence([
+        { dt_ms: 0, params: { ParamEyeballLX: 0.6, ParamEyeballRX: -0.6, ParamHeadY: -0.2 } },
+        { dt_ms: 450, params: { ParamEyeballLX: 0, ParamEyeballRX: 0, ParamHeadY: 0, ParamEyesHappy: 1 } },
+        { dt_ms: 900, params: { ParamEyesHappy: 0 } },
+      ]);
+      emote('sparkle');
+      break;
+    case 'ear':
+      Live2D.playSequence([
+        { dt_ms: 0, params: { [s < 0 ? 'ParamEarL' : 'ParamEarR']: -1, ParamHeadZ: 0.15 * s } },
+        { dt_ms: 220, params: { [s < 0 ? 'ParamEarL' : 'ParamEarR']: 0.6 } },
+        { dt_ms: 200, params: { [s < 0 ? 'ParamEarL' : 'ParamEarR']: 0, ParamHeadZ: 0 } },
+      ]);
+      emote('question');
+      break;
+    case 'tail':
+      act('[A:emote|surprised]');
+      Live2D.playSequence([
+        { dt_ms: 0, params: { Param_Angle_Rotation_1_TailMain: 25, ParamBodyY: 0.4, ParamHeadX: 0.6 } },
+        { dt_ms: 300, params: { Param_Angle_Rotation_1_TailMain: -15, ParamBodyY: 0 } },
+        { dt_ms: 400, params: { Param_Angle_Rotation_1_TailMain: 0, ParamHeadX: 0 } },
+      ]);
+      Live2D.startLoop('ParamTailWiggle', 1, 300);
+      setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 1500);
+      emote('bang');
+      break;
+    case 'hand':
+      // a quick squeeze
+      handhold(region.side, true);
+      setTimeout(() => handhold(region.side, false), 700);
+      emote('heart');
+      break;
+    case 'side':
+      tickle();
+      break;
+    default:
+      // shoulder: she turns to see who it is
+      Live2D.playSequence([
+        { dt_ms: 0, params: { ParamHeadX: 0.7 * s, ParamBodyX: 0.25 * s, ParamEyeballLX: s, ParamEyeballRX: s } },
+        { dt_ms: 1400, params: { ParamHeadX: 0, ParamBodyX: 0, ParamEyeballLX: 0, ParamEyeballRX: 0 } },
+      ]);
+      emote('question');
   }
   return false;
+}
+
+function act(tags) { for (const a of Actions.parseActions(tags)) Actions.applyAction(a); }
+
+// hold her hand: the rig's own hand-holding, as long as he holds on
+let holdingHand = null;
+export function handhold(side, on) {
+  const s = side === 'left' ? 'left' : 'right';
+  Actions.applyAction({ name: 'handhold', kwargs: { side: s, enable: on ? 'true' : 'false' } });
+  if (on) {
+    holdingHand = s;
+    setHeld('ParamBlush', 0.5, 2500);
+    setHeld('ParamEyesHappy', 0.8, 2500);
+  } else if (holdingHand === s) {
+    holdingHand = null;
+  }
+}
+
+// a hug: she closes her eyes, blushes, leans into it. desktop.js
+// keeps calling hugTick() while the button is held
+let hugging = false;
+export function hug(on) {
+  hugging = on;
+  if (on) {
+    act('[A:emote|happy]');
+    emote('heart');
+  } else {
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamBodyY: 0.3, ParamEyesHappy: 1 } },
+      { dt_ms: 500, params: { ParamBodyY: 0, ParamEyesHappy: 0.5 } },
+      { dt_ms: 900, params: { ParamEyesHappy: 0 } },
+    ]);
+  }
+}
+export function hugTick() {
+  if (!hugging) return;
+  setHeld('ParamEyeOpen', -0.9, 600);
+  setHeld('ParamEyesHappy', 1, 600);
+  setHeld('ParamBlush', 0.9, 900);
+  setHeld('ParamHeart', 1, 600);
+  setHeld('ParamHeadZ', 0.18, 600);
+  setHeld('ParamBodyY', -0.25, 600);
+}
+
+// tickled: she squirms and laughs. three in a row and she's had enough
+let tickleUntil = 0;
+export function tickle() {
+  const now = performance.now();
+  if (now < tickleUntil) return;
+  tickleUntil = now + 1200;
+  tickles = now - lastTickle < 8000 ? tickles + 1 : 1;
+  lastTickle = now;
+  busyMove = now + 1500;
+  if (tickles >= 4) {
+    tickles = 0;
+    act('[A:emote|pout]');
+    emote('anger');
+    return;
+  }
+  act('[A:emote|laughing]');
+  Live2D.startLoop('ParamBodyZ', 0.3, 180);
+  Live2D.startLoop('ParamHeadZ', 0.15, 230);
+  setTimeout(() => { Live2D.stopLoop('ParamBodyZ'); Live2D.stopLoop('ParamHeadZ'); }, 1100);
+  emote('laugh');
+}
+let lastTickle = 0;
+
+// rubbing her ear: ears flutter, eyes go soft
+export function earRub() {
+  const now = performance.now();
+  busyMove = now + 800;
+  setHeld('ParamEarsWiggle', 1, 500);
+  setHeld('ParamEyesHappy', 1, 900);
+  setHeld('ParamEyeOpen', -0.5, 700);
+  setHeld('ParamBlush', 0.4, 1200);
+}
+
+// she waved; if he waves back (wiggles the pointer near her) she lights up
+export function waved() { lastWave = performance.now(); }
+export function waveBackWindow() { return performance.now() - lastWave < 5000; }
+export function wavedBack() {
+  lastWave = 0;
+  act('[A:heart_eyes] [A:emote|excited]');
+  emote('hearts');
 }
 
 // ---------------------------------------------------------------
@@ -388,7 +657,7 @@ export function play(kind) {
   busyMove = performance.now() + (MOVE_MS[kind] || 1500);
   if (MOVE_EMOTE[kind] && Math.random() < 0.6) emote(MOVE_EMOTE[kind]);
   if (MOVES[kind]) Live2D.playSequence(MOVES[kind]);
-  else if (kind === 'wave') { for (const a of Actions.parseActions('[A:wave] [A:emote|happy]')) Actions.applyAction(a); }
+  else if (kind === 'wave') { for (const a of Actions.parseActions('[A:wave] [A:emote|happy]')) Actions.applyAction(a); waved(); }
   else if (kind === 'tail') { Live2D.startLoop('ParamTailWiggle', 1, 600); setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 1800); }
   else if (kind === 'ears') { for (const a of Actions.parseActions('[A:ear_wiggle]')) Actions.applyAction(a); }
 }
@@ -462,6 +731,14 @@ function frame(t) {
     }
     // eased out, the 300 ms holds lapse and idle takes everything back
     return;
+  }
+
+  // in a spot: keep her settled (the idle would straighten her up)
+  if (sitting) {
+    const deep = sitting === 'bed' || sitting === 'beanbag';
+    setHeld('ParamBodyY', deep ? -1 : -0.7, 400);
+    setHeld('ParamLegL', 0.35, 400);
+    setHeld('ParamLegR', 0.35, 400);
   }
 
   // standing: whatever has her attention right now, if anything
