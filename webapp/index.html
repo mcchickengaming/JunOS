@@ -647,6 +647,12 @@ html[data-pre-auth] #app { visibility: hidden; }
   .touch-block { margin: 0 0 16px; }
   .touch-today { margin: 4px 0 6px; padding-left: 18px; }
   .touch-today li { margin: 2px 0; }
+  .touch-all { margin-top: 10px; }
+  .touch-all summary { cursor: pointer; font-weight: 600; }
+  .touch-all-list { list-style: none; margin: 6px 0 0; padding: 0; }
+  .touch-all-list li { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--track-empty, rgba(255,255,255,.08)); }
+  .touch-all-list .n { margin-left: auto; font-weight: 600; color: var(--accent, #e58cd2); }
+  .touch-all-list .next { opacity: .6; font-size: .85em; min-width: 9em; text-align: right; }
   .touch-forget { margin-top: 4px; font: inherit; font-size: .85em; padding: 4px 10px; border-radius: 999px;
     border: 1px solid var(--accent, #e58cd2); background: transparent; color: var(--accent, #e58cd2); cursor: pointer; }
 </style>
@@ -654,7 +660,7 @@ html[data-pre-auth] #app { visibility: hidden; }
 
 <script type="module" src="js/core/pwa.js?v=2"></script>
 <script src="js/boot-gate.js?v=29"></script>
-<script type="module" src="js/app.js?v=150"></script>
+<script type="module" src="js/app.js?v=151"></script>
 </head>
 <body>
 
@@ -1076,6 +1082,11 @@ html[data-pre-auth] #app { visibility: hidden; }
             <div class="set-row-desc" id="touchEmpty">No headpats yet today.</div>
             <div class="set-row-desc" id="touchOff" hidden>She isn't told about these right now (TOUCH_AWARE=off).</div>
             <button type="button" class="touch-forget" id="touchForget" hidden>Forget today's touches</button>
+            <details class="touch-all" id="touchAllWrap" hidden>
+              <summary>All-time</summary>
+              <div class="set-row-desc">Every touch since you met. She keeps quiet count and only mentions the big ones (100, 500, 1,000, 5,000, 10,000...).</div>
+              <ul class="touch-all-list" id="touchAll"></ul>
+            </details>
           </div>
           <div class="mood-controls">
             <div class="mood-row mood-row--affection">

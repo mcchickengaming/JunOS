@@ -98,7 +98,8 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   note), and once a day at Friend+ after 3 pm a shy "not that I was waiting" slip on a day with no touches.
   Notable days become a memory note the next day. Warm touches nudge her mood a little (-1 tension per 45 s,
   +1 affection per 90 s, caps 4/3 a day; nothing at Stranger, only tension at Familiar). Settings > Memory:
-  "Today's touches" in words + "Forget today's touches". `TOUCH_AWARE=off` leaves it out of her prompt and mood.
+  "Today's touches" in words + "Forget today's touches" + an "All-time" list with counts and the next milestone.
+  Milestones go 1-5-10 (`TOUCH_MILESTONES`: 100, 500, 1,000, 5,000, 10,000...), owner's call: rare, never a scoreboard. `TOUCH_AWARE=off` leaves it out of her prompt and mood.
   Tests: `.github/scripts/touch.test.php`.
 
 ## Everything is customizable

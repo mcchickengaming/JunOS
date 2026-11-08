@@ -10,7 +10,7 @@ $userId = (int)$user['id'];
 $method = require_method('GET', 'POST', 'DELETE');
 $tz = isset($_GET['tz']) && is_numeric($_GET['tz']) ? max(-840, min(840, (int)$_GET['tz'])) : 0;
 
-if ($method === 'GET') json_out(touch_today_summary($userId, $tz) + ['enabled' => touch_enabled()]);
+if ($method === 'GET') json_out(touch_today_summary($userId, $tz) + ['all_time' => touch_all_time($userId), 'enabled' => touch_enabled()]);
 
 if ($method === 'DELETE') {
     touch_forget_day($userId, $tz);

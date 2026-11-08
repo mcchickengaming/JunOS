@@ -224,6 +224,23 @@ async function loadTouches() {
     document.getElementById('touchEmpty').hidden = (t.items || []).length > 0;
     document.getElementById('touchForget').hidden = !(t.items || []).length;
     document.getElementById('touchOff').hidden = t.enabled !== false;
+    const all = t.all_time || [];
+    const allList = document.getElementById('touchAll');
+    document.getElementById('touchAllWrap').hidden = !all.length;
+    allList.textContent = '';
+    for (const row of all) {
+      const li = document.createElement('li');
+      const label = document.createElement('span');
+      label.textContent = row.label;
+      const n = document.createElement('span');
+      n.className = 'n';
+      n.textContent = Number(row.n).toLocaleString();
+      const next = document.createElement('span');
+      next.className = 'next';
+      next.textContent = row.next ? `next milestone: ${Number(row.next).toLocaleString()}` : '';
+      li.append(label, n, next);
+      allList.appendChild(li);
+    }
   } catch (e) { /* offline */ }
 }
 document.getElementById('touchForget')?.addEventListener('click', async () => {

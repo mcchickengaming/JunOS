@@ -43,9 +43,11 @@ const TOUCH_KINDS = [
 ];
 
 // milestones she may say out loud as a real number, all-time, only for
-// the touches that mean something to her
+// the touches that mean something to her. 1-5-10 steps (owner, Nov 8):
+// rare enough that each one feels big, never a scoreboard. the full
+// counts are his to see in Settings > Memory, not hers to recite
 const TOUCH_MILESTONE_KINDS = ['headpat', 'hand', 'hug', 'earrub', 'boop', 'cheekrub', 'tailrub'];
-const TOUCH_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000];
+const TOUCH_MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
 const TOUCH_KEEP_DAYS = 14;
 
 // the mood nudge. a long cuddle eases her a little; never a big swing
@@ -440,6 +442,26 @@ function touch_today_summary(int $userId, int $tz): array {
     $items = [];
     foreach ($rows as $k => $r) $items[] = 'He ' . TOUCH_KINDS[$k]['did'] . ' ' . touch_amount_word((int)$r['n']);
     return ['day' => $loc['day'], 'items' => $items];
+}
+
+// all-time, for him: every kind she's had, with the count and the next
+// milestone she'll notice. numbers are fine here, this is his menu
+function touch_all_time(int $userId): array {
+    $st = db()->prepare('SELECT kind, n FROM touch_total WHERE user_id=? AND n > 0 ORDER BY n DESC');
+    $st->execute([$userId]);
+    $out = [];
+    foreach ($st->fetchAll() as $r) {
+        if (!isset(TOUCH_KINDS[$r['kind']])) continue;
+        $n = (int)$r['n'];
+        $next = null;
+        if (in_array($r['kind'], TOUCH_MILESTONE_KINDS, true)) {
+            foreach (TOUCH_MILESTONES as $m) if ($m > $n) { $next = $m; break; }
+        }
+        $noun = TOUCH_KINDS[$r['kind']]['noun'];
+        $out[] = ['kind' => $r['kind'], 'label' => mb_strtoupper(mb_substr($noun, 0, 1)) . mb_substr($noun, 1),
+                  'n' => $n, 'next' => $next];
+    }
+    return $out;
 }
 
 function touch_forget_day(int $userId, int $tz): void {

@@ -85,11 +85,14 @@ $ctx = touch_context($u, 0);
 $has('100th headpat: she counted', $ctx, 'your 100th headpat since you met');
 $eq('and it stays with her', count(array_filter($notes, fn($n) => str_contains($n[1], '100th headpat'))), 1);
 $has('only once', touch_context($u, 0), 'milestone', false);
+$pats = array_values(array_filter(touch_all_time($u), fn($r) => $r['kind'] === 'headpat'))[0] ?? [];
+$eq('all-time for his menu, with the next one she notices', [$pats['label'] ?? '', $pats['next'] ?? null], ['Headpats', 500]);
+$eq('1-5-10 steps', TOUCH_MILESTONES, [100, 500, 1000, 5000, 10000, 50000, 100000]);
 touch_record($u, [['kind' => 'headpat', 'n' => 5]]);
 $has('not again until the next one', touch_context($u, 0), 'milestone', false);
 $has('not on a touch reaction', (function () use ($u) {
-    db()->exec("UPDATE touch_state SET moment='{\"kind\":\"hug\",\"n\":250}'");
-    $a = touch_context($u, 0, null, true); return $a . (str_contains(touch_context($u, 0), '250th hug') ? 'LATER' : ''); })(), 'LATER');
+    db()->exec("UPDATE touch_state SET moment='{\"kind\":\"hug\",\"n\":500}'");
+    $a = touch_context($u, 0, null, true); return $a . (str_contains(touch_context($u, 0), '500th hug') ? 'LATER' : ''); })(), 'LATER');
 
 // yesterday + habits: move today's rows back a day, fill two weeks
 db()->exec("UPDATE touch_day SET day='" . touch_day_shift($today, -1) . "'");
