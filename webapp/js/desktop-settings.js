@@ -77,6 +77,83 @@ function buildColors() {
   range.value = theme['--shadow-alpha'] ?? 0.42;
 }
 buildColors();
+
+// ---------------------------------------------------------------
+// see-through: how solid each background is, a text outline, and
+// fading the chat bar while it isn't used
+
+const ALPHAS = [
+  ['Chat bar background', 'The line you type in.', '--panel-a'],
+  ['Speech card background', 'Behind her lines.', '--card-a'],
+  ['Bubble and label background', 'Thought icons, the thinking cloud, the action labels.', '--bubble-a'],
+  ['Outlines and accents', 'The colored edges and borders.', '--edge-a'],
+];
+const OUTLINES = {
+  none: 'none',
+  soft: '0 1px 2px rgba(0, 0, 0, .9), 0 0 3px rgba(0, 0, 0, .8)',
+  strong: '0 0 2px #000, 0 0 2px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000',
+};
+const PRESETS = {
+  solid: { '--panel-a': 1, '--card-a': 1, '--bubble-a': 1, '--edge-a': 1, outline: 'none' },
+  glass: { '--panel-a': 0.45, '--card-a': 0.45, '--bubble-a': 0.5, '--edge-a': 0.8, outline: 'soft' },
+  clear: { '--panel-a': 0, '--card-a': 0, '--bubble-a': 0, '--edge-a': 0, outline: 'soft' },
+};
+
+function buildAlphas() {
+  const host = document.getElementById('alphaRows');
+  host.innerHTML = '';
+  const theme = readTheme();
+  for (const [label, hint, key] of ALPHAS) {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '8px';
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.min = '0';
+    range.max = '1';
+    range.step = '0.05';
+    range.value = theme[key] ?? 1;
+    const pct = document.createElement('span');
+    pct.className = 'pct';
+    pct.textContent = Math.round(range.value * 100) + '%';
+    range.addEventListener('input', () => {
+      const t = readTheme();
+      t[key] = String(range.value);
+      writeTheme(t);
+      pct.textContent = Math.round(range.value * 100) + '%';
+    });
+    wrap.append(range, pct);
+    host.appendChild(row(label, hint, wrap));
+  }
+  const outline = document.getElementById('outline');
+  outline.value = theme.outline || 'none';
+  document.getElementById('fadeChat').checked = !!theme.fadeChat;
+}
+buildAlphas();
+document.getElementById('outline').addEventListener('change', (e) => {
+  const t = readTheme();
+  t.outline = e.target.value;
+  t['--outline'] = OUTLINES[e.target.value] || 'none';
+  writeTheme(t);
+});
+document.getElementById('fadeChat').addEventListener('change', (e) => {
+  const t = readTheme();
+  t.fadeChat = e.target.checked;
+  writeTheme(t);
+});
+for (const [id, name] of [['presetSolid', 'solid'], ['presetGlass', 'glass'], ['presetClear', 'clear']]) {
+  document.getElementById(id).addEventListener('click', () => {
+    const t = readTheme();
+    const p = PRESETS[name];
+    for (const [k, v] of Object.entries(p)) if (k.startsWith('--')) t[k] = String(v);
+    t.outline = p.outline;
+    t['--outline'] = OUTLINES[p.outline];
+    writeTheme(t);
+    buildAlphas();
+  });
+}
+
 document.getElementById('shadowRange').addEventListener('input', (e) => {
   const t = readTheme();
   t['--shadow-alpha'] = String(e.target.value);
@@ -85,6 +162,7 @@ document.getElementById('shadowRange').addEventListener('input', (e) => {
 document.getElementById('resetColors').addEventListener('click', () => {
   writeTheme({});
   buildColors();
+  buildAlphas();
 });
 
 // ---------------------------------------------------------------

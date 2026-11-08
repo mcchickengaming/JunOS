@@ -38,6 +38,9 @@
   .adds { display: flex; flex-wrap: wrap; gap: 8px; }
   .hint { color: var(--muted); font-size: 12.5px; margin: 6px 0; }
   .stay { font-size: 12px; color: var(--accent); }
+  select.btn { padding: 6px 8px; }
+  input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
+  .pct { width: 38px; text-align: right; color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -73,6 +76,17 @@
 <section id="tab-colors" hidden>
   <p class="hint">Click a color wheel to pick. Right-click it to go back to the default.</p>
   <div id="colorRows"></div>
+  <h2>See-through</h2>
+  <p class="hint">Turn the backgrounds down and her words float on their own, so she doesn't cover what's behind her.
+    A text outline keeps them readable over anything.</p>
+  <p class="adds"><button type="button" class="btn" id="presetSolid">Solid</button>
+    <button type="button" class="btn" id="presetGlass">Half see-through</button>
+    <button type="button" class="btn" id="presetClear">Fully see-through</button></p>
+  <div id="alphaRows"></div>
+  <div class="row"><div class="what"><b>Text outline</b><span>A dark edge around the letters.</span></div>
+    <select id="outline" class="btn"><option value="none">None</option><option value="soft">Soft</option><option value="strong">Strong</option></select></div>
+  <div class="row"><div class="what"><b>Fade the chat bar</b><span>Almost invisible until your mouse is on it or you're typing.</span></div>
+    <input type="checkbox" id="fadeChat"></div>
   <h2>Shadow</h2>
   <div class="row"><div class="what"><b>Shadow under her feet</b><span>How dark it is.</span></div><input type="range" id="shadowRange" min="0" max="0.8" step="0.02"></div>
   <p><button type="button" class="btn danger" id="resetColors">Reset all colors</button></p>
@@ -89,6 +103,6 @@
   <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=2"></script>
+<script type="module" src="js/desktop-settings.js?v=3"></script>
 </body>
 </html>

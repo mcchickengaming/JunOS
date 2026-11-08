@@ -52,6 +52,7 @@ function applyTheme() {
   const root = document.documentElement;
   root.removeAttribute('style');
   for (const [k, v] of Object.entries(t)) if (/^--[a-z-]+$/.test(k)) root.style.setProperty(k, String(v));
+  root.classList.toggle('fade-chat', !!t.fadeChat);
 }
 applyTheme();
 window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) applyTheme(); });
