@@ -6,8 +6,8 @@ companion of Jun from *My Dystopian Robot Girlfriend*. This fork adds features f
 
 ## The owner
 - Not a programmer. Explain steps in plain words, give exact commands to paste, one step at a time.
-- PowerShell commands go in ONE code block, one command per line, nothing else inside it (no numbers,
-  no comments), so he can copy the whole block and paste it in one go.
+- PowerShell commands: each command in its OWN code block (the update is 3 blocks: `git pull`,
+  `.\start.ps1 stop`, `.\start.ps1`), nothing else inside a block, so each copies cleanly on its own.
 - Runs Windows. Install: `E:\MDRG Proto\JunOS 1.3.2`. GPU RTX 4060 (8 GB VRAM), 16 GB RAM.
 - Brain: llama.cpp with the E4B Q4_K_M fine-tune. Don't add anything that needs more VRAM at the same time
   as the brain; load heavy tools on demand and unload after.
@@ -15,10 +15,14 @@ companion of Jun from *My Dystopian Robot Girlfriend*. This fork adds features f
 ## Workflow
 - All work goes on branch **`jun-dev`**. `main` mirrors upstream and stays untouched.
 - Commit as `mcchickengaming <mcchickengaming@users.noreply.github.com>`, push to `origin jun-dev`.
-- The owner updates his PC with, in the install folder:
+- The owner updates his PC with, in the install folder, one block each:
   ```
   git pull
+  ```
+  ```
   .\start.ps1 stop
+  ```
+  ```
   .\start.ps1
   ```
   then Ctrl+F5 in the browser. Never tell him to use the Jun OS app's **Update** button: it switches the
