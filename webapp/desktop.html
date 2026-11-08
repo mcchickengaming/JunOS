@@ -111,6 +111,10 @@
   }
 
   /* the spot under the pointer glows softly */
+  .spots-view { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+  .spot-outline { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; box-sizing: border-box;
+    border: 1.5px solid var(--spot-outline, #ff78be); opacity: .75; display: flex; align-items: center; justify-content: center;
+    font: 700 9px/1 Arial, Helvetica, sans-serif; color: #fff; text-shadow: 0 0 3px #000; white-space: nowrap; overflow: visible; }
   .glow { position: absolute; z-index: 4; pointer-events: none; border-radius: 50%; transform: translate(-50%, -50%) scale(.8);
     background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 28%, transparent), transparent 85%);
     opacity: 0; transition: opacity .35s ease, transform .35s ease; }
@@ -162,6 +166,10 @@
     display: flex; align-items: center; justify-content: center; text-align: center; text-shadow: 0 1px 2px #000; min-width: 16px; min-height: 16px; }
   .calib-spot:active { cursor: grabbing; background: rgba(236, 0, 84, .35); }
   /* a pair with its own left and right: dashed, so it's clear they move apart */
+  .calib-spot.off { opacity: .35; border-style: dashed; text-decoration: line-through; }
+  .calib-bar button:disabled { opacity: .45; cursor: default; }
+  .calib-on { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 6px; font-weight: 500; }
+  .calib-on label { margin: 0; }
   .calib-spot.auto { pointer-events: none; border-style: dotted; border-color: #8fd3ff; background: rgba(143, 211, 255, .18); }
   .calib-spot.unlinked { border-style: dashed; border-color: #ffb400; background: rgba(255, 180, 0, .18); }
   .calib-bar label { display: flex; align-items: center; gap: 4px; margin-right: 4px; cursor: pointer; }
@@ -218,6 +226,7 @@
 <div class="emote" id="emote" aria-hidden="true"></div>
 <div class="cloud" id="cloud" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="glow" id="glow" aria-hidden="true"></div>
+<div class="spots-view" id="spotsView" aria-hidden="true" hidden></div>
 <div class="ring" id="ring" aria-hidden="true"></div>
 <div class="action-label" id="actionLabel" aria-hidden="true"></div>
 <div class="zzz" id="zzz" hidden aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
@@ -227,6 +236,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=32"></script>
+<script type="module" src="js/desktop.js?v=33"></script>
 </body>
 </html>

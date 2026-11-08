@@ -11,8 +11,8 @@
 // every number that shapes a move is in TUNE, so a walk that looks
 // off on the real rig is a one-line change.
 
-import * as Actions from '../live2d/actions.js?v=101';
-import * as Live2D from '../live2d/live2d.js?v=91';
+import * as Actions from '../live2d/actions.js?v=102';
+import * as Live2D from '../live2d/live2d.js?v=92';
 
 export const TUNE = {
   turnDeg: 8,         // how far the figure turns toward where she walks
@@ -276,6 +276,8 @@ export function pointerMove(x, y) {
   const now = performance.now();
   const region = regionAt(x, y);
   const kind = region && ['head', 'ear', 'side', 'thigh', 'feet', 'tail'].includes(region.kind) ? region.kind : null;
+  // his hand on her tail: it stays put under it
+  if (kind === 'tail') Live2D.holdTail(700);
   if (!kind || (pat && pat.kind !== kind)) {
     if (pat && now - pat.last > 500) endPat();
     if (!kind) return null;
@@ -333,6 +335,7 @@ export function rubEffect(kind, ms, x) {
   } else if (kind === 'feet') {
     feetRub(ms);
   } else if (kind === 'tail') {
+    Live2D.holdTail(700);
     tailRub(ms);
   } else {
     tickle();
@@ -396,6 +399,8 @@ export function touchSpots() {
       // a pair can be unlinked: then the left one has its own place
       // (dx signed, as it is on screen) instead of mirroring the right.
       // nothing here assumes she's symmetrical
+      // switched off in Adjust touch spots: that spot catches nothing
+      if (o.off === true) spotCfg[k].off = true;
       const l = o.left;
       if (d.pair && l && [l.dx, l.dy, l.r].every(Number.isFinite)) spotCfg[k].left = { dx: l.dx, dy: l.dy, r: l.r, w: Number.isFinite(l.w) ? l.w : (d.w || 1) };
     }
@@ -408,6 +413,7 @@ export function saveTouchSpots(next) {
   for (const [k, v] of Object.entries(next || {})) {
     out[k] = round(v);
     if (v.left) out[k].left = round(v.left);
+    if (v.off) out[k].off = true;
   }
   try {
     if (next) localStorage.setItem(SPOTS_KEY, JSON.stringify(out)); else localStorage.removeItem(SPOTS_KEY);
@@ -476,12 +482,12 @@ export function regionAt(x, y) {
   if (!a) return null;
   // the tail first, where you can see it: pointing at it means it
   const rubbingTail = pat && pat.kind === 'tail' && performance.now() - pat.last < 600;
-  const following = tailFollows();
+  const following = tailFollows() && !touchSpots().tail?.off;
   if (following && onTail(x, y, 0)) return { kind: 'tail', side: 1 };
   // then the circles, closest center wins where two overlap
   let best = null;
   for (const [kind, c] of Object.entries(touchSpots())) {
-    if (kind === 'tail' && following) continue;
+    if (c.off || (kind === 'tail' && following)) continue;
     for (const side of c.pair ? [1, -1] : [1]) {
       const p = spotCircle(kind, side);
       const d = Math.hypot((x - p.x) / p.rx, (y - p.y) / p.r);
@@ -731,6 +737,7 @@ let tailHeld = false;
 export function tailGrab(on) {
   tailHeld = on;
   if (on) {
+    Live2D.holdTail(600);
     act('[A:emote|surprised]');
     Live2D.playSequence([
       { dt_ms: 0, params: { ParamBodyY: 0.45, ParamEarL: 1, ParamEarR: 1 } },
@@ -747,6 +754,7 @@ export function tailGrab(on) {
 }
 export function tailGrabTick(ms) {
   if (!tailHeld) return;
+  Live2D.holdTail(600);
   setHeld('Param_Angle_Rotation_1_TailMain', 18, 500);
   setHeld('ParamEarL', 0.8, 500);
   setHeld('ParamEarR', 0.8, 500);

@@ -1,9 +1,9 @@
 import { api, apiJson } from '../core/api.js?v=1';
 import { COLOR_GROUPS, ITEMS, VARIANTS, VARIANT_OWNER } from './catalog.js?v=5';
-import { activeAssets, authorizedAssets, queueWardrobe, saveColors } from './sync.js?v=31';
-import { applyColors, applyItems, applyVariants, itemDrawableIds } from './apply.js?v=31';
+import { activeAssets, authorizedAssets, queueWardrobe, saveColors } from './sync.js?v=32';
+import { applyColors, applyItems, applyVariants, itemDrawableIds } from './apply.js?v=32';
 import { colors, state, variantState } from './current.js?v=5';
-import * as Mods from '../mods/mods.js?v=102';
+import * as Mods from '../mods/mods.js?v=103';
 import { hooks } from './hooks.js?v=1';
 
 export function exportPreset() {

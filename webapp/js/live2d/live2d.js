@@ -3,7 +3,7 @@
 // builds a second copy of the module graph, and the two copies
 // don't share state.
 
-import { playSequence, releaseAll, resetIdle, renderIfDirty, setFidgetsEnabled, setMood, setMouthOverride, startIdle, stopIdle, tick } from './anim.js?v=85';
+import { holdTail, playSequence, releaseAll, resetIdle, renderIfDirty, setFidgetsEnabled, setMood, setMouthOverride, startIdle, stopIdle, tick } from './anim.js?v=86';
 import { bakeThumb } from './bake.js?v=2';
 import { cameraStates, captureCameraState, currentCameraMode, fitModel, loadPos, measureStage, rendererResolution, setCameraPreset as setRigCameraPreset, watchStageSize, writeCameraStates } from './camera.js?v=78';
 import { drawableAt, drawablesSpot, faceAnchor, findDrawables, hitTest, isOverModel } from './geometry.js?v=81';
@@ -16,7 +16,7 @@ import { drawableThumb, getDrawableTint, installVariantCompositor, listDrawables
 
 export {
   bakeThumb, cancelPending, debugParam, drawableAt, drawablesSpot, drawableThumb, faceAnchor, findDrawables, fitModel,
-  getDrawableTint, hitTest, hold, isOverModel, knows, listDrawables, opacityByPattern, playSequence, releaseAll, resetIdle, scheduleSequence,
+  getDrawableTint, hitTest, hold, holdTail, isOverModel, knows, listDrawables, opacityByPattern, playSequence, releaseAll, resetIdle, scheduleSequence,
   screenByPattern, setDrawableOpacity, setDrawableOrderBelow, setDrawableScreen,
   setDrawableTexture, setDrawableTextures, setDrawableTint, setFidgetsEnabled, setMood, setMouthOverride,
   setNow, setOnMissingParam, setTarget, startIdle, startLoop, stopAllLoops, stopIdle, stopLoop,

@@ -17,15 +17,15 @@ import * as ChatAPI from './core/chat-api.js?v=7';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
-import * as Gauges from './core/speech-card.js?v=20';
-import { configureTts, say } from './core/speech-card.js?v=20';
+import * as Gauges from './core/speech-card.js?v=21';
+import { configureTts, say } from './core/speech-card.js?v=21';
 import { localTimeString } from './core/util.js?v=1';
-import * as Actions from './live2d/actions.js?v=101';
+import * as Actions from './live2d/actions.js?v=102';
 import { fitModel } from './live2d/camera.js?v=78';
-import * as Live2D from './live2d/live2d.js?v=91';
+import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
-import * as Outfit from './outfit/outfit.js?v=101';
-import * as Body from './desktop/body.js?v=25';
+import * as Outfit from './outfit/outfit.js?v=102';
+import * as Body from './desktop/body.js?v=26';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -615,14 +615,55 @@ async function refreshMood() {
 // ---------------------------------------------------------------
 // "On the desktop" settings from the tray (desktop/main.js)
 
-let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes' };
+let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false };
 const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
 const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
 D?.onSettings?.((s) => {
   settings = { ...settings, ...s };
   Body.setWatch(WATCH[settings.watch] ?? 1);
   if (settings.quiet) D?.stopWalk();
+  showSpots(!!settings.showSpots);
 });
+
+// "Show touch spots": faint outlines of every spot that's on, while he
+// plays with her normally. they follow her (and her tail) around
+const spotsView = document.getElementById('spotsView');
+let spotsTimer = null;
+function showSpots(on) {
+  clearInterval(spotsTimer);
+  spotsTimer = null;
+  spotsView.hidden = !on;
+  if (!on) { spotsView.textContent = ''; return; }
+  const els = {};
+  const draw = () => {
+    if (!ready || calibrating) { spotsView.hidden = true; return; }
+    spotsView.hidden = false;
+    const seen = new Set();
+    for (const [kind, c] of Object.entries(Body.touchSpots())) {
+      if (c.off) continue;
+      for (const side of c.pair ? [1, -1] : [1]) {
+        const p = Body.spotCircle(kind, side);
+        if (!p) continue;
+        const key = kind + side;
+        seen.add(key);
+        let el = els[key];
+        if (!el) {
+          el = els[key] = document.createElement('div');
+          el.className = 'spot-outline';
+          el.textContent = c.label;
+          spotsView.appendChild(el);
+        }
+        el.style.left = p.x + 'px';
+        el.style.top = p.y + 'px';
+        el.style.width = Math.round(p.rx * 2) + 'px';
+        el.style.height = Math.round(p.r * 2) + 'px';
+      }
+    }
+    for (const [key, el] of Object.entries(els)) if (!seen.has(key)) { el.remove(); delete els[key]; }
+  };
+  draw();
+  spotsTimer = setInterval(draw, 120);
+}
 
 window.addEventListener('resize', () => setTimeout(frame, 60));
 
@@ -797,14 +838,59 @@ function startCalibrate() {
   calibEl.className = 'calib';
   calibEl.innerHTML = `<div class="calib-bar"><b>Drag each circle onto her.</b> Scroll on a circle to resize it, Shift + scroll to make it wider or narrower.
     Right-click a circle to link or unlink its left and right.
+    Untick a spot below to switch it off. Ctrl+Z undoes.
     <span><label><input type="checkbox" data-do="mirror"> Mirror left and right</label>
-    <button type="button" data-do="done">Done</button><button type="button" data-do="reset">Reset</button>
-    <button type="button" data-do="cancel">Cancel</button></span></div>`;
+    <button type="button" data-do="done">Done</button><button type="button" data-do="undo" disabled>Undo</button>
+    <button type="button" data-do="reset">Reset</button>
+    <button type="button" data-do="cancel">Cancel</button></span>
+    <div class="calib-on"></div></div>`;
   document.body.appendChild(calibEl);
   // live2d/input.js drags and scrolls her inside the page on any press
   // or wheel over her; none of that gets past the adjusting layer
   for (const t of ['pointerdown', 'wheel', 'dblclick']) calibEl.addEventListener(t, (e) => e.stopPropagation());
   const mirrorBox = calibEl.querySelector('[data-do=mirror]');
+  // undo: a copy of the spots before each change, Ctrl+Z or the button
+  // puts the last one back
+  const history = [];
+  const undoBtn = calibEl.querySelector('[data-do=undo]');
+  let lastWheel = 0;
+  const remember = () => {
+    history.push(JSON.stringify(spots));
+    if (history.length > 50) history.shift();
+    undoBtn.disabled = false;
+  };
+  const undo = () => {
+    const prev = history.pop();
+    undoBtn.disabled = !history.length;
+    if (!prev) return;
+    const back = JSON.parse(prev);
+    // same objects, new contents: the circles hold on to them
+    for (const k of Object.keys(spots)) {
+      for (const key of Object.keys(spots[k])) delete spots[k][key];
+      Object.assign(spots[k], back[k]);
+    }
+    place();
+  };
+  calibEl._keys = (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+    else if (e.key === 'Escape') endCalibrate();
+  };
+  window.addEventListener('keydown', calibEl._keys, true);
+  // which spots are on: a tick per spot, unticked catches nothing
+  const onList = calibEl.querySelector('.calib-on');
+  for (const [kind, s] of Object.entries(spots)) {
+    const lab = document.createElement('label');
+    lab.innerHTML = '<input type="checkbox"> ';
+    lab.append(s.label);
+    const box = lab.querySelector('input');
+    box.dataset.kind = kind;
+    box.addEventListener('change', () => {
+      remember();
+      if (box.checked) delete spots[kind].off; else spots[kind].off = true;
+      place();
+    });
+    onList.appendChild(lab);
+  }
   const pairs = Object.keys(spots).filter(k => spots[k].pair);
   const syncMirrorBox = () => {
     const linked = pairs.filter(k => !spots[k].left).length;
@@ -823,8 +909,10 @@ function startCalibrate() {
   // her tail's spot is the tail itself, it follows her tail around
   const tailAuto = Body.tailFollows();
   const place = () => {
+    for (const box of onList.querySelectorAll('input')) box.checked = !spots[box.dataset.kind].off;
     for (const c of circles) {
       const s = spots[c.kind];
+      c.el.classList.toggle('off', !!s.off);
       if (c.kind === 'tail' && tailAuto) {
         const t = Body.spotCircle('tail');
         if (!t) continue;
@@ -860,6 +948,7 @@ function startCalibrate() {
         if (e.button !== 0) return;
         e.preventDefault();
         el.setPointerCapture(e.pointerId);
+        remember();
         const move = (ev) => {
           const x = (ev.clientX - a.x) / u, y = (ev.clientY - a.y) / u;
           if (side < 0 && spots[kind].left) Object.assign(spots[kind].left, { dx: x, dy: y });
@@ -871,6 +960,9 @@ function startCalibrate() {
       });
       el.addEventListener('wheel', (e) => {
         e.preventDefault();
+        // one undo step per scroll, not per notch
+        if (Date.now() - lastWheel > 500) remember();
+        lastWheel = Date.now();
         const o = own(kind, side);
         const k = e.deltaY < 0 ? 1.08 : 0.93;
         // shift + scroll: wider or narrower (an oval), plain scroll: bigger or smaller
@@ -881,6 +973,7 @@ function startCalibrate() {
       el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         if (!s.pair) return;
+        remember();
         if (spots[kind].left) link(kind); else unlink(kind);
         place();
       });
@@ -890,6 +983,7 @@ function startCalibrate() {
   // the tail swishes while he works, its circle keeps up
   if (tailAuto) calibEl._tailTimer = setInterval(() => { if (calibEl) place(); }, 120);
   mirrorBox.addEventListener('change', () => {
+    remember();
     for (const k of pairs) { if (mirrorBox.checked) link(k); else unlink(k); }
     place();
   });
@@ -898,10 +992,13 @@ function startCalibrate() {
     if (!what || what === 'mirror') return;
     if (what === 'done') { Body.saveTouchSpots(spots); endCalibrate(); actionLabel('Touch spots saved', a.x, a.y); }
     else if (what === 'cancel') endCalibrate();
+    else if (what === 'undo') undo();
     else if (what === 'reset') {
+      remember();
       for (const [k, d] of Object.entries(Body.SPOT_DEFAULTS)) {
         Object.assign(spots[k], { dx: d.dx, dy: d.dy, r: d.r, w: d.w || 1 });
         delete spots[k].left;
+        delete spots[k].off;
       }
       place();
     }
@@ -911,7 +1008,11 @@ function endCalibrate() {
   calibrating = false;
   D?.hold?.(false);
   document.body.classList.remove('calibrating');
-  if (calibEl) { clearInterval(calibEl._tailTimer); calibEl.remove(); }
+  if (calibEl) {
+    clearInterval(calibEl._tailTimer);
+    window.removeEventListener('keydown', calibEl._keys, true);
+    calibEl.remove();
+  }
   calibEl = null;
   hoverKind = undefined;
 }

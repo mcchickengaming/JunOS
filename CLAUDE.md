@@ -70,7 +70,7 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   every number in its `TUNE`. Touch spots (`regionAt`): circles in her-height units from the face anchor
   (`SPOT_DEFAULTS`, owner-adjustable via Jun menu > On the desktop > Adjust touch spots, saved in
   localStorage `desktop.touchSpots.v2`; pairs mirror unless unlinked, then `left` holds its own place, so
-  nothing assumes she's symmetrical), head on the rig's headpat area, else body; click
+  nothing assumes she's symmetrical; `off: true` switches one off; Undo/Ctrl+Z; she's held in place while adjusting via `junDesktop.hold` → main.js `held`; "Show touch spots" desk setting draws outlines). The tail spot is the rig's TailMain meshes (geometry `drawablesSpot`), and anim.js `holdTail(ms)` stills its swing under a hand. Head on the rig's headpat area, else body; click
   = poke, hold = hand-hold / hug (torso) / tail grab, rub = headpat/ear rub/tickle/thigh/foot/tail rub, drag =
   carry; cursor icon + glow show the spot. Combos (`COMBOS` in js/desktop.js: steps in order + time window,
   effects in body.js `combo()`; `together: true` = both hands at once), spoken touch reactions by chance

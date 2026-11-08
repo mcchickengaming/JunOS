@@ -335,7 +335,7 @@ function glance(far) {
 function runFidget(f) {
   if (f.kind === 'seq') { playSequence(f.steps); return; }
   if (f.kind === 'glance') { glance(f.far); return; }
-  if (f.kind === 'tail_side') { tailSideGoal = -tailSideGoal; return; }
+  if (f.kind === 'tail_side') { if (!tailIsHeld()) tailSideGoal = -tailSideGoal; return; }
   if (f.kind === 'pose') { pose({ [f.param]: f.value, ...f.pairValue }, f.hold); return; }
   startLoop(f.param, f.amp, f.period);
   hold(f.param, f.duration);
@@ -453,6 +453,17 @@ let tailSideGoal = 1;
 // up fast, down slow
 let wagLevel = 0;
 
+// a hand on her tail (a rub, a grab): it stays where it is under the
+// hand, no swinging across to her other side, the sway and the wag
+// mostly quiet. called again and again while the touch goes on, it
+// lets go by itself a moment after the last call
+let tailStillUntil = 0;
+let tailStill = 0;
+export function holdTail(ms = 700) {
+  tailStillUntil = Math.max(tailStillUntil, performance.now() + ms);
+}
+const tailIsHeld = () => performance.now() < tailStillUntil;
+
 function driveTail(ps, now) {
   // cap the step or a backgrounded tab comes back and skips half a
   // sway
@@ -460,7 +471,8 @@ function driveTail(ps, now) {
   const wiggleIdx = paramIndex.get('ParamTailWiggle');
   const wiggle = wiggleIdx === undefined ? 0 : Math.min(1, Math.abs(ps.values[wiggleIdx]));
   wagLevel += (wiggle - wagLevel) * (1 - Math.exp(-step / (wiggle > wagLevel ? 80 : 900)));
-  const amp = TAIL_IDLE_AMP + wagLevel * TAIL_WAG_AMP;
+  tailStill += ((tailIsHeld() ? 1 : 0) - tailStill) * (1 - Math.exp(-step / 180));
+  const amp = (TAIL_IDLE_AMP + wagLevel * TAIL_WAG_AMP) * (1 - 0.85 * tailStill);
   const period = TAIL_PERIOD_MS * (1 - 0.55 * wagLevel);
   tailPhase += step / period;
   tailSide += (tailSideGoal - tailSide) * (1 - Math.exp(-step / TAIL_SIDE_MS));

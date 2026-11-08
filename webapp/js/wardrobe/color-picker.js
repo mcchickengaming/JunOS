@@ -1,10 +1,10 @@
-import * as Live2D from '../live2d/live2d.js?v=91';
+import * as Live2D from '../live2d/live2d.js?v=92';
 import * as MobileViewport from '../core/viewport.js?v=1';
 import { colorGroup } from '../outfit/catalog.js?v=5';
 import { colors } from '../outfit/current.js?v=5';
 import { hexToHsv, hsvToHex, normalizeHex } from '../outfit/colors.js?v=1';
-import { optPopEl, positionOptionsPopup } from './tiles.js?v=35';
-import { setColor } from '../outfit/apply.js?v=31';
+import { optPopEl, positionOptionsPopup } from './tiles.js?v=36';
+import { setColor } from '../outfit/apply.js?v=32';
 
 function paintColorButton(button) {
   const keys = (button.dataset.colorKeys || '').split(',').filter(Boolean);

@@ -7,7 +7,7 @@
 // get colors later (her rooms, furniture, the chat window) should add
 // a row to GROUPS the same way.
 
-import { makeItemColorButton } from './wardrobe/color-picker.js?v=35';
+import { makeItemColorButton } from './wardrobe/color-picker.js?v=36';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -19,6 +19,7 @@ const GROUPS = [
   ['Speech card', 'Where her lines appear.', [['Name tag', '--card-name', '#15142e'], ['Text box', '--card', '#191233']]],
   ['Thought bubbles', 'The ♪ ? ! ♥ over her head, and her thinking cloud.', [['Bubble', '--bubble', '#191233'], ['Outline', '--bubble-edge', '#ec0054']]],
   ['Touch glow', 'The soft glow where your mouse is on her.', [['Glow', '--glow', '#ec0054']]],
+  ['Touch spot outlines', 'The outlines from Jun menu > On the desktop > Show touch spots.', [['Outline', '--spot-outline', '#ff78be']]],
 ];
 
 function readTheme() {

@@ -51,7 +51,7 @@ const DEFAULTS = {
   mode: 'window', inside: 'window', onTop: false, size: 'medium',
   window: null, compact: null, stepX: null, displayId: null, tipShown: false,
   // "On the desktop" settings, the page reads them (jun:settings)
-  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes' },
+  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false },
 };
 const WALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
 const DOZE_CHOICES = [[2, 'After 2 minutes'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [0, 'Never']];
@@ -860,6 +860,7 @@ function deskMenu() {
       { label: 'Cursor icon and a soft glow', type: 'radio', checked: cfg.desk.hints !== 'cursor', click: () => set('hints', 'glow') },
       { label: 'Cursor icon only', type: 'radio', checked: cfg.desk.hints === 'cursor', click: () => set('hints', 'cursor') },
     ] },
+    { label: 'Show touch spots (outlines on her)', type: 'checkbox', checked: !!cfg.desk.showSpots, click: (i) => set('showSpots', i.checked) },
     { label: 'Adjust touch spots…', click: calibrate },
   ] };
 }
