@@ -61,9 +61,15 @@ export const TUNE = {
   // the hover headpat (rubbing over her head, no click): how far the hand
   // slides sideways, which is also what leans her (owner: half of 0.6, Nov 8)
   rubPatX: 0.45,      // (owner: 0.3 felt a little small, Nov 8; halfway back toward 0.6)
-  rubPatSmoothMs: 140, // the hover hand eases after the mouse instead of jumping (higher = softer)
+  rubPatSmoothMs: 0,  // extra easing on the hover hand. 0 = off: 140 lagged so far behind a quick rub
+                      // that the hand looked like it went the opposite way (owner, Nov 8)
   patDip: 0.15,       // ParamHeadY: her head dips a little under the hand
   patEase: 0.35,      // 0..1 how quickly her head catches up with the hand (lower = softer, lazier)
+  // the middle of her head: while the hand stays in this middle part of
+  // its range (0..1) her head barely leans, so he can rub the top of her
+  // head; past it she leans with the hand, all the way at the ends
+  patCenter: 0.45,
+  patCenterLean: 0.15, // how much she still leans inside the middle (0 = not at all)
 };
 
 let canvas = null;
@@ -345,7 +351,9 @@ export function rubEffect(kind, ms, x) {
     const now = performance.now();
     const dt = hoverHand.t ? Math.min(200, now - hoverHand.t) : 0;
     hoverHand.t = now;
-    hoverHand.x += (want - hoverHand.x) * (1 - Math.exp(-dt / Math.max(1, TUNE.rubPatSmoothMs)));
+    hoverHand.x = TUNE.rubPatSmoothMs > 0
+      ? hoverHand.x + (want - hoverHand.x) * (1 - Math.exp(-dt / TUNE.rubPatSmoothMs))
+      : want;
     Live2D.setTarget('ParamHeadpatX', hoverHand.x);
     Live2D.hold('ParamHeadpatX', 700);
     setHeld('ParamEyesHappy', 1, 900);
@@ -415,6 +423,15 @@ export function patHoldMove(x, y) {
   hp.lastMove = performance.now();
 }
 
+// how far she leans for where the hand is: barely in the middle, then
+// with the hand out to the full lean at the ends (no jump at the edge)
+function patLean(h) {
+  const c = clamp(TUNE.patCenter, 0, 0.95), k = clamp(TUNE.patCenterLean, 0, 1);
+  const a = Math.abs(h);
+  if (a <= c) return h * k;
+  return Math.sign(h) * (c * k + ((a - c) / (1 - c)) * (1 - c * k));
+}
+
 function patHoldTick() {
   if (!hp) return;
   const now = performance.now();
@@ -424,17 +441,19 @@ function patHoldTick() {
   hp.hx += (hp.ox - hp.hx) * clamp(TUNE.patEase, 0.02, 1);
   hp.hy += (hp.oy - hp.hy) * clamp(TUNE.patEase, 0.02, 1);
   const f = patFollow;
+  const lean = patLean(hp.hx);
   const set = (p, v, ms = 300) => { Live2D.setTarget(p, v); Live2D.hold(p, ms); };
-  Live2D.hold('ParamHeadpat', 600);
+  // keep the hand down every tick, whatever else touched the param
+  set('ParamHeadpat', 1, 600);
   set('ParamHeadpatX', hp.ox * TUNE.patHandX);
   set('ParamHeadpatY', hp.oy * TUNE.patHandY);
-  set('ParamHeadZ', hp.hx * TUNE.patTilt * f);
-  set('ParamHeadX', hp.hx * TUNE.patTurn * f);
-  set('ParamBodyZ', hp.hx * TUNE.patBody * f);
+  set('ParamHeadZ', lean * TUNE.patTilt * f);
+  set('ParamHeadX', lean * TUNE.patTurn * f);
+  set('ParamBodyZ', lean * TUNE.patBody * f);
   set('ParamHeadY', (-TUNE.patDip + hp.hy * TUNE.patDip) * f);
   // she looks up toward the hand a little, happy eyes, the blush builds
   for (const p of ['ParamEyeballLY', 'ParamEyeballRY']) set(p, 0.35);
-  for (const p of ['ParamEyeballLX', 'ParamEyeballRX']) set(p, hp.hx * 0.3);
+  for (const p of ['ParamEyeballLX', 'ParamEyeballRX']) set(p, lean * 0.3);
   setHeld('ParamEyesHappy', 1, 400);
   setHeld('ParamBlush', Math.min(0.9, 0.35 + ms / 6000), 600);
   if (onPat) onPat(ms);
@@ -444,7 +463,7 @@ export function patHoldEnd() {
   if (!hp) return;
   clearInterval(hp.timer);
   const s = Math.sign(hp.hx) || 1;
-  const big = Math.abs(hp.hx) > 0.3;
+  const big = Math.abs(patLean(hp.hx)) > 0.3;
   hp = null;
   // the hand lifts off. ParamHeadpat rests at -1 (at 0 it's half there)
   Live2D.cancelPending('ParamHeadpat');
