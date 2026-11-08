@@ -76,12 +76,17 @@ export function buildCard() {
   stage.appendChild(card);
 }
 
+// how close they are (lib/bond.php stage 1..6), for the desktop's touch
+// reactions. 3 (Friend) until the server says
+export let bondStage = 3;
+
 export async function fetchGauges() {
   const state = await apiGet('relationship.php');
   if (state && typeof state.affection === 'number') {
     affection = state.affection;
     trust = Number(state.trust) || 0;
     tension = Number(state.tension) || 0;
+    if (state.bond && typeof state.bond.stage === 'number') bondStage = state.bond.stage;
   }
 }
 

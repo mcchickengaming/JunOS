@@ -20,6 +20,7 @@ const TOUCH_KINDS = [
     'hug'          => ['did' => 'hugged you', 'noun' => 'hugs', 'now' => 'is hugging you', 'warm' => true],
     'tailrub'      => ['did' => 'rubbed your tail', 'noun' => 'tail rubs', 'now' => 'is rubbing your tail', 'warm' => true],
     'tailgrab'     => ['did' => 'grabbed your tail and held on', 'noun' => 'tail grabs', 'now' => 'is holding on to your tail', 'warm' => false],
+    'thighsquish'  => ['did' => 'squished your thigh', 'noun' => 'thigh squishes', 'now' => 'is squishing your thigh', 'warm' => false],
     'tickle'       => ['did' => 'tickled your side', 'noun' => 'tickles', 'now' => 'is tickling your side', 'warm' => false],
     'thighrub'     => ['did' => 'rubbed your thigh', 'noun' => 'thigh rubs', 'now' => 'is rubbing your thigh', 'warm' => false],
     'footrub'      => ['did' => 'gave you a foot rub', 'noun' => 'foot rubs', 'now' => 'is giving you a foot rub', 'warm' => true],

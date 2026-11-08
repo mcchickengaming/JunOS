@@ -655,6 +655,7 @@ const cursorCache = {};
 // a few more for what's going on, not where: holding hands, a hug
 CURSOR_ICON.holding = '🤝';
 CURSOR_ICON.hugging = '🤗';
+CURSOR_ICON.squishing = '🤏';
 export function cursorFor(kind) {
   if (!kind || !CURSOR_ICON[kind]) return '';
   if (!cursorCache[kind]) {
@@ -861,6 +862,73 @@ export function thighRub(ms) {
     act('[A:emote|pout]');
     emote('sweat');
   }
+}
+
+// squishing her thigh (a hold, like the hand and the hug). how she takes
+// it depends on how close they are (close: 1 = Stranger/Familiar,
+// 2 = Friend, 3 = Close and up): a stranger tenses and scoots away fast,
+// a friend holds still, flustered; close, the blush builds the longer
+// he holds on, her knees press together and she pouts like she means it
+// (she doesn't). desktop.js keeps calling thighSquishTick() while held.
+// true from the tick = she's had enough, let go
+let squish = null;
+export function thighSquish(on, side, close = 2) {
+  if (on) {
+    const s = side === 'left' ? -1 : 1;
+    squish = { s, close, warned: false };
+    busyMove = performance.now() + 1500;
+    act(close <= 1 ? '[A:emote|surprised]' : '[A:emote|embarrassed]');
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamBodyY: 0.35, ParamHeadY: -0.2 } },
+      { dt_ms: 220, params: { ParamBodyY: 0.05 } },
+    ]);
+    emote(close <= 1 ? 'bang' : 'sweat');
+  } else if (squish) {
+    const s = squish.s;
+    squish = null;
+    Live2D.playSequence([
+      { dt_ms: 0, params: { [s < 0 ? 'ParamLegR' : 'ParamLegL']: -0.3, ParamBodyZ: -0.08 * s } },
+      { dt_ms: 350, params: { ParamLegL: 0, ParamLegR: 0, ParamBodyZ: 0, ParamHeadY: 0 } },
+    ]);
+  }
+}
+export function thighSquishTick(ms) {
+  if (!squish) return false;
+  const { s, close } = squish;
+  busyMove = performance.now() + 800;
+  // the squished leg: hers is mirrored, his left is her right
+  const leg = s < 0 ? 'ParamLegR' : 'ParamLegL';
+  setHeld(leg, close <= 1 ? -0.5 : -0.25, 500);
+  setHeld('ParamHeadY', -0.35, 500);
+  setHeld('ParamHeadX', 0.3 * s, 500);
+  setHeld('ParamEyeballLY', -0.6, 500);
+  setHeld('ParamEyeballRY', -0.6, 500);
+  if (close <= 1) {
+    setHeld('ParamBlush', 0.5, 800);
+    setHeld('ParamBodyZ', -0.2 * s, 500);
+    // she wriggles free quickly
+    if (ms > 1400) { act('[A:emote|angry]'); emote('anger'); return true; }
+    return false;
+  }
+  setHeld('ParamBlush', Math.min(1, (close >= 3 ? 0.55 : 0.45) + ms / 3500), 900);
+  if (close >= 3) {
+    // knees together, a little squirm now and then
+    setHeld(s < 0 ? 'ParamLegL' : 'ParamLegR', -0.15, 500);
+    if (Math.floor(ms / 2200) !== Math.floor((ms - 260) / 2200)) {
+      Live2D.playSequence([
+        { dt_ms: 0, params: { ParamBodyZ: 0.1 * s } },
+        { dt_ms: 300, params: { ParamBodyZ: 0 } },
+      ]);
+    }
+  }
+  if (!squish.warned && ms > (close >= 3 ? 3500 : 2400)) {
+    squish.warned = true;
+    act('[A:emote|pout]');
+    emote(close >= 3 ? 'heart' : 'sweat');
+  }
+  // a friend has had enough after a while; close, she lets him
+  if (close === 2 && ms > 6000) { act('[A:emote|pout]'); return true; }
+  return false;
 }
 
 // rubbing her tail: it sways happily under the hand, eyes soft, ears flick

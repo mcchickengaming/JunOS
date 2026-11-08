@@ -7,7 +7,7 @@
 // get colors later (her rooms, furniture, the chat window) should add
 // a row to GROUPS the same way.
 
-import { makeItemColorButton } from './wardrobe/color-picker.js?v=36';
+import { makeItemColorButton } from './wardrobe/color-picker.js?v=37';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';

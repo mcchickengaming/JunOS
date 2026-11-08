@@ -17,15 +17,15 @@ import * as ChatAPI from './core/chat-api.js?v=8';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
-import * as Gauges from './core/speech-card.js?v=21';
-import { configureTts, say } from './core/speech-card.js?v=21';
+import * as Gauges from './core/speech-card.js?v=22';
+import { configureTts, say } from './core/speech-card.js?v=22';
 import { localTimeString } from './core/util.js?v=1';
 import * as Actions from './live2d/actions.js?v=102';
 import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=33';
+import * as Body from './desktop/body.js?v=34';
 import * as TouchLog from './core/touch-log.js?v=1';
 
 const D = window.junDesktop || null;
@@ -207,6 +207,7 @@ const TOUCH_NOTES = {
   tail: 'Anon tugged your tail',
   thighpoke: 'Anon poked your thigh',
   thighrub: 'Anon is rubbing your thigh',
+  thighsquish: 'Anon is squishing your thigh with his hand and not letting go',
   feetrub: 'Anon is giving you a foot rub',
   feet: 'Anon poked your foot and found out it is ticklish',
   waveback: 'you waved at Anon and he waved back',
@@ -222,7 +223,7 @@ const TOUCH_NOTES = {
 // chance per touch at "Sometimes"; a long hug is likelier to get a word
 // than a passing poke
 const TOUCH_CHANCE = {
-  hug: 0.5, hand: 0.45, squeeze: 0.2, tickle: 0.35, ear: 0.35, earflick: 0.2, nose: 0.25, cheek: 0.2,
+  hug: 0.5, hand: 0.45, squeeze: 0.2, tickle: 0.35, thighsquish: 0.35, ear: 0.35, earflick: 0.2, nose: 0.25, cheek: 0.2,
   shoulder: 0.2, tail: 0.3, thighpoke: 0.3, thighrub: 0.5, feetrub: 0.4, feet: 0.3, waveback: 0.5,
   tailgrab: 0.45, tailrub: 0.4,
   // combos are rarer and mean more, so they're likelier to get a word
@@ -321,9 +322,9 @@ function pinHand() {
       const ms = Date.now() - t0;
       Body.rubEffect('head', ms, next.x + Math.sin(ms / 140) * 14);
     }, 120);
-  } else if (press && press.hold) {
+  } else if (press && press.hold && press.hold !== 'freed') {
     const p = press;
-    const step = p.hold === 'tail' ? 'tailgrab' : p.hold;
+    const step = p.hold === 'tail' ? 'tailgrab' : p.hold === 'thigh' ? 'thighsquish' : p.hold;
     next = { type: 'hold', step, p, x: p.cx, y: p.cy };
     // the hold carries on in the pinned hand; its count ends with the pin
     p.pinned = true;
@@ -1097,10 +1098,10 @@ window.addEventListener('pointerdown', (e) => {
   const p = press;
   ripple(e.clientX, e.clientY);
   // holds: her hand (hold hands), her torso (a hug), her tail (grab it)
-  if (region.kind === 'hand' || region.kind === 'hug' || region.kind === 'tail') {
+  if (region.kind === 'hand' || region.kind === 'hug' || region.kind === 'tail' || region.kind === 'thigh') {
     // a ring fills around the pointer while the hold builds up, so it's
     // clear that keeping the button down does something
-    holdRing(true, e.clientX, e.clientY, { hand: '🤝', hug: '🤗', tail: '✊' }[region.kind]);
+    holdRing(true, e.clientX, e.clientY, { hand: '🤝', hug: '🤗', tail: '✊', thigh: '🤏' }[region.kind]);
     p.holdTimer = setTimeout(() => {
       if (press !== p || p.dragging) return;
       if (dozing) wake(true);
@@ -1116,6 +1117,28 @@ window.addEventListener('pointerdown', (e) => {
         document.body.style.cursor = Body.cursorFor('tailgrab');
         if (!combo) actionLabel('Tail grab', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => Body.tailGrabTick(Date.now() - p.holdAt), 260);
+      } else if (region.kind === 'thigh') {
+        // a squish: how she takes it depends on how close they are
+        p.hold = 'thigh';
+        p.holdAt = Date.now();
+        TouchLog.begin('hold', 'thighsquish');
+        const combo = touched('thighsquish');
+        p.talkTimer = setTimeout(() => { if (p.hold === 'thigh') maybeSay('thighsquish'); }, 1800);
+        const stage = Gauges.bondStage;
+        Body.thighSquish(true, region.side, stage <= 2 ? 1 : stage === 3 ? 2 : 3);
+        document.body.style.cursor = Body.cursorFor('squishing');
+        if (!combo) actionLabel('Thigh squish', e.clientX, e.clientY);
+        p.hugTimer = setInterval(() => {
+          if (!Body.thighSquishTick(Date.now() - p.holdAt)) return;
+          // she wriggles free: the hold is over, the button can stay down
+          clearInterval(p.hugTimer);
+          clearTimeout(p.talkTimer);
+          Body.thighSquish(false);
+          TouchLog.end('hold');
+          p.hold = 'freed';
+          document.body.style.cursor = '';
+          actionLabel('She wriggled free', e.clientX, e.clientY - 22);
+        }, 260);
       } else if (region.kind === 'hand') {
         TouchLog.begin('hold', 'hand');
         const combo = touched('hand');
@@ -1169,6 +1192,7 @@ function endHold(p) {
   if (p.hold === 'hand') Body.handhold(p.region.side, false);
   if (p.hold === 'hug') Body.hug(false);
   if (p.hold === 'tail') Body.tailGrab(false);
+  if (p.hold === 'thigh') Body.thighSquish(false);
   const had = p.hold;
   p.hold = null;
   return had;
