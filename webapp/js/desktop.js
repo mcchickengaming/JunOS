@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=15';
+import * as Body from './desktop/body.js?v=18';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -490,7 +490,8 @@ function showHover(region) {
   glowTimer = setTimeout(() => {
     glow.style.left = g.x + 'px';
     glow.style.top = g.y + 'px';
-    glow.style.width = glow.style.height = Math.round(g.r * 2) + 'px';
+    glow.style.width = Math.round((g.rx || g.r) * 2) + 'px';
+    glow.style.height = Math.round(g.r * 2) + 'px';
     glow.classList.add('on');
     glowTimer = setTimeout(() => glow.classList.remove('on'), 1100);
   }, 280);
@@ -603,7 +604,7 @@ function startCalibrate() {
   const spots = JSON.parse(JSON.stringify(Body.touchSpots()));
   calibEl = document.createElement('div');
   calibEl.className = 'calib';
-  calibEl.innerHTML = `<div class="calib-bar"><b>Drag each circle onto her.</b> Scroll on a circle to resize it.
+  calibEl.innerHTML = `<div class="calib-bar"><b>Drag each circle onto her.</b> Scroll on a circle to resize it, Shift + scroll to make it wider or narrower.
     Right-click a circle to link or unlink its left and right.
     <span><label><input type="checkbox" data-do="mirror"> Mirror left and right</label>
     <button type="button" data-do="done">Done</button><button type="button" data-do="reset">Reset</button>
@@ -621,7 +622,7 @@ function startCalibrate() {
   const own = (kind, side) => (side < 0 && spots[kind].left ? spots[kind].left : spots[kind]);
   const unlink = (kind) => {
     const s = spots[kind];
-    if (!s.left) s.left = { dx: -s.dx, dy: s.dy, r: s.r };
+    if (!s.left) s.left = { dx: -s.dx, dy: s.dy, r: s.r, w: s.w || 1 };
   };
   const link = (kind) => { delete spots[kind].left; };
   const circles = [];
@@ -632,7 +633,8 @@ function startCalibrate() {
       const dx = c.side < 0 && s.left ? o.dx : (s.pair ? c.side : 1) * o.dx;
       c.el.style.left = (a.x + dx * u) + 'px';
       c.el.style.top = (a.y + o.dy * u) + 'px';
-      c.el.style.width = c.el.style.height = Math.round(o.r * u * 2) + 'px';
+      c.el.style.width = Math.round(o.r * (o.w || s.w || 1) * u * 2) + 'px';
+      c.el.style.height = Math.round(o.r * u * 2) + 'px';
       c.el.classList.toggle('unlinked', !!(s.pair && s.left));
     }
     syncMirrorBox();
@@ -660,7 +662,10 @@ function startCalibrate() {
       el.addEventListener('wheel', (e) => {
         e.preventDefault();
         const o = own(kind, side);
-        o.r = Math.max(0.008, Math.min(0.15, o.r * (e.deltaY < 0 ? 1.08 : 0.93)));
+        const k = e.deltaY < 0 ? 1.08 : 0.93;
+        // shift + scroll: wider or narrower (an oval), plain scroll: bigger or smaller
+        if (e.shiftKey) o.w = Math.max(0.4, Math.min(4, (o.w || s.w || 1) * k));
+        else o.r = Math.max(0.008, Math.min(0.15, o.r * k));
         place();
       }, { passive: false });
       el.addEventListener('contextmenu', (e) => {
@@ -683,7 +688,7 @@ function startCalibrate() {
     else if (what === 'cancel') endCalibrate();
     else if (what === 'reset') {
       for (const [k, d] of Object.entries(Body.SPOT_DEFAULTS)) {
-        Object.assign(spots[k], { dx: d.dx, dy: d.dy, r: d.r });
+        Object.assign(spots[k], { dx: d.dx, dy: d.dy, r: d.r, w: d.w || 1 });
         delete spots[k].left;
       }
       place();

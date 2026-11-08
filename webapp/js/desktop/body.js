@@ -343,8 +343,11 @@ export function rubbing() { return rubLive(); }
 // can include hair and tail, her height can't lie), the right-hand one
 // of a pair (the left is its mirror). the owner drags them into place
 // (desktop.js calibrate), saved in localStorage['desktop.touchSpots'].
-// the head stays on the rig's own headpat area, that one fits.
+// the head is a circle too (high on her head, clear of the ears, so
+// headpat and ear rub don't fight), adjustable like the rest.
 export const SPOT_DEFAULTS = {
+  // w: how much wider than tall (an oval); the head is wide so a rub fits
+  head: { dx: 0, dy: -0.05, r: 0.035, w: 2.4, pair: false, label: 'Headpat' },
   nose: { dx: 0, dy: 0.085, r: 0.016, pair: false, label: 'Nose' },
   cheek: { dx: 0.05, dy: 0.1, r: 0.026, pair: true, label: 'Cheek' },
   ear: { dx: 0.115, dy: 0.05, r: 0.03, pair: true, label: 'Ear' },
@@ -363,19 +366,20 @@ export function touchSpots() {
     spotCfg = {};
     for (const [k, d] of Object.entries(SPOT_DEFAULTS)) {
       const o = saved[k] || {};
-      spotCfg[k] = { ...d, dx: Number.isFinite(o.dx) ? o.dx : d.dx, dy: Number.isFinite(o.dy) ? o.dy : d.dy, r: Number.isFinite(o.r) ? o.r : d.r };
+      spotCfg[k] = { ...d, dx: Number.isFinite(o.dx) ? o.dx : d.dx, dy: Number.isFinite(o.dy) ? o.dy : d.dy, r: Number.isFinite(o.r) ? o.r : d.r,
+        w: Number.isFinite(o.w) ? o.w : (d.w || 1) };
       // a pair can be unlinked: then the left one has its own place
       // (dx signed, as it is on screen) instead of mirroring the right.
       // nothing here assumes she's symmetrical
       const l = o.left;
-      if (d.pair && l && [l.dx, l.dy, l.r].every(Number.isFinite)) spotCfg[k].left = { dx: l.dx, dy: l.dy, r: l.r };
+      if (d.pair && l && [l.dx, l.dy, l.r].every(Number.isFinite)) spotCfg[k].left = { dx: l.dx, dy: l.dy, r: l.r, w: Number.isFinite(l.w) ? l.w : (d.w || 1) };
     }
   }
   return spotCfg;
 }
 export function saveTouchSpots(next) {
   const out = {};
-  const round = (v) => ({ dx: +v.dx.toFixed(3), dy: +v.dy.toFixed(3), r: +v.r.toFixed(3) });
+  const round = (v) => ({ dx: +v.dx.toFixed(3), dy: +v.dy.toFixed(3), r: +v.r.toFixed(3), w: +(v.w || 1).toFixed(2) });
   for (const [k, v] of Object.entries(next || {})) {
     out[k] = round(v);
     if (v.left) out[k].left = round(v.left);
@@ -393,8 +397,13 @@ export function spotCircle(kind, side = 1) {
   const c = touchSpots()[kind];
   if (!a || !c) return null;
   const u = a.modelH;
-  if (c.pair && side < 0 && c.left) return { x: a.x + c.left.dx * u, y: a.y + c.left.dy * u, r: Math.max(8, c.left.r * u) };
-  return { x: a.x + (c.pair ? side : 1) * c.dx * u, y: a.y + c.dy * u, r: Math.max(8, c.r * u) };
+  // r is the height radius, rx the width radius (w times wider for an oval)
+  if (c.pair && side < 0 && c.left) {
+    const r = Math.max(8, c.left.r * u);
+    return { x: a.x + c.left.dx * u, y: a.y + c.left.dy * u, r, rx: r * (c.left.w || 1) };
+  }
+  const r = Math.max(8, c.r * u);
+  return { x: a.x + (c.pair ? side : 1) * c.dx * u, y: a.y + c.dy * u, r, rx: r * (c.w || 1) };
 }
 
 export function regionAt(x, y) {
@@ -405,24 +414,19 @@ export function regionAt(x, y) {
   for (const [kind, c] of Object.entries(touchSpots())) {
     for (const side of c.pair ? [1, -1] : [1]) {
       const p = spotCircle(kind, side);
-      const d = Math.hypot(x - p.x, y - p.y) / p.r;
+      const d = Math.hypot((x - p.x) / p.rx, (y - p.y) / p.r);
       if (d <= 1 && (!best || d < best.d)) best = { d, kind, side };
     }
   }
   if (best) {
-    const side = best.kind === 'hand' ? (best.side < 0 ? 'left' : 'right') : best.side;
+    const side = best.kind === 'hand' ? (best.side < 0 ? 'left' : 'right') : best.kind === 'head' ? 0 : best.side;
     return { kind: best.kind, side };
   }
-  const dx = x - a.x, H = a.modelH, hw = a.headW;
-  const top = a.y - H * 0.09;
-  if (Live2D.hasModel() ? Live2D.hitTest(x, y, HIT_HEAD) : (y >= top && y < a.y - H * 0.02 && Math.abs(dx) < hw * 0.55)) {
-    return { kind: 'head', side: 0 };
-  }
+  const dx = x - a.x;
   if (Live2D.isOverModel(x, y)) return { kind: 'body', side: Math.sign(dx) || 1 };
   return null;
 }
 
-const HIT_HEAD = new Set(['HitAreaHeadpat']);
 
 // what the pointer looks like over each spot, so he can SEE what he
 // can do. an emoji drawn into an svg cursor, hotspot in the middle
@@ -444,7 +448,6 @@ export function cursorFor(kind) {
 export function regionGlow(region) {
   const a = anchor();
   if (!a || !region || region.kind === 'body') return null;
-  if (region.kind === 'head') return { x: a.x, y: a.y - a.modelH * 0.06, r: a.headW * 0.45 };
   const side = region.side === 'left' ? -1 : region.side === 'right' ? 1 : (region.side || 1);
   return spotCircle(region.kind, side);
 }
