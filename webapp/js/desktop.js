@@ -166,14 +166,16 @@ form.addEventListener('submit', async (e) => {
 let talkTimer = null;
 function openTalk() {
   if (dozing) wake(true);
+  const wasHidden = talk.hidden;
   talk.hidden = false;
+  if (wasHidden) restoreTalk();
   D?.stopWalk();
   D?.wantFocus(true);
   setTimeout(() => input.focus(), 30);
   closeTalkSoon();
 }
-function closeTalk() {
-  if (MODE !== 'stepout') return;
+function closeTalk(always) {
+  if (MODE !== 'stepout' && !always) return;
   clearTimeout(talkTimer);
   talk.hidden = true;
   input.blur();
@@ -185,7 +187,56 @@ function closeTalkSoon() {
     closeTalk();
   }, 45000);
 }
-input.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTalk(); });
+input.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTalk(true); });
+document.getElementById('talkClose').addEventListener('click', () => closeTalk(true));
+
+// the grip moves the bar anywhere in her window. remembered per mode,
+// a double click on the grip puts it back where it started
+const POS_KEY = 'desktop.talkPos.' + MODE;
+function placeTalk(left, top, save) {
+  const w = talk.offsetWidth || 300, h = talk.offsetHeight || 46;
+  left = Math.max(0, Math.min(left, window.innerWidth - w));
+  top = Math.max(0, Math.min(top, window.innerHeight - h));
+  talk.classList.add('moved');
+  talk.style.left = left + 'px';
+  talk.style.top = top + 'px';
+  talk.style.bottom = 'auto';
+  if (save) try { localStorage.setItem(POS_KEY, JSON.stringify({ left, top })); } catch (e) {}
+}
+function restoreTalk() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(POS_KEY) || 'null'); } catch (e) {}
+  if (p && Number.isFinite(p.left) && Number.isFinite(p.top)) placeTalk(p.left, p.top, false);
+}
+const grip = document.getElementById('talkGrip');
+let gripDrag = null;
+grip.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  const r = talk.getBoundingClientRect();
+  gripDrag = { dx: e.clientX - r.left, dy: e.clientY - r.top, id: e.pointerId };
+  try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+  e.preventDefault();
+});
+grip.addEventListener('pointermove', (e) => {
+  if (!gripDrag || e.pointerId !== gripDrag.id) return;
+  placeTalk(e.clientX - gripDrag.dx, e.clientY - gripDrag.dy, false);
+});
+const endGrip = (e) => {
+  if (!gripDrag || e.pointerId !== gripDrag.id) return;
+  gripDrag = null;
+  const r = talk.getBoundingClientRect();
+  placeTalk(r.left, r.top, true);
+};
+grip.addEventListener('pointerup', endGrip);
+grip.addEventListener('pointercancel', endGrip);
+grip.addEventListener('dblclick', () => {
+  try { localStorage.removeItem(POS_KEY); } catch (e) {}
+  talk.classList.remove('moved');
+  talk.style.left = talk.style.top = talk.style.bottom = '';
+});
+window.addEventListener('resize', () => {
+  if (talk.classList.contains('moved')) placeTalk(parseFloat(talk.style.left) || 0, parseFloat(talk.style.top) || 0, false);
+});
 window.addEventListener('blur', () => { if (!input.value.trim() && !busy) closeTalk(); });
 
 // ---------------------------------------------------------------
@@ -402,7 +453,7 @@ function showNote(text, button, onClick) {
 }
 
 async function main() {
-  if (MODE === 'compact') talk.hidden = false;
+  if (MODE === 'compact') { talk.hidden = false; restoreTalk(); }
   const me = await Auth.me().catch(() => null);
   if (!me) {
     talk.hidden = true;
