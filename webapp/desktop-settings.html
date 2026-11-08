@@ -43,17 +43,19 @@
   .pct { width: 38px; text-align: right; color: var(--muted); font-size: 12px; }
   /* touch feedback preview: a little piece of desktop. the same variables as desktop.html's :root,
      so the theme's colors (set inline by js) mix the same way here */
-  .preview { position: sticky; top: 49px; z-index: 1; height: 170px; margin: 4px 0 10px; border-radius: 12px; overflow: hidden; cursor: crosshair;
+  .preview { position: sticky; top: 0; z-index: 3; height: 170px; margin: 4px 0 10px; border-radius: 12px; overflow: hidden; cursor: crosshair;
     border: 1px solid var(--border-2); background: linear-gradient(135deg, #2b3a55, #1c2238 55%, #3a2a48);
     --panel: #191233; --accent: #ec0054; --ink: #ffffff; --bubble: #191233; --bubble-edge: #ec0054; --bubble-a: 1; --edge-a: 1; --outline: none;
     --bubble-bg: color-mix(in srgb, var(--bubble) calc(var(--bubble-a) * 100%), transparent);
     --edge: color-mix(in srgb, var(--bubble-edge) calc(var(--edge-a) * 100%), transparent); }
-  .preview .pv-hint { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #fff9; pointer-events: none; }
-  .preview .pv-head { position: absolute; left: 50%; top: 112px; width: 54px; height: 54px; margin-left: -27px; border-radius: 50% 50% 40% 40%;
+  .preview .pv-hint { position: absolute; left: 10px; top: 8px; font-size: 12px; color: #fff9; pointer-events: none; }
+  .preview .pv-head { position: absolute; left: 50%; bottom: 14px; width: 54px; height: 54px; margin-left: -27px; border-radius: 50% 50% 40% 40%;
     background: radial-gradient(circle at 50% 40%, #f3d9cf, #d8b4a8); box-shadow: 0 0 0 3px #3b2b2b inset; pointer-events: none; }
   .preview .pv-head::before, .preview .pv-head::after { content: ''; position: absolute; top: -12px; width: 18px; height: 22px; background: #3b2b2b;
     clip-path: polygon(50% 0, 100% 100%, 0 100%); }
   .preview .pv-head::before { left: 2px; } .preview .pv-head::after { right: 2px; }
+  /* a short settings window: a smaller preview, so the controls under it still have room */
+  @media (max-height: 640px) { .preview { height: 125px; } }
   .preview-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
   .gallery { display: flex; flex-wrap: wrap; gap: 6px; }
   .gallery button { min-width: 40px; height: 34px; padding: 0 8px; border-radius: 17px; border: 1px solid var(--border-2); background: var(--bg-3); color: var(--fg);
@@ -168,6 +170,6 @@
   <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=9"></script>
+<script type="module" src="js/desktop-settings.js?v=11"></script>
 </body>
 </html>

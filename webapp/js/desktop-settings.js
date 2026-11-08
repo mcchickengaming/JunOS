@@ -247,8 +247,9 @@ window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) previewThem
 let pvLabelTimer = null;
 function pvShowLabel(text, x, y) {
   const r = preview.getBoundingClientRect();
-  x = x ?? r.width / 2;
-  y = y ?? 70;
+  // off to the side of her head, so it doesn't cover the icon over it
+  x = x ?? r.width / 2 - 110;
+  y = y ?? r.height * 0.55;
   const ms = Fx.labelText(pvLabel, text || SAMPLE_LABELS[Math.floor(Math.random() * SAMPLE_LABELS.length)], 1300);
   pvLabel.style.left = Math.max(50, Math.min(r.width - 50, x)) + 'px';
   pvLabel.style.top = Math.max(30, y - 20) + 'px';
@@ -262,8 +263,10 @@ let pvEmoteTimer = null;
 function pvShowIcon(kind) {
   kind = kind || Fx.pickFromPool(Object.keys(Fx.EMOTES));
   Fx.fillEmote(pvEmote, kind);
+  // just above the little head, wherever it sits in the box
+  const head = preview.querySelector('.pv-head');
   pvEmote.style.left = '50%';
-  pvEmote.style.top = '98px';
+  pvEmote.style.top = (head.offsetTop - 14) + 'px';
   pvEmote.classList.remove('show');
   void pvEmote.offsetWidth;
   pvEmote.classList.add('show');
@@ -272,7 +275,7 @@ function pvShowIcon(kind) {
 }
 function pvCenter() {
   const r = preview.getBoundingClientRect();
-  return { x: r.left + r.width / 2, y: r.top + 80 };
+  return { x: r.left + r.width / 2, y: r.top + r.height * 0.45 };
 }
 preview.addEventListener('pointerdown', (e) => {
   Fx.ripple(e.clientX, e.clientY);
