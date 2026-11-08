@@ -236,8 +236,10 @@ function openMode(mode, reason) {
   let w;
   if (mode === 'window') {
     const b = onScreen(cfg.window) ? cfg.window : { width: 1180, height: 820 };
-    w = new BrowserWindow({ ...common, ...b, minWidth: 420, minHeight: 480, backgroundColor: '#0f0d1f', autoHideMenuBar: true });
-    w.setMenuBarVisibility(false);
+    w = new BrowserWindow({ ...common, ...b, minWidth: 420, minHeight: 480, backgroundColor: '#0f0d1f' });
+    // a real menu bar: Windows 11 tucks new tray icons away under the
+    // ^ by the clock, so the tray alone is too easy to miss
+    w.setMenu(windowMenu());
     w.setAlwaysOnTop(!!cfg.onTop);
     if (cfg.windowMax) w.maximize();
     w.loadURL(JUN_URL + '/index.html');
@@ -292,7 +294,7 @@ function openMode(mode, reason) {
   w.on('maximize', remember);
   w.on('unmaximize', remember);
   w.on('close', (e) => {
-    // the X hides her to the tray. Quit is in the tray menu
+    // the X hides her to the tray. closing the app is in the Jun menu and the tray menu
     if (quitting || w !== win) return;
     e.preventDefault();
     w.hide();
@@ -300,7 +302,7 @@ function openMode(mode, reason) {
       cfg.tipShown = true;
       saveCfg();
       tray.displayBalloon({ iconType: 'info', title: 'Jun is still here',
-        content: 'She stays in the tray by the clock. Click it to bring her back.' });
+        content: "She's by the clock now. Don't see her? Click the ^ arrow next to the clock." });
     }
   });
   win = w;
@@ -520,7 +522,53 @@ ipcMain.on('jun:focus', (e, on) => {
 // ---------------------------------------------------------------
 // tray
 
+// the menu bar of her window. same choices as the tray
+function windowMenu() {
+  return Menu.buildFromTemplate([
+    { label: 'Jun', submenu: [
+      { label: 'Step out onto the desktop', accelerator: 'CmdOrCtrl+Shift+S', click: () => openMode('stepout', 'stepout') },
+      { label: 'Compact', accelerator: 'CmdOrCtrl+Shift+C', click: () => openMode('compact', '') },
+      { type: 'separator' },
+      { label: 'Keep her window on top', type: 'checkbox', checked: !!cfg.onTop, click: (i) => setOnTop(i.checked) },
+      sizeMenu(),
+      { type: 'separator' },
+      { label: 'Hide (she stays by the clock)', accelerator: 'CmdOrCtrl+H', click: hideJun },
+      { label: 'Close the desktop app', click: () => { quitting = true; app.quit(); } },
+    ] },
+    { label: 'View', submenu: [
+      { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: (_i, w) => w && w.webContents.reload() },
+      { label: 'Reload fresh', accelerator: 'CmdOrCtrl+F5', click: (_i, w) => w && w.webContents.reloadIgnoringCache() },
+      { label: 'Reload fresh', accelerator: 'CmdOrCtrl+Shift+R', visible: false, click: (_i, w) => w && w.webContents.reloadIgnoringCache() },
+      { type: 'separator' },
+      { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' },
+      { type: 'separator' },
+      { role: 'togglefullscreen' },
+      { role: 'toggleDevTools' },
+    ] },
+  ]);
+}
+
+function setOnTop(on) {
+  cfg.onTop = on;
+  saveCfg();
+  if (win && winMode === 'window') { win.setAlwaysOnTop(on); win.setMenu(windowMenu()); }
+  rebuildTrayMenu();
+}
+
+function sizeMenu() {
+  return { label: 'Her size on the desktop', submenu: Object.keys(SIZES).map(k => ({
+    label: k[0].toUpperCase() + k.slice(1), type: 'radio', checked: cfg.size === k, click: () => {
+      cfg.size = k;
+      saveCfg();
+      if (winMode === 'stepout') openMode('stepout', '');
+      rebuildTrayMenu();
+    },
+  })) };
+}
+
 function trayIcon() {
+  // .ico on Windows, it has a real 16 px picture in it
+  if (process.platform === 'win32' && fs.existsSync(ICON_ICO)) return nativeImage.createFromPath(ICON_ICO);
   const img = nativeImage.createFromPath(ICON_PNG);
   return img.isEmpty() ? img : img.resize({ width: 16, height: 16 });
 }
@@ -554,18 +602,8 @@ function rebuildTrayMenu() {
     { type: 'separator' },
     ...modeItems(false),
     { type: 'separator' },
-    { label: 'Keep her window on top', type: 'checkbox', checked: !!cfg.onTop, click: (i) => {
-      cfg.onTop = i.checked;
-      saveCfg();
-      if (win && winMode === 'window') win.setAlwaysOnTop(cfg.onTop);
-    } },
-    { label: 'Her size on the desktop', submenu: Object.keys(SIZES).map(k => ({
-      label: k[0].toUpperCase() + k.slice(1), type: 'radio', checked: cfg.size === k, click: () => {
-        cfg.size = k;
-        saveCfg();
-        if (winMode === 'stepout') openMode('stepout', '');
-      },
-    })) },
+    { label: 'Keep her window on top', type: 'checkbox', checked: !!cfg.onTop, click: (i) => setOnTop(i.checked) },
+    sizeMenu(),
     { type: 'separator' },
     { label: 'Open her window when Jun starts', type: 'checkbox', checked: envDesktopOn(), click: (i) => setEnvDesktop(i.checked) },
     { label: 'Start Jun with Windows', type: 'checkbox', checked: fs.existsSync(startupLink()), enabled: process.platform === 'win32', click: (i) => {

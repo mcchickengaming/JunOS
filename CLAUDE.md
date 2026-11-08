@@ -56,7 +56,7 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   `relationship_get()` (35/50/65/80/90/100). Meter in Settings > Memory.
 - **Desktop window** (`desktop/` Electron app, `webapp/desktop.html` + `js/desktop.js`): start.ps1 opens it
   instead of a browser tab (`JUN_DESKTOP`, default on). `desktop/launch.ps1` downloads a pinned Electron
-  (version + SHA-256 in that file) into `runtime\electron`. Modes from the tray: her window (index.html),
+  (version + SHA-256 in that file) into `runtime\electron`. Modes from the tray and her window's "Jun" menu bar (Ctrl+Shift+S steps out): her window (index.html),
   compact (frameless, on top), stepped out (on the taskbar: walks, dozes after 5 idle min, drag and drop,
   click-through except over her). Desktop chat goes into her latest conversation; desktop reactions are
   ephemeral OOC turns. Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
