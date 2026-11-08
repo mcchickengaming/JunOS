@@ -338,67 +338,81 @@ export function rubbing() { return rubLive(); }
 // (same ones live2d/touch.js uses), the rest from her proportions.
 // only these spots exist here, anything else on her is "body".
 
-let rigRegions = null;
-function buildRigRegions() {
-  const hands = Live2D.findDrawables(['armlhand', 'armrhand'], []);
-  if (!hands.length) return null;
-  return {
-    hands: new Set(hands),
-    tail: new Set(Live2D.findDrawables(['tail'], [])),
-    ears: new Set(Live2D.findDrawables(['ear'], ['earring'])),
-  };
+// every spot except the head is a circle placed relative to her face:
+// dx/dy/r as fractions of her height from the face anchor (her width
+// can include hair and tail, her height can't lie), the right-hand one
+// of a pair (the left is its mirror). the owner drags them into place
+// (desktop.js calibrate), saved in localStorage['desktop.touchSpots'].
+// the head stays on the rig's own headpat area, that one fits.
+export const SPOT_DEFAULTS = {
+  nose: { dx: 0, dy: 0.085, r: 0.016, pair: false, label: 'Nose' },
+  cheek: { dx: 0.05, dy: 0.1, r: 0.026, pair: true, label: 'Cheek' },
+  ear: { dx: 0.115, dy: 0.05, r: 0.03, pair: true, label: 'Ear' },
+  shoulder: { dx: 0.12, dy: 0.22, r: 0.035, pair: true, label: 'Shoulder' },
+  side: { dx: 0.1, dy: 0.33, r: 0.035, pair: true, label: 'Side (tickle)' },
+  hand: { dx: 0.135, dy: 0.47, r: 0.035, pair: true, label: 'Hand' },
+  tail: { dx: 0.17, dy: 0.5, r: 0.04, pair: false, label: 'Tail' },
+};
+// v2: units changed from head widths to her height, older saves don't fit
+const SPOTS_KEY = 'desktop.touchSpots.v2';
+let spotCfg = null;
+export function touchSpots() {
+  if (!spotCfg) {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(SPOTS_KEY) || '{}') || {}; } catch (e) {}
+    spotCfg = {};
+    for (const [k, d] of Object.entries(SPOT_DEFAULTS)) {
+      const o = saved[k] || {};
+      spotCfg[k] = { ...d, dx: Number.isFinite(o.dx) ? o.dx : d.dx, dy: Number.isFinite(o.dy) ? o.dy : d.dy, r: Number.isFinite(o.r) ? o.r : d.r };
+    }
+  }
+  return spotCfg;
+}
+export function saveTouchSpots(next) {
+  const out = {};
+  for (const [k, v] of Object.entries(next || {})) out[k] = { dx: +v.dx.toFixed(3), dy: +v.dy.toFixed(3), r: +v.r.toFixed(3) };
+  try {
+    if (next) localStorage.setItem(SPOTS_KEY, JSON.stringify(out)); else localStorage.removeItem(SPOTS_KEY);
+  } catch (e) {}
+  spotCfg = null;
+}
+window.addEventListener('storage', (e) => { if (e.key === SPOTS_KEY) spotCfg = null; });
+
+// a spot's circle in window px. side: 1 right (her left as we look), -1 the other
+export function spotCircle(kind, side = 1) {
+  const a = anchor();
+  const c = touchSpots()[kind];
+  if (!a || !c) return null;
+  const u = a.modelH;
+  return { x: a.x + (c.pair ? side : 1) * c.dx * u, y: a.y + c.dy * u, r: Math.max(8, c.r * u) };
 }
 
 export function regionAt(x, y) {
   const a = anchor();
   if (!a) return null;
-  const dx = x - a.x, H = a.modelH, W = a.modelW, hw = a.headW;
-  const top = a.y - H * 0.09;
-  // her middle (the rig's own test, narrow) or one of the spots out at
-  // her sides: hands, sides, tail
-  const inBox = Math.abs(dx) < W * 0.5 && y >= top && y <= top + H;
-  if (!Live2D.isOverModel(x, y) && !(inBox && sideSpot(dx, y, a)) && !nearTail(x, y, a)) return null;
-  const side = Math.sign(dx) || 1;
-  if (Live2D.hasModel()) {
-    if (!rigRegions) rigRegions = buildRigRegions();
-    if (rigRegions) {
-      const hand = Live2D.drawableAt(x, y, rigRegions.hands, 12);
-      if (hand) return { kind: 'hand', side: hand.toLowerCase().includes('armlhand') ? 'left' : 'right' };
-      if (rigRegions.tail.size && Live2D.drawableAt(x, y, rigRegions.tail, 6)) return { kind: 'tail', side };
-      if (rigRegions.ears.size && Live2D.drawableAt(x, y, rigRegions.ears, 6)) return { kind: 'ear', side };
+  // the circles first, closest center wins where two overlap
+  let best = null;
+  for (const [kind, c] of Object.entries(touchSpots())) {
+    for (const side of c.pair ? [1, -1] : [1]) {
+      const p = spotCircle(kind, side);
+      const d = Math.hypot(x - p.x, y - p.y) / p.r;
+      if (d <= 1 && (!best || d < best.d)) best = { d, kind, side };
     }
   }
-  // the nose is a small spot in the middle of the face
-  if (Math.abs(dx) < hw * 0.09 && y > a.y + H * 0.025 && y < a.y + H * 0.06) return { kind: 'nose', side: 0 };
-  if (Live2D.hasModel() && Live2D.hitTest(x, y, HIT_FACE)) return { kind: 'cheek', side };
-  if (Live2D.hasModel() && Live2D.hitTest(x, y, HIT_HEAD)) return { kind: 'head', side: 0 };
-  // proportions, for the placeholder and whatever the rig's areas miss
-  if (y >= top && y < top + H * 0.045 && Math.abs(dx) > hw * 0.3 && Math.abs(dx) < hw * 0.7) return { kind: 'ear', side };
-  if (y >= top && y < a.y - H * 0.02 && Math.abs(dx) < hw * 0.55) return { kind: 'head', side: 0 };
-  if (y >= a.y - H * 0.02 && y < a.y + H * 0.12 && Math.abs(dx) < hw * 0.45) return { kind: 'cheek', side };
-  if (y >= a.y + H * 0.12 && y < a.y + H * 0.22 && Math.abs(dx) > hw * 0.4 && Math.abs(dx) < W * 0.45) return { kind: 'shoulder', side };
-  if (y >= a.y + H * 0.33 && y < a.y + H * 0.46 && Math.abs(dx) > W * 0.27 && Math.abs(dx) < W * 0.5) {
-    return { kind: 'hand', side: dx < 0 ? 'left' : 'right' };
+  if (best) {
+    const side = best.kind === 'hand' ? (best.side < 0 ? 'left' : 'right') : best.side;
+    return { kind: best.kind, side };
   }
-  if (y >= a.y + H * 0.2 && y < a.y + H * 0.36 && Math.abs(dx) > W * 0.16 && Math.abs(dx) < W * 0.33) return { kind: 'side', side };
-  if (nearTail(x, y, a)) return { kind: 'tail', side: 1 };
-  return { kind: 'body', side };
+  const dx = x - a.x, H = a.modelH, hw = a.headW;
+  const top = a.y - H * 0.09;
+  if (Live2D.hasModel() ? Live2D.hitTest(x, y, HIT_HEAD) : (y >= top && y < a.y - H * 0.02 && Math.abs(dx) < hw * 0.55)) {
+    return { kind: 'head', side: 0 };
+  }
+  if (Live2D.isOverModel(x, y)) return { kind: 'body', side: Math.sign(dx) || 1 };
+  return null;
 }
 
-// the spots that stick out past the rig's narrow middle hit test
-function sideSpot(dx, y, a) {
-  const H = a.modelH, W = a.modelW, ax = Math.abs(dx);
-  return (y >= a.y + H * 0.12 && y < a.y + H * 0.46 && ax < W * 0.5);
-}
-
-const HIT_FACE = new Set(['HitAreaFaceStroke']);
 const HIT_HEAD = new Set(['HitAreaHeadpat']);
-// where her tail sticks out, for the placeholder (the rig has drawables)
-function nearTail(x, y, a) {
-  if (Live2D.hasModel()) return false;
-  const dx = x - a.x;
-  return dx > a.modelW * 0.28 && dx < a.modelW * 0.5 && y > a.y + a.modelH * 0.42 && y < a.y + a.modelH * 0.58;
-}
 
 // what the pointer looks like over each spot, so he can SEE what he
 // can do. an emoji drawn into an svg cursor, hotspot in the middle
@@ -419,19 +433,10 @@ export function cursorFor(kind) {
 // a soft glow on the spot under the pointer: center + size, window px
 export function regionGlow(region) {
   const a = anchor();
-  if (!a || !region) return null;
-  const H = a.modelH, W = a.modelW, hw = a.headW, s = region.side === 'left' ? -1 : region.side === 'right' ? 1 : region.side;
-  switch (region.kind) {
-    case 'head': return { x: a.x, y: a.y - H * 0.06, r: hw * 0.5 };
-    case 'ear': return { x: a.x + s * hw * 0.5, y: a.y - H * 0.075, r: hw * 0.22 };
-    case 'cheek': return { x: a.x + s * hw * 0.25, y: a.y + H * 0.06, r: hw * 0.2 };
-    case 'nose': return { x: a.x, y: a.y + H * 0.045, r: hw * 0.1 };
-    case 'shoulder': return { x: a.x + s * W * 0.3, y: a.y + H * 0.17, r: hw * 0.28 };
-    case 'hand': return { x: a.x + s * W * 0.38, y: a.y + H * 0.4, r: hw * 0.25 };
-    case 'side': return { x: a.x + s * W * 0.25, y: a.y + H * 0.28, r: hw * 0.26 };
-    case 'tail': return { x: a.x + W * 0.38, y: a.y + H * 0.5, r: hw * 0.25 };
-    default: return null;
-  }
+  if (!a || !region || region.kind === 'body') return null;
+  if (region.kind === 'head') return { x: a.x, y: a.y - a.modelH * 0.06, r: a.headW * 0.45 };
+  const side = region.side === 'left' ? -1 : region.side === 'right' ? 1 : (region.side || 1);
+  return spotCircle(region.kind, side);
 }
 
 let pokes = [];

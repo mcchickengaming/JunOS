@@ -67,7 +67,9 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   click-through except over her). Desktop chat goes into her latest conversation; desktop reactions are
   ephemeral OOC turns. Her moves on the desktop (walk cycle + 3D paper turn, carried/landing, cursor
   attention, headpats, pokes, mood/time-of-day idles, thought icons) live in `webapp/js/desktop/body.js`,
-  every number in its `TUNE`. Touch spots (`regionAt`): head/ear/cheek/nose/shoulder/hand/side/tail/body; click
+  every number in its `TUNE`. Touch spots (`regionAt`): circles in her-height units from the face anchor
+  (`SPOT_DEFAULTS`, owner-adjustable via Jun menu > On the desktop > Adjust touch spots, saved in
+  localStorage `desktop.touchSpots.v2`), head on the rig's headpat area, else body; click
   = poke, hold = hand-hold or hug, rub = headpat/ear rub/tickle, drag = carry; cursor icon + glow show the spot.
   main.js does throwing (momentum, bounces, part-off-screen + peek), side-by-side monitors as one strip, and
   the "On the desktop" settings (quiet, walk/doze/watch, sounds). `desktop/props.js`: her spots (cushion,

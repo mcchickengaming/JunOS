@@ -28,7 +28,7 @@
   html.fade-chat .talk:hover, html.fade-chat .talk:focus-within, html.fade-chat .talk.thinking { opacity: 1; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; user-select: none;
     font-family: Arial, Helvetica, sans-serif; color: var(--ink); }
-  #stage { position: absolute; left: 0; right: 0; top: 76px; bottom: 0; }
+  #stage { position: absolute; left: 0; right: 0; top: 110px; bottom: 0; }
   html.mode-compact #stage { top: 0; bottom: 58px; }
   #stage canvas { display: block; }
   /* her speech card (core/speech-card.js) sizes itself off her width, which is
@@ -37,7 +37,7 @@
   .wardrobe-reaction-name { background: var(--card-name-bg) !important; border-left-color: var(--accent-edge) !important; }
   .wardrobe-reaction-text { background: var(--card-bg) !important; }
 
-  .talk { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); width: min(340px, calc(100% - 24px)); z-index: 6; }
+  .talk { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); width: min(340px, calc(100% - 24px)); z-index: 6; }
   html.mode-compact .talk { top: auto; bottom: 10px; }
   .talk[hidden] { display: none; }
   .talk form { display: flex; gap: 6px; padding: 6px; background: var(--panel-bg); border-left: 5px solid var(--accent-edge);
@@ -112,9 +112,9 @@
 
   /* the spot under the pointer glows softly */
   .glow { position: absolute; z-index: 4; pointer-events: none; border-radius: 50%; transform: translate(-50%, -50%) scale(.8);
-    background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 35%, transparent), transparent);
-    opacity: 0; transition: opacity .25s ease, transform .25s ease; }
-  .glow.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 28%, transparent), transparent 85%);
+    opacity: 0; transition: opacity .35s ease, transform .35s ease; }
+  .glow.on { opacity: .6; transform: translate(-50%, -50%) scale(.9); }
 
   /* her thinking cloud while she works out a reply */
   .cloud { position: absolute; z-index: 5; pointer-events: none; display: flex; gap: 4px; padding: 7px 10px; border-radius: 16px;
@@ -149,6 +149,18 @@
   /* her shadow breathes with each step */
   .shadow.walking { animation: shadow-step var(--step, 550ms) ease-in-out infinite alternate; }
   @keyframes shadow-step { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(.85); opacity: .8; } }
+
+  /* adjusting the touch spots */
+  .calib { position: absolute; inset: 0; z-index: 20; background: rgba(10, 6, 24, .25); }
+  .calib-bar { position: absolute; left: 8px; right: 8px; top: 6px; padding: 8px 10px; font: 600 12.5px/1.35 Arial, Helvetica, sans-serif;
+    color: #fff; background: #191233; border-left: 4px solid #ec0054; border-radius: 6px; }
+  .calib-bar span { display: flex; gap: 6px; margin-top: 6px; }
+  .calib-bar button { border: 0; padding: 5px 10px; border-radius: 5px; font: 800 12px Arial, Helvetica, sans-serif; color: #fff; background: #3a2d6b; cursor: pointer; }
+  .calib-bar button[data-do=done] { background: #ec0054; }
+  .calib-spot { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; cursor: grab; touch-action: none;
+    border: 2px solid #ec0054; background: rgba(236, 0, 84, .18); color: #fff; font: 800 10px Arial, Helvetica, sans-serif;
+    display: flex; align-items: center; justify-content: center; text-align: center; text-shadow: 0 1px 2px #000; min-width: 16px; min-height: 16px; }
+  .calib-spot:active { cursor: grabbing; background: rgba(236, 0, 84, .35); }
 
   /* feedback at the pointer */
   .ripple { position: absolute; z-index: 7; pointer-events: none; width: 34px; height: 34px; border-radius: 50%;
@@ -203,6 +215,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=16"></script>
+<script type="module" src="js/desktop.js?v=18"></script>
 </body>
 </html>

@@ -403,7 +403,7 @@ function ballStopped(cx) {
   const her = ctx.getWin();
   const hb = her.getBounds();
   const side = cx > hb.x + hb.width / 2 ? -1 : 1;
-  const to = cx + side * hb.width * 0.18 - hb.width / 2;
+  const to = cx + side * unit() * 0.28 - hb.width / 2;
   ctx.walkTo(to, 1.5, () => {
     if (!ball || ball.win.isDestroyed()) return;
     ctx.send('jun:command', 'kick');

@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=12';
+import * as Body from './desktop/body.js?v=14';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -438,7 +438,7 @@ async function refreshMood() {
 // ---------------------------------------------------------------
 // "On the desktop" settings from the tray (desktop/main.js)
 
-let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false };
+let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow' };
 const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
 const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
 D?.onSettings?.((s) => {
@@ -455,7 +455,7 @@ window.addEventListener('resize', () => setTimeout(frame, 60));
 // whatever is under the window
 
 function overUi(t) {
-  return !!(t && t.closest && t.closest('.talk, .tools, .note, .help'));
+  return !!(t && t.closest && t.closest('.talk, .tools, .note, .help, .calib'));
 }
 function overHer(x, y) {
   return ready && !!Body.regionAt(x, y);
@@ -476,17 +476,24 @@ let hoverKind = null;
 let glowTimer = null;
 function showHover(region) {
   const kind = region ? region.kind : null;
-  if (kind === hoverKind) return;
-  hoverKind = kind;
+  const key = region ? kind + ':' + region.side : null;
+  if (key === hoverKind) return;
+  hoverKind = key;
   document.body.style.cursor = Body.cursorFor(kind);
-  const g = Body.regionGlow(region);
+  // the glow only once the pointer rests on a spot for a moment, so
+  // sweeping across her doesn't light her up everywhere. off entirely
+  // with "Touch hints: cursor icon only"
   clearTimeout(glowTimer);
-  if (!g || dozing) { glow.classList.remove('on'); return; }
-  glow.style.left = g.x + 'px';
-  glow.style.top = g.y + 'px';
-  glow.style.width = glow.style.height = Math.round(g.r * 2) + 'px';
-  glow.classList.add('on');
-  glowTimer = setTimeout(() => glow.classList.remove('on'), 1400);
+  glow.classList.remove('on');
+  const g = settings.hints === 'cursor' || dozing ? null : Body.regionGlow(region);
+  if (!g) return;
+  glowTimer = setTimeout(() => {
+    glow.style.left = g.x + 'px';
+    glow.style.top = g.y + 'px';
+    glow.style.width = glow.style.height = Math.round(g.r * 2) + 'px';
+    glow.classList.add('on');
+    glowTimer = setTimeout(() => glow.classList.remove('on'), 1100);
+  }, 280);
 }
 
 // waving back: a few quick turns of the pointer near her while she waves
@@ -576,6 +583,82 @@ function actionLabel(text, x, y) {
   label.classList.add('on');
   clearTimeout(labelTimer);
   labelTimer = setTimeout(() => label.classList.remove('on'), 1300);
+}
+
+// ---------------------------------------------------------------
+// adjusting the touch spots: a circle per spot over her, drag it
+// where it belongs, scroll on it to resize. the pairs (ears, cheeks,
+// shoulders, sides, hands) mirror each other. Done saves them
+
+let calibrating = false;
+let calibEl = null;
+function startCalibrate() {
+  if (calibrating || !ready) return;
+  calibrating = true;
+  D?.stopWalk();
+  closeTalk(true);
+  setThrough(false);
+  const a = Live2D.faceAnchor();
+  const u = a.modelH;
+  const spots = JSON.parse(JSON.stringify(Body.touchSpots()));
+  calibEl = document.createElement('div');
+  calibEl.className = 'calib';
+  calibEl.innerHTML = `<div class="calib-bar"><b>Drag each circle onto her.</b> Scroll on a circle to resize it.
+    <span><button type="button" data-do="done">Done</button><button type="button" data-do="reset">Reset</button>
+    <button type="button" data-do="cancel">Cancel</button></span></div>`;
+  document.body.appendChild(calibEl);
+  const circles = [];
+  const place = () => {
+    for (const c of circles) {
+      const s = spots[c.kind];
+      c.el.style.left = (a.x + c.side * (s.pair ? 1 : 1) * s.dx * u) + 'px';
+      c.el.style.top = (a.y + s.dy * u) + 'px';
+      c.el.style.width = c.el.style.height = Math.round(s.r * u * 2) + 'px';
+    }
+  };
+  for (const [kind, s] of Object.entries(spots)) {
+    for (const side of s.pair ? [1, -1] : [1]) {
+      const el = document.createElement('div');
+      el.className = 'calib-spot';
+      el.textContent = s.label;
+      calibEl.appendChild(el);
+      const c = { kind, side, el };
+      circles.push(c);
+      el.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        el.setPointerCapture(e.pointerId);
+        const move = (ev) => {
+          spots[kind].dx = ((ev.clientX - a.x) / u) * (s.pair ? side : 1);
+          spots[kind].dy = (ev.clientY - a.y) / u;
+          place();
+        };
+        el.addEventListener('pointermove', move);
+        el.addEventListener('pointerup', () => el.removeEventListener('pointermove', move), { once: true });
+      });
+      el.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        spots[kind].r = Math.max(0.008, Math.min(0.15, spots[kind].r * (e.deltaY < 0 ? 1.08 : 0.93)));
+        place();
+      }, { passive: false });
+    }
+  }
+  place();
+  calibEl.querySelector('.calib-bar').addEventListener('click', (e) => {
+    const what = e.target.dataset && e.target.dataset.do;
+    if (!what) return;
+    if (what === 'done') { Body.saveTouchSpots(spots); endCalibrate(); actionLabel('Touch spots saved', a.x, a.y); }
+    else if (what === 'cancel') endCalibrate();
+    else if (what === 'reset') {
+      for (const [k, d] of Object.entries(Body.SPOT_DEFAULTS)) Object.assign(spots[k], { dx: d.dx, dy: d.dy, r: d.r });
+      place();
+    }
+  });
+}
+function endCalibrate() {
+  calibrating = false;
+  if (calibEl) calibEl.remove();
+  calibEl = null;
+  hoverKind = undefined;
 }
 
 // a press on her: a click (poke or talk), a hold (hand, hug) or a
@@ -827,7 +910,7 @@ function scheduleWander() {
   const range = WANDER_S[settings.walk] || [30, 60];
   setTimeout(() => {
     const may = WANDER_S[settings.walk] && !settings.quiet;
-    if (may && MODE === 'stepout' && ready && !busy && !dozing && !walking && !press && talk.hidden && !Body.patting()) D?.wander(pace);
+    if (may && !calibrating && MODE === 'stepout' && ready && !busy && !dozing && !walking && !press && talk.hidden && !Body.patting()) D?.wander(pace);
     scheduleWander();
   }, (range[0] + Math.random() * (range[1] - range[0])) * 1000);
 }
@@ -836,7 +919,7 @@ function scheduleWander() {
 // rests her legs, waves at the cursor when it's moving
 function scheduleMoves() {
   setTimeout(() => {
-    if (ready && !busy && !dozing && !walking && !press) {
+    if (ready && !calibrating && !busy && !dozing && !walking && !press) {
       // now and then a thought of her own instead of a move
       const part = daypart();
       const mood = Body.currentMood();
@@ -896,6 +979,7 @@ D?.onCursor?.(({ x, y }) => { if (ready && !press) Body.cursor(x, y); });
 
 D?.onCommand((cmd) => {
   if (cmd === 'go-inside') goInside();
+  else if (cmd === 'calibrate') startCalibrate();
   else if (cmd === 'kick') { Body.kick(); showEmote(Math.random() < 0.5 ? 'star' : 'note'); sound('pop'); }
   else if (cmd === 'talk') openTalk();
 });

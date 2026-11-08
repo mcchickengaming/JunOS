@@ -28,7 +28,8 @@ const ICON_ICO = path.join(__dirname, 'jun.ico');
 // her height on the desktop, in screen px, per size setting
 const SIZES = { small: 320, medium: 440, large: 560 };
 // room above her head for the chat line
-const HEADROOM = 76;
+// room above her head for the chat line, her bubbles and drifting hearts
+const HEADROOM = 110;
 const WALK_PX_PER_S = 70;
 // the hop in her walk: px high, seconds per step (matches strideMs / 2 in webapp/js/desktop/body.js)
 const HOP_PX = 4;
@@ -50,7 +51,7 @@ const DEFAULTS = {
   mode: 'window', inside: 'window', onTop: false, size: 'medium',
   window: null, compact: null, stepX: null, displayId: null, tipShown: false,
   // "On the desktop" settings, the page reads them (jun:settings)
-  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false },
+  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow' },
 };
 const WALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
 const DOZE_CHOICES = [[2, 'After 2 minutes'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [0, 'Never']];
@@ -226,10 +227,16 @@ function onScreen(b) {
   });
 }
 
+// wide on purpose: everything around her (speech card, hearts, a
+// swinging arm) needs see-through room, or the window edge cuts it
+// off. the extra is click-through, so it costs nothing
 function stepoutSize() {
   const h = SIZES[cfg.size];
-  return { width: Math.round(Math.max(380, h * 0.9)), height: h + HEADROOM };
+  return { width: Math.round(Math.max(460, h * 1.45)), height: h + HEADROOM };
 }
+
+// half her body's width, what has to stay on screen
+const herHalf = () => SIZES[cfg.size] * 0.2;
 
 function floorY(display, height) {
   const wa = display.workArea;
@@ -238,9 +245,9 @@ function floorY(display, height) {
 }
 
 function clampX(display, x, width) {
-  // her body is the middle third of the window, keep THAT on screen
+  // she's in the middle of a wide window: keep HER on screen, not the window
   const wa = display.workArea;
-  return Math.max(wa.x - width * 0.3, Math.min(x, wa.x + wa.width - width * 0.7));
+  return Math.max(wa.x - width / 2 + herHalf(), Math.min(x, wa.x + wa.width - width / 2 - herHalf()));
 }
 
 // monitors standing side by side, edges touching, are one long strip
@@ -263,8 +270,8 @@ function stripRange(display, width) {
   const first = strip[0].workArea, last = strip[strip.length - 1].workArea;
   return {
     strip,
-    lo: first.x - width * 0.3,
-    hi: last.x + last.width - width * 0.7,
+    lo: first.x - width / 2 + herHalf(),
+    hi: last.x + last.width - width / 2 - herHalf(),
     top: Math.min(...strip.map(d => d.workArea.y)),
   };
 }
@@ -316,7 +323,7 @@ function openMode(mode, reason) {
     if (cfg.windowMax) w.maximize();
     w.loadURL(JUN_URL + '/index.html');
   } else if (mode === 'compact') {
-    const size = { width: 380, height: 600 };
+    const size = { width: 440, height: 620 };
     let pos = onScreen(cfg.compact && { ...cfg.compact, ...size }) ? cfg.compact : null;
     if (!pos) {
       const wa = screen.getPrimaryDisplay().workArea;
@@ -525,7 +532,7 @@ function fly(vx, vy) {
     // a hard enough throw carries her part way off the screen
     if (x < lo && !past && vx < -EDGE_THROW) past = -1;
     if (x > hi && !past && vx > EDGE_THROW) past = 1;
-    const l = past < 0 ? lo - b.width * 0.22 : lo, h = past > 0 ? hi + b.width * 0.22 : hi;
+    const l = past < 0 ? lo - herHalf() * 1.3 : lo, h = past > 0 ? hi + herHalf() * 1.3 : hi;
     if (x < l) { x = l; vx = Math.abs(vx) * 0.45; send('jun:walk-state', { state: 'bonk' }); }
     if (x > h) { x = h; vx = -Math.abs(vx) * 0.45; send('jun:walk-state', { state: 'bonk' }); }
     if (y < top) { y = top; vy = Math.abs(vy) * 0.4; }
@@ -835,7 +842,24 @@ function deskMenu() {
     { label: 'Looks at your mouse', submenu: radio('watch', WATCH_CHOICES) },
     { type: 'separator' },
     { label: 'Little sounds (steps, landing, squeaks)', type: 'checkbox', checked: !!cfg.desk.sounds, click: (i) => set('sounds', i.checked) },
+    { label: 'Touch hints', submenu: [
+      { label: 'Cursor icon and a soft glow', type: 'radio', checked: cfg.desk.hints !== 'cursor', click: () => set('hints', 'glow') },
+      { label: 'Cursor icon only', type: 'radio', checked: cfg.desk.hints === 'cursor', click: () => set('hints', 'cursor') },
+    ] },
+    { label: 'Adjust touch spots…', click: calibrate },
   ] };
+}
+
+// drag the touch spots onto her (desktop.js shows the circles). needs
+// her out of her window, the page with the spots is desktop.html
+function calibrate() {
+  if (winMode === 'window') {
+    openMode('stepout', '');
+    setTimeout(() => send('jun:command', 'calibrate'), 2500);
+  } else {
+    showJun();
+    send('jun:command', 'calibrate');
+  }
 }
 
 // her spots and the ball
