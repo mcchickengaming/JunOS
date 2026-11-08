@@ -23,6 +23,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
+import * as Body from './desktop/body.js?v=2';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -42,6 +43,7 @@ const NOTES = {
   stepout: `${OOC}you just climbed out of your app window and are now standing on the taskbar at the bottom of Anon's computer screen, out on his desktop. React out loud to being out here, one short line, in character. No narration.)`,
   inside: `${OOC}you are climbing back into your app window from Anon's desktop. Say one short line out loud as you go, in character. No narration.)`,
   wake: `${OOC}you dozed off on the taskbar while Anon was away from his computer, and he just came back. Wake up and say one short line out loud, in character. No narration.)`,
+  headpat: `${OOC}Anon is patting your head with his mouse cursor while you stand on his taskbar. React out loud, one short line, in character. No narration.)`,
   dropped: `${OOC}Anon just grabbed you with his mouse cursor, carried you across his screen and dropped you back down on the taskbar. React out loud, one short line, in character. No narration.)`,
 };
 // only when her brain doesn't answer at all
@@ -50,6 +52,7 @@ const FALLBACK = {
   inside: "I'm heading back in. Don't miss me too much.",
   wake: "Mm... oh. You're back.",
   dropped: 'Hey! Warn me first!',
+  headpat: 'Mm... okay, you can keep doing that.',
   talk: "Sorry, I zoned out for a second. Say that again?",
 };
 
@@ -274,6 +277,7 @@ function overHer(x, y) {
 }
 
 let through = null;
+let wasPatting = false;
 function setThrough(on) {
   if (on === through) return;
   through = on;
@@ -281,6 +285,13 @@ function setThrough(on) {
 }
 window.addEventListener('mousemove', (e) => {
   if (press) return;
+  const pat = ready && !overUi(e.target) && Body.pointerMove(e.clientX, e.clientY);
+  if (pat && !wasPatting) {
+    // a headpat stops whatever she was doing, and wakes her up
+    D?.stopWalk();
+    if (dozing) wake(true);
+  }
+  wasPatting = pat;
   setThrough(!(overUi(e.target) || overHer(e.clientX, e.clientY)));
 }, true);
 document.addEventListener('mouseleave', () => { if (!press) setThrough(true); });
@@ -305,9 +316,7 @@ window.addEventListener('pointermove', (e) => {
   press.dragging = true;
   if (dozing) wake(false);
   D?.dragStart();
-  if (MODE === 'stepout') {
-    for (const a of Actions.parseActions('[A:shocked]')) Actions.applyAction(a);
-  }
+  Body.setCarried(true);
 }, true);
 
 const endPress = (e) => {
@@ -315,7 +324,14 @@ const endPress = (e) => {
   e.stopPropagation();
   const p = press;
   press = null;
-  if (p.dragging) { D?.dragEnd(); return; }
+  if (p.dragging) {
+    D?.dragEnd();
+    // compact doesn't fall, it just stays where it was put
+    if (MODE !== 'stepout') Body.landed();
+    return;
+  }
+  // a click at the end of a headpat is part of the pat
+  if (Body.patting()) return;
   if (e.type === 'pointercancel') return;
   const now = Date.now();
   if (now - lastTap < 350) {
@@ -349,29 +365,15 @@ document.getElementById('toHide').addEventListener('click', () => D?.hide());
 // ---------------------------------------------------------------
 // out on the desktop: walking, dozing, being carried
 
-function walkPose(dir) {
-  // body turned the way she's going, a bounce in her step
-  for (const [p, v] of [['ParamHeadX', 0.55 * dir], ['ParamBodyX', 0.5 * dir], ['ParamEyeballLX', 0.7 * dir], ['ParamEyeballRX', 0.7 * dir]]) {
-    Live2D.setTarget(p, v);
-    Live2D.hold(p, 120000);
-  }
-  Live2D.startLoop('ParamBodyY', 0.25, 420);
-  Live2D.startLoop('ParamLegL', 0.3, 840);
-  Live2D.startLoop('ParamLegR', -0.3, 840);
-}
-function standPose() {
-  for (const p of ['ParamBodyY', 'ParamLegL', 'ParamLegR']) Live2D.stopLoop(p);
-  Live2D.releaseAll();
-}
-
 D?.onWalk(({ state, dir }) => {
   if (state === 'walking') {
     walking = true;
-    walkPose(dir || 1);
+    Body.walking(dir || 1);
     return;
   }
   walking = false;
-  standPose();
+  Body.walking(0);
+  if (state === 'landed') Body.landed();
   if (state === 'landed' && MODE === 'stepout') {
     // not every single time he moves her, that gets old
     drops++;
@@ -385,6 +387,7 @@ function doze() {
   dozeAt = Date.now();
   D?.stopWalk();
   closeTalk();
+  Body.setAsleep(true);
   Live2D.setTarget('ParamEyeOpen', -1);
   Live2D.hold('ParamEyeOpen', 1e9);
   Live2D.setTarget('ParamHeadY', -0.6);
@@ -397,10 +400,15 @@ function wake(withLine) {
   if (!dozing) return;
   dozing = false;
   zzz.hidden = true;
+  Body.setAsleep(false);
   Live2D.stopLoop('ParamBodyY');
   Live2D.releaseAll();
-  // a nap under a minute isn't worth a line
-  if (withLine && Date.now() - dozeAt > 60000) react('wake');
+  // a nap under a minute isn't worth a line. a longer one gets a
+  // wave hello and one
+  if (withLine && Date.now() - dozeAt > 60000) {
+    setTimeout(() => Body.play('wave'), 400);
+    react('wake');
+  }
 }
 
 D?.onIdle(({ seconds, dozeAfter }) => {
@@ -412,9 +420,27 @@ D?.onIdle(({ seconds, dozeAfter }) => {
 // a stroll every so often, when she isn't busy with him
 function scheduleWander() {
   setTimeout(() => {
-    if (MODE === 'stepout' && ready && !busy && !dozing && !walking && !press && talk.hidden) D?.wander();
+    if (MODE === 'stepout' && ready && !busy && !dozing && !walking && !press && talk.hidden && !Body.patting()) D?.wander();
     scheduleWander();
   }, 25000 + Math.random() * 50000);
+}
+
+// and in between, she fidgets: looks around, stretches, yawns,
+// rests her legs, waves at the cursor when it's moving
+function scheduleMoves() {
+  setTimeout(() => {
+    if (ready && !busy && !dozing && !walking && !press) Body.idleMove();
+    scheduleMoves();
+  }, 12000 + Math.random() * 22000);
+}
+
+// a long enough headpat gets a word out of her, now and then
+let patSpoke = 0;
+function onHeadpat(ms) {
+  if (ms > 2500 && Date.now() - patSpoke > 120000 && Math.random() < 0.5) {
+    patSpoke = Date.now();
+    react('headpat');
+  }
 }
 
 let leaving = false;
@@ -430,6 +456,9 @@ async function goInside() {
   ]);
   D?.goInside();
 }
+
+// the cursor anywhere on screen, from desktop/main.js. she watches it
+D?.onCursor?.(({ x, y }) => { if (ready && !press) Body.cursor(x, y); });
 
 D?.onCommand((cmd) => {
   if (cmd === 'go-inside') goInside();
@@ -476,10 +505,12 @@ async function main() {
     return;
   }
   ready = true;
+  Body.init({ stageEl, faceAnchor: () => Live2D.faceAnchor(), onHeadpat });
   frame();
   setTimeout(frame, 400);
   await loadConversation();
   scheduleWander();
+  scheduleMoves();
   if (MODE === 'stepout' && REASON === 'stepout') react('stepout');
 }
 

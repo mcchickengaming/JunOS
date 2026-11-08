@@ -30,5 +30,7 @@ contextBridge.exposeInMainWorld('junDesktop', {
   wantFocus: (on) => ipcRenderer.send('jun:focus', !!on),
   onWalk: on('jun:walk-state'),
   onIdle: on('jun:idle'),
+  // the mouse anywhere on screen, in this window's coordinates
+  onCursor: on('jun:cursor'),
   onCommand: on('jun:command'),
 });

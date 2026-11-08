@@ -65,7 +65,8 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   (version + SHA-256 in that file) into `runtime\electron`. Modes from the tray and her window's "Jun" menu bar (Ctrl+Shift+S steps out): her window (index.html),
   compact (frameless, on top), stepped out (on the taskbar: walks, dozes after 5 idle min, drag and drop,
   click-through except over her). Desktop chat goes into her latest conversation; desktop reactions are
-  ephemeral OOC turns. Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
+  ephemeral OOC turns. Her moves on the desktop (walk cycle + 3D paper turn, carried/landing, cursor
+  watching, headpats, idle fidgets) live in `webapp/js/desktop/body.js`, every number in its `TUNE`. Settings in `runtime\desktop\desktop.json`. Writes Start menu/Startup `Jun.lnk`.
   `start.ps1 stop` closes it, `start.ps1 desktop` opens it alone. Never run Electron in the cloud sandbox
   (binary downloads are blocked); test the page with Playwright + Chrome and a mocked `window.junDesktop`.
 

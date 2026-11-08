@@ -110,6 +110,7 @@ async function boot() {
   if (fs.existsSync(startupLink())) writeShortcut(startupLink());
   powerMonitor.on('resume', () => sendIdle(0));
   setInterval(pollIdle, 10000);
+  setInterval(pollCursor, 90);
 
   if (!await serverUp()) {
     showSplash('Waking Jun up…');
@@ -428,7 +429,12 @@ function startWander() {
   stopWalk();
   const dir = to > b.x ? 1 : -1;
   const baseY = floorY(display, b.height);
-  let x = b.x, t = 0, last = Date.now();
+  const from = b.x, dist = Math.abs(to - b.x);
+  let t = 0, last = Date.now();
+  // she turns first (the page does that), then sets off. speeds up
+  // over her first steps and slows into the last ones, the bounce is
+  // in her body (desktop/body.js) so her feet stay on the taskbar
+  const TURN_S = 0.35, EASE_PX = Math.min(60, dist / 3);
   send('jun:walk-state', { state: 'walking', dir });
   walk = setInterval(() => {
     if (!win || win.isDestroyed()) { stopWalk(); return; }
@@ -436,12 +442,14 @@ function startWander() {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     t += dt;
-    x += dir * WALK_PX_PER_S * dt;
+    if (t < TURN_S) return;
+    const gone = Math.abs(win.getBounds().x - from);
+    const left = dist - gone;
+    const speed = WALK_PX_PER_S * Math.max(0.25, Math.min(1, gone / EASE_PX + 0.25, left / EASE_PX + 0.15));
+    let x = win.getBounds().x + dir * Math.max(1, speed * dt);
     const done = dir > 0 ? x >= to : x <= to;
     if (done) x = to;
-    // a little bounce in each step
-    const bob = Math.round(Math.abs(Math.sin(t * Math.PI * 2.4)) * -3);
-    win.setPosition(Math.round(x), baseY + (done ? 0 : bob));
+    win.setPosition(Math.round(x), baseY);
     if (done) {
       stopWalk();
       cfg.stepX = Math.round(x);
@@ -449,6 +457,18 @@ function startWander() {
       send('jun:walk-state', { state: 'stopped' });
     }
   }, 33);
+}
+
+// the cursor, for her eyes. only while it moves, and only in the
+// frameless modes, her window has its own page
+let lastCursor = null;
+function pollCursor() {
+  if (!win || win.isDestroyed() || winMode === 'window' || !win.isVisible() || drag) return;
+  const c = screen.getCursorScreenPoint();
+  if (lastCursor && lastCursor.x === c.x && lastCursor.y === c.y) return;
+  lastCursor = c;
+  const b = win.getBounds();
+  send('jun:cursor', { x: c.x - b.x, y: c.y - b.y });
 }
 
 function stopWalk() {
