@@ -783,7 +783,11 @@ let calibEl = null;
 function startCalibrate() {
   if (calibrating || !ready) return;
   calibrating = true;
+  // she stays put while he works on her: no walks, no carrying, the
+  // circles don't drag her along. she still breathes and fidgets
+  D?.hold?.(true);
   D?.stopWalk();
+  document.body.classList.add('calibrating');
   closeTalk(true);
   setThrough(false);
   const a = Live2D.faceAnchor();
@@ -797,6 +801,9 @@ function startCalibrate() {
     <button type="button" data-do="done">Done</button><button type="button" data-do="reset">Reset</button>
     <button type="button" data-do="cancel">Cancel</button></span></div>`;
   document.body.appendChild(calibEl);
+  // live2d/input.js drags and scrolls her inside the page on any press
+  // or wheel over her; none of that gets past the adjusting layer
+  for (const t of ['pointerdown', 'wheel', 'dblclick']) calibEl.addEventListener(t, (e) => e.stopPropagation());
   const mirrorBox = calibEl.querySelector('[data-do=mirror]');
   const pairs = Object.keys(spots).filter(k => spots[k].pair);
   const syncMirrorBox = () => {
@@ -884,6 +891,8 @@ function startCalibrate() {
 }
 function endCalibrate() {
   calibrating = false;
+  D?.hold?.(false);
+  document.body.classList.remove('calibrating');
   if (calibEl) calibEl.remove();
   calibEl = null;
   hoverKind = undefined;

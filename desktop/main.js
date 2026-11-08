@@ -89,6 +89,9 @@ let drag = null;
 let fall = null;
 let clickThrough = false;
 let insideTimer = null;
+// held in place while he adjusts her touch spots: no walks, no
+// carrying, no fetch. she still breathes and fidgets
+let held = false;
 
 if (!app.requestSingleInstanceLock()) {
   // a second launch (the Start menu shortcut, start.ps1 again)
@@ -366,6 +369,9 @@ function openMode(mode, reason) {
     setClickThrough(w, true);
     w.webContents.on('did-finish-load', () => sendSettings());
   }
+  // a fresh page never starts out held
+  held = false;
+  w.webContents.on('did-start-loading', () => { if (w === win) held = false; });
 
   const remember = () => {
     if (w.isDestroyed() || w !== win) return;
@@ -455,7 +461,7 @@ function setClickThrough(w, on) {
 }
 
 function startDrag() {
-  if (!win || win.isDestroyed() || winMode === 'window') return;
+  if (!win || win.isDestroyed() || winMode === 'window' || held) return;
   stopWalk();
   stopFall();
   Props.leave();
@@ -568,6 +574,7 @@ function landed(x, speed = 0, edge = 0) {
 
 function startWander(opts = {}) {
   if (!win || win.isDestroyed() || winMode !== 'stepout' || drag || fall) return;
+  if (held) { send('jun:walk-state', { state: 'stopped' }); return; }
   // a spot to stay on beats a stroll; sitting in it, she stays put
   if (opts.to == null && !opts.back) {
     if (Props.onSpot() || Props.wantsSpot()) { send('jun:walk-state', { state: 'stopped' }); return; }
@@ -710,6 +717,11 @@ ipcMain.on('jun:walk', (e, what) => {
   if (!fromWin(e)) return;
   if (what === 'wander' || (what && what.what === 'wander')) startWander(typeof what === 'object' ? what : {});
   else stopWalk();
+});
+ipcMain.on('jun:hold', (e, on) => {
+  if (!fromWin(e)) return;
+  held = !!on;
+  if (held) stopWalk();
 });
 ipcMain.on('jun:mode', (e, mode) => {
   if (!fromWin(e)) return;
