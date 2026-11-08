@@ -60,7 +60,8 @@ export const TUNE = {
   patBody: 0.09,      // ParamBodyZ: her body sways along (owner: 25% less than 0.12, Nov 8)
   // the hover headpat (rubbing over her head, no click): how far the hand
   // slides sideways, which is also what leans her (owner: half of 0.6, Nov 8)
-  rubPatX: 0.3,
+  rubPatX: 0.45,      // (owner: 0.3 felt a little small, Nov 8; halfway back toward 0.6)
+  rubPatSmoothMs: 140, // the hover hand eases after the mouse instead of jumping (higher = softer)
   patDip: 0.15,       // ParamHeadY: her head dips a little under the hand
   patEase: 0.35,      // 0..1 how quickly her head catches up with the hand (lower = softer, lazier)
 };
@@ -331,6 +332,7 @@ export function pointerMove(x, y) {
   return kind;
 }
 
+const hoverHand = { x: 0, t: 0 };
 // what a rub does to her, each moment it goes on. also used by a
 // hand left in place (desktop.js "two hands"), which rubs by itself
 export function rubEffect(kind, ms, x) {
@@ -338,7 +340,14 @@ export function rubEffect(kind, ms, x) {
     const a = anchor();
     if (!a) return;
     setHeld('ParamHeadpat', 1, 700);
-    setHeld('ParamHeadpatX', clamp((x - a.x) / (a.headW * 0.5), -1, 1) * TUNE.rubPatX, 700);
+    // the hand eases toward the mouse, so small twitches don't tug her head
+    const want = clamp((x - a.x) / (a.headW * 0.5), -1, 1) * TUNE.rubPatX;
+    const now = performance.now();
+    const dt = hoverHand.t ? Math.min(200, now - hoverHand.t) : 0;
+    hoverHand.t = now;
+    hoverHand.x += (want - hoverHand.x) * (1 - Math.exp(-dt / Math.max(1, TUNE.rubPatSmoothMs)));
+    Live2D.setTarget('ParamHeadpatX', hoverHand.x);
+    Live2D.hold('ParamHeadpatX', 700);
     setHeld('ParamEyesHappy', 1, 900);
     setHeld('ParamBlush', 0.6, 1500);
     if (onPat) onPat(ms);
@@ -358,6 +367,8 @@ export function rubEffect(kind, ms, x) {
 
 function endPat() {
   pat = null;
+  hoverHand.x = 0;
+  hoverHand.t = 0;
 }
 // a rub counts as going on for a moment after the pointer last moved
 const rubLive = () => !!(pat && pat.started && performance.now() - pat.last < 400);
