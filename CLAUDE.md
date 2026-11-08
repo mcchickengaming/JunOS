@@ -73,7 +73,9 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   nothing assumes she's symmetrical), head on the rig's headpat area, else body; click
   = poke, hold = hand-hold / hug (torso) / tail grab, rub = headpat/ear rub/tickle/thigh/foot/tail rub, drag =
   carry; cursor icon + glow show the spot. Combos (`COMBOS` in js/desktop.js: steps in order + time window,
-  effects in body.js `combo()`), spoken touch reactions by chance (`TOUCH_NOTES`/`TOUCH_CHANCE`, ephemeral OOC).
+  effects in body.js `combo()`; `together: true` = both hands at once), spoken touch reactions by chance
+  (`TOUCH_NOTES`/`TOUCH_CHANCE`, ephemeral OOC). Two hands: Shift or right-click during a hold/rub leaves that hand
+  in place (`pin`, keeps going via `Body.rubEffect`), the mouse is free for a second touch.
   main.js does throwing (momentum, bounces, part-off-screen + peek), side-by-side monitors as one strip, and
   the "On the desktop" settings (quiet, walk/doze/watch, sounds). `desktop/props.js`: her spots (cushion,
   dog bed, beanbag, armchair; back+front windows so she sits IN them; "stay" keeps her there) and the fetch

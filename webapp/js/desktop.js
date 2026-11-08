@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=100';
-import * as Body from './desktop/body.js?v=22';
+import * as Body from './desktop/body.js?v=23';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -247,6 +247,11 @@ const COMBOS = [
   { id: 'cozy', steps: ['ear', 'head'], within: 5000, label: 'Combo: ear rub + headpat' },
   { id: 'tickleattack', steps: ['side', 'side', 'feet'], within: 7000, label: 'Combo: tickle attack!' },
   { id: 'tailtease', steps: ['tailrub', 'tailgrab'], within: 5000, label: 'Combo: tail tease' },
+  // two hands at once (one left in place, see "two hands" below)
+  { id: 'bothhands', steps: ['hand', 'hand'], together: true, label: 'Both hands' },
+  { id: 'hugpat', steps: ['hug', 'head'], together: true, label: 'Hug + headpat' },
+  { id: 'bothears', steps: ['ear', 'ear'], together: true, label: 'Both ears' },
+  { id: 'melt', steps: ['tailgrab', 'head'], together: true, label: 'Tail + headpat' },
 ];
 const touchLog = [];
 const comboAt = {};
@@ -256,6 +261,14 @@ function touched(kind) {
   while (touchLog.length && now - touchLog[0].t > 10000) touchLog.shift();
   for (const c of COMBOS) {
     if (now - (comboAt[c.id] || 0) < 20000) continue;
+    // "together" combos: the other hand is left in place on the first step
+    if (c.together) {
+      // either hand can come first
+      const [x, y] = c.steps;
+      if (!pin || !((pin.step === x && kind === y) || (pin.step === y && kind === x))) continue;
+      fireCombo(c, now);
+      return true;
+    }
     // the steps, in order, ending with this touch, inside the time window
     let i = c.steps.length - 1;
     for (let j = touchLog.length - 1; j >= 0 && i >= 0; j--) {
@@ -264,16 +277,75 @@ function touched(kind) {
       else if (i === c.steps.length - 1) break; // the last step has to be this touch
     }
     if (i >= 0) continue;
-    comboAt[c.id] = now;
-    touchLog.length = 0;
-    const a = Live2D.faceAnchor();
-    Body.combo(c.id);
-    if (a) actionLabel(c.label, a.x, a.y - a.modelH * 0.12);
-    sparkles(5);
-    maybeSay('combo:' + c.id);
-    return;
+    fireCombo(c, now);
+    return true;
   }
+  return false;
 }
+function fireCombo(c, now) {
+  comboAt[c.id] = now;
+  touchLog.length = 0;
+  const a = Live2D.faceAnchor();
+  Body.combo(c.id);
+  if (a) actionLabel(c.label, a.x, a.y - a.modelH * 0.12);
+  sparkles(5);
+  maybeSay('combo:' + c.id);
+}
+
+// ---------------------------------------------------------------
+// two hands: while holding (hand, hug, tail) or rubbing (head, ear,
+// tail, foot, thigh, side), tap Shift or right-click and that hand
+// stays where it is, doing what it was doing. the mouse is free for a
+// second touch. click the little hand (or Shift / Esc) to lift it
+
+let pin = null;
+let lastX = 0, lastY = 0;
+const PIN_ICON = { hand: '🤝', hug: '🤗', tailgrab: '✊', head: '✋', ear: '✋', tailrub: '✋', feet: '✋', thigh: '✋', side: '🤏' };
+function pinHand() {
+  if (pin) { releasePin(); return true; }
+  let next = null;
+  if (press && press.hold) {
+    const p = press;
+    const step = p.hold === 'tail' ? 'tailgrab' : p.hold;
+    next = { type: 'hold', step, p, x: p.cx, y: p.cy };
+    // the button is still down: this press is over, the hold carries on
+    press = null;
+  } else if (wasRubbing) {
+    const kind = wasRubbing;
+    const t0 = Date.now() - 2500;
+    next = { type: 'rub', step: kind === 'tail' ? 'tailrub' : kind, kind, x: lastX, y: lastY };
+    next.timer = setInterval(() => {
+      const ms = Date.now() - t0;
+      Body.rubEffect(kind, ms, next.x + Math.sin(ms / 140) * 14);
+    }, 120);
+  }
+  if (!next) return false;
+  pin = next;
+  const el = document.createElement('div');
+  el.className = 'pin' + (pin.type === 'rub' ? ' rubbing' : '');
+  el.textContent = PIN_ICON[pin.step] || '✋';
+  el.title = 'Your other hand. Click to lift it.';
+  el.style.left = pin.x + 'px';
+  el.style.top = pin.y + 'px';
+  el.addEventListener('click', (e) => { e.stopPropagation(); releasePin(); });
+  document.body.appendChild(el);
+  pin.el = el;
+  actionLabel('Hand left here, the other one is free', pin.x, pin.y);
+  hoverKind = undefined;
+  return true;
+}
+function releasePin() {
+  if (!pin) return;
+  if (pin.type === 'hold') endHold(pin.p);
+  clearInterval(pin.timer);
+  if (pin.el) pin.el.remove();
+  pin = null;
+}
+window.addEventListener('keydown', (e) => {
+  if (!ready || calibrating || document.activeElement === input) return;
+  if (e.key === 'Shift' && !e.repeat) pinHand();
+  else if (e.key === 'Escape' && pin) releasePin();
+});
 function maybeSay(kind) {
   if (!kind || !TOUCH_NOTES[kind] || settings.quiet) return;
   const f = TALK[settings.talk] ?? 1;
@@ -560,7 +632,7 @@ window.addEventListener('resize', () => setTimeout(frame, 60));
 // whatever is under the window
 
 function overUi(t) {
-  return !!(t && t.closest && t.closest('.talk, .tools, .note, .help, .calib'));
+  return !!(t && t.closest && t.closest('.talk, .tools, .note, .help, .calib, .pin'));
 }
 function overHer(x, y) {
   return ready && !!Body.regionAt(x, y);
@@ -624,6 +696,8 @@ function watchWaveBack(x, y) {
 }
 
 window.addEventListener('mousemove', (e) => {
+  lastX = e.clientX;
+  lastY = e.clientY;
   if (press) return;
   const onUi = overUi(e.target);
   const region = ready && !onUi ? Body.regionAt(e.clientX, e.clientY) : null;
@@ -631,9 +705,8 @@ window.addEventListener('mousemove', (e) => {
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
   if (rub) rubTrail(e.clientX, e.clientY);
   if (rub && rub !== wasRubbing) {
-    actionLabel(RUB_LABEL[rub], e.clientX, e.clientY);
     rubSince = Date.now();
-    touched(rub === 'tail' ? 'tailrub' : rub);
+    if (!touched(rub === 'tail' ? 'tailrub' : rub)) actionLabel(RUB_LABEL[rub], e.clientX, e.clientY);
   }
   // a rub that keeps going for a couple of seconds might get a word
   if (rub && RUB_TALK[rub] && Date.now() - rubSince > 2200) { maybeSay(RUB_TALK[rub]); rubSince = Infinity; }
@@ -831,7 +904,7 @@ window.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   e.preventDefault();
   if (e.button !== 0) return;
-  press = { x: e.screenX, y: e.screenY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
+  press = { x: e.screenX, y: e.screenY, cx: e.clientX, cy: e.clientY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
   const p = press;
   ripple(e.clientX, e.clientY);
   // holds: her hand (hold hands), her torso (a hug), her tail (grab it)
@@ -847,27 +920,27 @@ window.addEventListener('pointerdown', (e) => {
       if (region.kind === 'tail') {
         p.hold = 'tail';
         p.holdAt = Date.now();
-        touched('tailgrab');
+        const combo = touched('tailgrab');
         p.talkTimer = setTimeout(() => { if (p.hold === 'tail') maybeSay('tailgrab'); }, 2000);
         Body.tailGrab(true);
         document.body.style.cursor = Body.cursorFor('tailgrab');
-        actionLabel('Tail grab', e.clientX, e.clientY);
+        if (!combo) actionLabel('Tail grab', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => Body.tailGrabTick(Date.now() - p.holdAt), 260);
       } else if (region.kind === 'hand') {
-        touched('hand');
+        const combo = touched('hand');
         p.hold = 'hand';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hand') maybeSay('hand'); }, 2200);
         Body.handhold(region.side, true);
         document.body.style.cursor = Body.cursorFor('holding');
-        actionLabel('Holding hands', e.clientX, e.clientY);
+        if (!combo) actionLabel('Holding hands', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { if (Math.random() < 0.3) floatHearts(1); }, 700);
       } else {
-        touched('hug');
+        const combo = touched('hug');
         p.hold = 'hug';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hug') maybeSay('hug'); }, 1800);
         Body.hug(true);
         document.body.style.cursor = Body.cursorFor('hugging');
-        actionLabel('Hug', e.clientX, e.clientY);
+        if (!combo) actionLabel('Hug', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { Body.hugTick(); floatHearts(1); }, 260);
       }
     }, HOLD_MS);
@@ -904,6 +977,7 @@ window.addEventListener('pointermove', (e) => {
   clearTimeout(press.holdTimer);
   holdRing(false);
   press.dragging = true;
+  releasePin();
   if (dozing) wake(false);
   showHover(null);
   D?.dragStart();
@@ -957,6 +1031,8 @@ window.addEventListener('pointercancel', endPress, true);
 window.addEventListener('contextmenu', (e) => {
   if (overUi(e.target)) return;
   e.preventDefault();
+  // in the middle of a hold or a rub, a right-click leaves that hand there
+  if ((press && press.hold) || wasRubbing) { pinHand(); return; }
   if (overHer(e.clientX, e.clientY)) D?.menu();
 }, true);
 window.addEventListener('wheel', (e) => {

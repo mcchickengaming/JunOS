@@ -311,25 +311,32 @@ export function pointerMove(x, y) {
     }
   }
   if (!pat.started) return null;
+  rubEffect(kind, now - pat.started, x);
+  return kind;
+}
+
+// what a rub does to her, each moment it goes on. also used by a
+// hand left in place (desktop.js "two hands"), which rubs by itself
+export function rubEffect(kind, ms, x) {
   if (kind === 'head') {
     const a = anchor();
+    if (!a) return;
     setHeld('ParamHeadpat', 1, 700);
     setHeld('ParamHeadpatY', clamp((x - a.x) / (a.headW * 0.5), -1, 1) * 0.35, 700);
     setHeld('ParamEyesHappy', 1, 900);
     setHeld('ParamBlush', 0.6, 1500);
-    if (onPat) onPat(now - pat.started);
+    if (onPat) onPat(ms);
   } else if (kind === 'ear') {
     earRub();
   } else if (kind === 'thigh') {
-    thighRub(now - pat.started);
+    thighRub(ms);
   } else if (kind === 'feet') {
-    feetRub(now - pat.started);
+    feetRub(ms);
   } else if (kind === 'tail') {
-    tailRub(now - pat.started);
+    tailRub(ms);
   } else {
     tickle();
   }
-  return kind;
 }
 
 function endPat() {
@@ -744,6 +751,27 @@ export function combo(id) {
       Live2D.startLoop('ParamHeadZ', 0.25, 190);
       setTimeout(() => { Live2D.stopLoop('ParamBodyZ'); Live2D.stopLoop('ParamHeadZ'); act('[A:emote|pout]'); }, 1800);
       emote('laugh');
+      break;
+    case 'bothhands':
+      // both her hands held at once
+      act('[A:heart_eyes] [A:emote|happy]');
+      setHeld('ParamBlush', 1, 3500);
+      setHeld('ParamHeart', 1, 3500);
+      emote('hearts');
+      break;
+    case 'hugpat':
+      // a hug and a headpat at the same time
+      setHeld('ParamEyeOpen', -1, 3000);
+      setHeld('ParamEyesHappy', 1, 3000);
+      setHeld('ParamBlush', 1, 3000);
+      setHeld('ParamHeart', 1, 3000);
+      emote('hearts');
+      break;
+    case 'bothears':
+      setHeld('ParamEarsWiggle', 1, 2500);
+      setHeld('ParamEyeOpen', -0.9, 2500);
+      setHeld('ParamEyesHappy', 1, 2500);
+      emote('note');
       break;
     case 'tailtease':
       act('[A:emote|pout]');
