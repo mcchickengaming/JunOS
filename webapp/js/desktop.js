@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=32';
+import * as Body from './desktop/body.js?v=33';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);

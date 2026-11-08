@@ -60,6 +60,10 @@ export const TUNE = {
   patBody: 0.09,      // ParamBodyZ: her body sways along (owner: 25% less than 0.12, Nov 8)
   // the hover headpat (rubbing over her head, no click): how far the hand
   // slides sideways, which is also what leans her (owner: half of 0.6, Nov 8)
+  // a hover headpat keeps going this long when the mouse slips off her head
+  // (onto an ear, her face, off her), so he has time to find the spot again
+  // before it turns into an ear rub or she goes back to idle
+  patGraceMs: 600,
   rubPatX: 0.45,      // (owner: 0.3 felt a little small, Nov 8; halfway back toward 0.6)
   rubPatSmoothMs: 0,  // extra easing on the hover hand. 0 = off: 140 lagged so far behind a quick rub
                       // that the hand looked like it went the opposite way (owner, Nov 8)
@@ -296,15 +300,20 @@ export function pointerMove(x, y) {
   if (carried) return null;
   const now = performance.now();
   const region = regionAt(x, y);
-  const kind = region && ['head', 'ear', 'side', 'thigh', 'feet', 'tail'].includes(region.kind) ? region.kind : null;
+  let kind = region && ['head', 'ear', 'side', 'thigh', 'feet', 'tail'].includes(region.kind) ? region.kind : null;
+  if (kind === 'head' && pat && pat.kind === 'head') pat.onAt = now;
+  // slipped off her head mid-pat: for a moment it's still the headpat
+  if (kind !== 'head' && pat && pat.kind === 'head' && pat.started && now - (pat.onAt || 0) < TUNE.patGraceMs) kind = 'head';
   // his hand on her tail: it stays put under it
   if (kind === 'tail') Live2D.holdTail(700);
   if (!kind || (pat && pat.kind !== kind)) {
-    if (pat && now - pat.last > 500) endPat();
+    if (pat && now - pat.last > (pat.kind === 'head' ? Math.max(500, TUNE.patGraceMs) : 500)) endPat();
     if (!kind) return null;
   }
-  if (!pat || pat.kind !== kind || now - pat.last > 600) {
-    pat = { kind, started: 0, last: now, lastX: x, dir: 0, flips: [], travel: 0 };
+  // a short pause on her head carries on the same pat (no new back-and-forth needed)
+  const pause = kind === 'head' ? patLinger() : 600;
+  if (!pat || pat.kind !== kind || now - pat.last > pause) {
+    pat = { kind, started: 0, last: now, onAt: now, lastX: x, dir: 0, flips: [], travel: 0 };
     return null;
   }
   const dx = x - pat.lastX;
@@ -339,13 +348,15 @@ export function pointerMove(x, y) {
 }
 
 const hoverHand = { x: 0, t: 0 };
+// how long the hover pat's hand stays on her head after the mouse stops
+const patLinger = () => Math.max(700, TUNE.patGraceMs + 300);
 // what a rub does to her, each moment it goes on. also used by a
 // hand left in place (desktop.js "two hands"), which rubs by itself
 export function rubEffect(kind, ms, x) {
   if (kind === 'head') {
     const a = anchor();
     if (!a) return;
-    setHeld('ParamHeadpat', 1, 700);
+    setHeld('ParamHeadpat', 1, patLinger());
     // the hand eases toward the mouse, so small twitches don't tug her head
     const want = clamp((x - a.x) / (a.headW * 0.5), -1, 1) * TUNE.rubPatX;
     const now = performance.now();
