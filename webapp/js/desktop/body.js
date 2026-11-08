@@ -364,13 +364,22 @@ export function touchSpots() {
     for (const [k, d] of Object.entries(SPOT_DEFAULTS)) {
       const o = saved[k] || {};
       spotCfg[k] = { ...d, dx: Number.isFinite(o.dx) ? o.dx : d.dx, dy: Number.isFinite(o.dy) ? o.dy : d.dy, r: Number.isFinite(o.r) ? o.r : d.r };
+      // a pair can be unlinked: then the left one has its own place
+      // (dx signed, as it is on screen) instead of mirroring the right.
+      // nothing here assumes she's symmetrical
+      const l = o.left;
+      if (d.pair && l && [l.dx, l.dy, l.r].every(Number.isFinite)) spotCfg[k].left = { dx: l.dx, dy: l.dy, r: l.r };
     }
   }
   return spotCfg;
 }
 export function saveTouchSpots(next) {
   const out = {};
-  for (const [k, v] of Object.entries(next || {})) out[k] = { dx: +v.dx.toFixed(3), dy: +v.dy.toFixed(3), r: +v.r.toFixed(3) };
+  const round = (v) => ({ dx: +v.dx.toFixed(3), dy: +v.dy.toFixed(3), r: +v.r.toFixed(3) });
+  for (const [k, v] of Object.entries(next || {})) {
+    out[k] = round(v);
+    if (v.left) out[k].left = round(v.left);
+  }
   try {
     if (next) localStorage.setItem(SPOTS_KEY, JSON.stringify(out)); else localStorage.removeItem(SPOTS_KEY);
   } catch (e) {}
@@ -384,6 +393,7 @@ export function spotCircle(kind, side = 1) {
   const c = touchSpots()[kind];
   if (!a || !c) return null;
   const u = a.modelH;
+  if (c.pair && side < 0 && c.left) return { x: a.x + c.left.dx * u, y: a.y + c.left.dy * u, r: Math.max(8, c.left.r * u) };
   return { x: a.x + (c.pair ? side : 1) * c.dx * u, y: a.y + c.dy * u, r: Math.max(8, c.r * u) };
 }
 

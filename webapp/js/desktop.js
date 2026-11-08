@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=14';
+import * as Body from './desktop/body.js?v=15';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -604,17 +604,38 @@ function startCalibrate() {
   calibEl = document.createElement('div');
   calibEl.className = 'calib';
   calibEl.innerHTML = `<div class="calib-bar"><b>Drag each circle onto her.</b> Scroll on a circle to resize it.
-    <span><button type="button" data-do="done">Done</button><button type="button" data-do="reset">Reset</button>
+    Right-click a circle to link or unlink its left and right.
+    <span><label><input type="checkbox" data-do="mirror"> Mirror left and right</label>
+    <button type="button" data-do="done">Done</button><button type="button" data-do="reset">Reset</button>
     <button type="button" data-do="cancel">Cancel</button></span></div>`;
   document.body.appendChild(calibEl);
+  const mirrorBox = calibEl.querySelector('[data-do=mirror]');
+  const pairs = Object.keys(spots).filter(k => spots[k].pair);
+  const syncMirrorBox = () => {
+    const linked = pairs.filter(k => !spots[k].left).length;
+    mirrorBox.checked = linked === pairs.length;
+    mirrorBox.indeterminate = linked > 0 && linked < pairs.length;
+  };
+  // where a circle is, and how to move it: the right one of a pair (and
+  // a linked left) live in dx/dy/r, an unlinked left in .left
+  const own = (kind, side) => (side < 0 && spots[kind].left ? spots[kind].left : spots[kind]);
+  const unlink = (kind) => {
+    const s = spots[kind];
+    if (!s.left) s.left = { dx: -s.dx, dy: s.dy, r: s.r };
+  };
+  const link = (kind) => { delete spots[kind].left; };
   const circles = [];
   const place = () => {
     for (const c of circles) {
       const s = spots[c.kind];
-      c.el.style.left = (a.x + c.side * (s.pair ? 1 : 1) * s.dx * u) + 'px';
-      c.el.style.top = (a.y + s.dy * u) + 'px';
-      c.el.style.width = c.el.style.height = Math.round(s.r * u * 2) + 'px';
+      const o = own(c.kind, c.side);
+      const dx = c.side < 0 && s.left ? o.dx : (s.pair ? c.side : 1) * o.dx;
+      c.el.style.left = (a.x + dx * u) + 'px';
+      c.el.style.top = (a.y + o.dy * u) + 'px';
+      c.el.style.width = c.el.style.height = Math.round(o.r * u * 2) + 'px';
+      c.el.classList.toggle('unlinked', !!(s.pair && s.left));
     }
+    syncMirrorBox();
   };
   for (const [kind, s] of Object.entries(spots)) {
     for (const side of s.pair ? [1, -1] : [1]) {
@@ -622,14 +643,15 @@ function startCalibrate() {
       el.className = 'calib-spot';
       el.textContent = s.label;
       calibEl.appendChild(el);
-      const c = { kind, side, el };
-      circles.push(c);
+      circles.push({ kind, side, el });
       el.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
         e.preventDefault();
         el.setPointerCapture(e.pointerId);
         const move = (ev) => {
-          spots[kind].dx = ((ev.clientX - a.x) / u) * (s.pair ? side : 1);
-          spots[kind].dy = (ev.clientY - a.y) / u;
+          const x = (ev.clientX - a.x) / u, y = (ev.clientY - a.y) / u;
+          if (side < 0 && spots[kind].left) Object.assign(spots[kind].left, { dx: x, dy: y });
+          else Object.assign(spots[kind], { dx: x * (s.pair ? side : 1), dy: y });
           place();
         };
         el.addEventListener('pointermove', move);
@@ -637,19 +659,33 @@ function startCalibrate() {
       });
       el.addEventListener('wheel', (e) => {
         e.preventDefault();
-        spots[kind].r = Math.max(0.008, Math.min(0.15, spots[kind].r * (e.deltaY < 0 ? 1.08 : 0.93)));
+        const o = own(kind, side);
+        o.r = Math.max(0.008, Math.min(0.15, o.r * (e.deltaY < 0 ? 1.08 : 0.93)));
         place();
       }, { passive: false });
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (!s.pair) return;
+        if (spots[kind].left) link(kind); else unlink(kind);
+        place();
+      });
     }
   }
   place();
+  mirrorBox.addEventListener('change', () => {
+    for (const k of pairs) { if (mirrorBox.checked) link(k); else unlink(k); }
+    place();
+  });
   calibEl.querySelector('.calib-bar').addEventListener('click', (e) => {
     const what = e.target.dataset && e.target.dataset.do;
-    if (!what) return;
+    if (!what || what === 'mirror') return;
     if (what === 'done') { Body.saveTouchSpots(spots); endCalibrate(); actionLabel('Touch spots saved', a.x, a.y); }
     else if (what === 'cancel') endCalibrate();
     else if (what === 'reset') {
-      for (const [k, d] of Object.entries(Body.SPOT_DEFAULTS)) Object.assign(spots[k], { dx: d.dx, dy: d.dy, r: d.r });
+      for (const [k, d] of Object.entries(Body.SPOT_DEFAULTS)) {
+        Object.assign(spots[k], { dx: d.dx, dy: d.dy, r: d.r });
+        delete spots[k].left;
+      }
       place();
     }
   });

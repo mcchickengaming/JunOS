@@ -161,6 +161,9 @@
     border: 2px solid #ec0054; background: rgba(236, 0, 84, .18); color: #fff; font: 800 10px Arial, Helvetica, sans-serif;
     display: flex; align-items: center; justify-content: center; text-align: center; text-shadow: 0 1px 2px #000; min-width: 16px; min-height: 16px; }
   .calib-spot:active { cursor: grabbing; background: rgba(236, 0, 84, .35); }
+  /* a pair with its own left and right: dashed, so it's clear they move apart */
+  .calib-spot.unlinked { border-style: dashed; border-color: #ffb400; background: rgba(255, 180, 0, .18); }
+  .calib-bar label { display: flex; align-items: center; gap: 4px; margin-right: 4px; cursor: pointer; }
 
   /* feedback at the pointer */
   .ripple { position: absolute; z-index: 7; pointer-events: none; width: 34px; height: 34px; border-radius: 50%;
@@ -215,6 +218,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=18"></script>
+<script type="module" src="js/desktop.js?v=19"></script>
 </body>
 </html>
