@@ -6,6 +6,8 @@ companion of Jun from *My Dystopian Robot Girlfriend*. This fork adds features f
 
 ## The owner
 - Not a programmer. Explain steps in plain words, give exact commands to paste, one step at a time.
+- PowerShell commands go in ONE code block, one command per line, nothing else inside it (no numbers,
+  no comments), so he can copy the whole block and paste it in one go.
 - Runs Windows. Install: `E:\MDRG Proto\JunOS 1.3.2`. GPU RTX 4060 (8 GB VRAM), 16 GB RAM.
 - Brain: llama.cpp with the E4B Q4_K_M fine-tune. Don't add anything that needs more VRAM at the same time
   as the brain; load heavy tools on demand and unload after.
