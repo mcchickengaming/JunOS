@@ -402,8 +402,11 @@ function nearTail(x, y, a) {
 
 // what the pointer looks like over each spot, so he can SEE what he
 // can do. an emoji drawn into an svg cursor, hotspot in the middle
-const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', body: '💬' };
+const CURSOR_ICON = { head: '✋', ear: '✋', cheek: '👆', nose: '👆', shoulder: '👆', hand: '🤝', side: '🤏', tail: '👆', body: '🤗' };
 const cursorCache = {};
+// a few more for what's going on, not where: holding hands, a hug
+CURSOR_ICON.holding = '🤝';
+CURSOR_ICON.hugging = '🤗';
 export function cursorFor(kind) {
   if (!kind || !CURSOR_ICON[kind]) return '';
   if (!cursorCache[kind]) {

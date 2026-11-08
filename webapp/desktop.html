@@ -11,8 +11,8 @@
 <style>
   /* every color is a variable: Jun menu > Customize colors (desktop-settings.html)
      writes them, js/desktop.js applies them live */
-  :root { --panel: var(--panel); --field: var(--field); --accent: var(--accent); --ink: #ffffff; --muted: var(--muted);
-    --card: var(--panel); --card-name: #15142e; --bubble: var(--panel); --bubble-edge: var(--accent); --glow: var(--accent); --shadow-alpha: .42; }
+  :root { --panel: #191233; --field: #241c46; --accent: #ec0054; --ink: #ffffff; --muted: #a79fc9;
+    --card: #191233; --card-name: #15142e; --bubble: #191233; --bubble-edge: #ec0054; --glow: #ec0054; --shadow-alpha: .42; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; user-select: none;
     font-family: Arial, Helvetica, sans-serif; color: var(--ink); }
   #stage { position: absolute; left: 0; right: 0; top: 76px; bottom: 0; }
@@ -137,6 +137,28 @@
   .shadow.walking { animation: shadow-step var(--step, 550ms) ease-in-out infinite alternate; }
   @keyframes shadow-step { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(.85); opacity: .8; } }
 
+  /* feedback at the pointer */
+  .ripple { position: absolute; z-index: 7; pointer-events: none; width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--accent); transform: translate(-50%, -50%) scale(.3); opacity: .9; animation: ripple .55s ease-out forwards; }
+  @keyframes ripple { to { transform: translate(-50%, -50%) scale(1.4); opacity: 0; } }
+  .ring { position: absolute; z-index: 7; pointer-events: none; width: 46px; height: 46px; border-radius: 50%;
+    transform: translate(-50%, -50%); opacity: 0;
+    background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), color-mix(in srgb, var(--panel) 70%, transparent) 0);
+    -webkit-mask: radial-gradient(circle, transparent 15px, #000 16px); mask: radial-gradient(circle, transparent 15px, #000 16px); }
+  @property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
+  .ring.on { opacity: 1; animation: ring-fill var(--hold, 450ms) linear forwards; }
+  @keyframes ring-fill { from { --p: 0; } to { --p: 1; } }
+  .action-label { position: absolute; z-index: 8; pointer-events: none; padding: 3px 9px; border-radius: 10px; white-space: nowrap;
+    font: 800 12px Arial, Helvetica, sans-serif; color: var(--ink); background: var(--bubble); border: 1px solid var(--bubble-edge);
+    transform: translate(-50%, -100%) scale(.8); opacity: 0; }
+  .action-label.on { animation: label-pop 1.25s ease forwards; }
+  @keyframes label-pop {
+    0% { opacity: 0; transform: translate(-50%, -80%) scale(.8); }
+    15% { opacity: 1; transform: translate(-50%, -100%) scale(1.05); }
+    75% { opacity: 1; transform: translate(-50%, -110%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -130%) scale(1); }
+  }
+
   @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, -60px); } }
 </style>
 </head>
@@ -159,6 +181,8 @@
 <div class="emote" id="emote" aria-hidden="true"></div>
 <div class="cloud" id="cloud" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="glow" id="glow" aria-hidden="true"></div>
+<div class="ring" id="ring" aria-hidden="true"></div>
+<div class="action-label" id="actionLabel" aria-hidden="true"></div>
 <div class="zzz" id="zzz" hidden aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
 <div class="note" id="note" hidden></div>
 
@@ -166,6 +190,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=13"></script>
+<script type="module" src="js/desktop.js?v=15"></script>
 </body>
 </html>

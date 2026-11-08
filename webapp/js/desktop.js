@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=11';
+import * as Body from './desktop/body.js?v=12';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -512,6 +512,8 @@ window.addEventListener('mousemove', (e) => {
   const region = ready && !onUi ? Body.regionAt(e.clientX, e.clientY) : null;
   if (ready) watchWaveBack(e.clientX, e.clientY);
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
+  if (rub) rubTrail(e.clientX, e.clientY);
+  if (rub && rub !== wasRubbing) actionLabel(RUB_LABEL[rub], e.clientX, e.clientY);
   if (rub && !wasRubbing) {
     // a rub stops whatever she was doing, and wakes her up
     D?.stopWalk();
@@ -522,6 +524,58 @@ window.addEventListener('mousemove', (e) => {
   setThrough(!(onUi || region));
 }, true);
 document.addEventListener('mouseleave', () => { if (!press) { setThrough(true); showHover(null); } });
+
+// ---------------------------------------------------------------
+// feedback at the pointer: a ripple where you click, a ring that
+// fills while a hold builds up, a few sparkles while you rub, and a
+// short label saying what just happened
+
+const POKE_LABEL = { head: 'Poke!', cheek: 'Cheek poke', nose: 'Boop!', ear: 'Ear flick', shoulder: 'Tap tap',
+  tail: 'Tail tug!', hand: 'Squeeze', side: 'Tickle!' };
+const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!' };
+
+function ripple(x, y) {
+  const el = document.createElement('div');
+  el.className = 'ripple';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
+const ring = document.getElementById('ring');
+function holdRing(on, x, y, icon) {
+  if (!on) { ring.classList.remove('on'); return; }
+  ring.style.left = x + 'px';
+  ring.style.top = y + 'px';
+  ring.style.setProperty('--hold', HOLD_MS + 'ms');
+  ring.dataset.icon = icon || '';
+  ring.classList.remove('on');
+  void ring.offsetWidth;
+  ring.classList.add('on');
+}
+
+let lastTrail = 0;
+function rubTrail(x, y) {
+  const now = Date.now();
+  if (now - lastTrail < 140) return;
+  lastTrail = now;
+  particle('✦', x + (Math.random() - 0.5) * 14, y + (Math.random() - 0.5) * 10, 'spark-p', (Math.random() - 0.5) * 16, -18, 700);
+}
+
+let labelTimer = null;
+const label = document.getElementById('actionLabel');
+function actionLabel(text, x, y) {
+  if (!text) return;
+  label.textContent = text;
+  label.style.left = Math.max(40, Math.min(window.innerWidth - 40, x)) + 'px';
+  label.style.top = Math.max(16, y - 26) + 'px';
+  label.classList.remove('on');
+  void label.offsetWidth;
+  label.classList.add('on');
+  clearTimeout(labelTimer);
+  labelTimer = setTimeout(() => label.classList.remove('on'), 1300);
+}
 
 // a press on her: a click (poke or talk), a hold (hand, hug) or a
 // drag (pick her up). which one is decided by what the pointer does
@@ -540,17 +594,27 @@ window.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
   press = { x: e.screenX, y: e.screenY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
   const p = press;
+  ripple(e.clientX, e.clientY);
   if (region.kind === 'hand' || region.kind === 'body' || region.kind === 'side') {
+    // a ring fills around the pointer while the hold builds up, so it's
+    // clear that keeping the button down does something
+    holdRing(true, e.clientX, e.clientY, region.kind === 'hand' ? '🤝' : '🤗');
     p.holdTimer = setTimeout(() => {
       if (press !== p || p.dragging) return;
       if (dozing) wake(true);
       D?.stopWalk();
+      holdRing(false);
       if (region.kind === 'hand') {
         p.hold = 'hand';
         Body.handhold(region.side, true);
+        document.body.style.cursor = Body.cursorFor('holding');
+        actionLabel('Holding hands', e.clientX, e.clientY);
+        p.hugTimer = setInterval(() => { if (Math.random() < 0.3) floatHearts(1); }, 700);
       } else {
         p.hold = 'hug';
         Body.hug(true);
+        document.body.style.cursor = Body.cursorFor('hugging');
+        actionLabel('Hug', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { Body.hugTick(); floatHearts(1); }, 260);
       }
     }, HOLD_MS);
@@ -560,6 +624,8 @@ window.addEventListener('pointerdown', (e) => {
 
 function endHold(p) {
   clearTimeout(p.holdTimer);
+  holdRing(false);
+  hoverKind = undefined; // the cursor goes back to the spot's icon on the next move
   clearInterval(p.hugTimer);
   if (p.hold === 'hand') Body.handhold(p.region.side, false);
   if (p.hold === 'hug') Body.hug(false);
@@ -572,9 +638,16 @@ window.addEventListener('pointermove', (e) => {
   if (!press || e.pointerId !== press.id) return;
   e.stopPropagation();
   if (press.dragging) Body.carryMove(e.screenX, e.screenY);
+  // holding her hand or hugging her: the mouse can wander, she stays.
+  // letting go of the button is the only way out of a hold
+  if (press.hold) {
+    if (press.hold === 'hand') Body.lookAtPoint(e.clientX, e.clientY, 600);
+    return;
+  }
   if (press.dragging || Math.hypot(e.screenX - press.x, e.screenY - press.y) < 6) return;
-  // moving lets go of a hand or a hug and picks her up instead
-  endHold(press);
+  // moved before the hold kicked in: that's picking her up
+  clearTimeout(press.holdTimer);
+  holdRing(false);
   press.dragging = true;
   if (dozing) wake(false);
   showHover(null);
@@ -604,7 +677,8 @@ const endPress = (e) => {
     lastTap = 0;
     if (dozing) wake(true);
     D?.stopWalk();
-    if (Body.poke(p.region)) react('poked');
+    actionLabel(POKE_LABEL[p.region.kind] || 'Poke', e.clientX, e.clientY);
+    if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); }
     return;
   }
   if (now - lastTap < 350) {
