@@ -11,8 +11,8 @@
 // every number that shapes a move is in TUNE, so a walk that looks
 // off on the real rig is a one-line change.
 
-import * as Actions from '../live2d/actions.js?v=100';
-import * as Live2D from '../live2d/live2d.js?v=90';
+import * as Actions from '../live2d/actions.js?v=101';
+import * as Live2D from '../live2d/live2d.js?v=91';
 
 export const TUNE = {
   turnDeg: 8,         // how far the figure turns toward where she walks
@@ -417,7 +417,47 @@ export function saveTouchSpots(next) {
 window.addEventListener('storage', (e) => { if (e.key === SPOTS_KEY) spotCfg = null; });
 
 // a spot's circle in window px. side: 1 right (her left as we look), -1 the other
+// her tail swings from one side of her to the other and stands up past
+// her shoulders, so its spot is the tail itself (the rig's TailMain
+// meshes), not a fixed circle. the circle is only the fallback when the
+// rig has none
+let tailIds = new Set();
+let tailLooked = 0;
+function tailMeshes() {
+  // looked up once the model is in (a rig without a tail: tried again
+  // now and then, not on every mouse move)
+  if (!tailIds.size && Live2D.hasModel() && performance.now() - tailLooked > 3000) {
+    tailLooked = performance.now();
+    tailIds = new Set(Live2D.findDrawables(['tailmain'], ['hitarea']));
+  }
+  return tailIds;
+}
+export function tailFollows() { return tailMeshes().size > 0; }
+function tailSpot() {
+  const ids = tailMeshes();
+  if (!ids.size) return null;
+  const b = Live2D.drawablesSpot([...ids]);
+  if (!b) return null;
+  const w = b.right - b.left, h = b.bottom - b.top;
+  // the glow and the adjusting circle: on the tail, about as wide as it is
+  const r = Math.max(10, Math.min(w, h) / 2 + 4);
+  return { x: b.x, y: b.y, r, rx: r };
+}
+// is the pointer on the tail? the visible tail under it (nothing drawn
+// over it there), or close to it: pad px for the thin tip, more while
+// he's already rubbing it, since it swishes under his hand
+function onTail(x, y, pad) {
+  const ids = tailMeshes();
+  if (!ids.size) return false;
+  if (Live2D.drawableAt(x, y, ids, 0)) {
+    const top = Live2D.drawableAt(x, y, null, 0);
+    return !top || ids.has(top);
+  }
+  return pad > 0 && !!Live2D.drawableAt(x, y, ids, pad);
+}
+
 export function spotCircle(kind, side = 1) {
+  if (kind === 'tail') { const t = tailSpot(); if (t) return t; }
   const a = anchor();
   const c = touchSpots()[kind];
   if (!a || !c) return null;
@@ -434,9 +474,14 @@ export function spotCircle(kind, side = 1) {
 export function regionAt(x, y) {
   const a = anchor();
   if (!a) return null;
-  // the circles first, closest center wins where two overlap
+  // the tail first, where you can see it: pointing at it means it
+  const rubbingTail = pat && pat.kind === 'tail' && performance.now() - pat.last < 600;
+  const following = tailFollows();
+  if (following && onTail(x, y, 0)) return { kind: 'tail', side: 1 };
+  // then the circles, closest center wins where two overlap
   let best = null;
   for (const [kind, c] of Object.entries(touchSpots())) {
+    if (kind === 'tail' && following) continue;
     for (const side of c.pair ? [1, -1] : [1]) {
       const p = spotCircle(kind, side);
       const d = Math.hypot((x - p.x) / p.rx, (y - p.y) / p.r);
@@ -447,6 +492,8 @@ export function regionAt(x, y) {
     const side = best.kind === 'hand' ? (best.side < 0 ? 'left' : 'right') : best.kind === 'head' ? 0 : best.side;
     return { kind: best.kind, side };
   }
+  // just off the tail (its thin tip), or it swished away mid-rub
+  if (following && onTail(x, y, rubbingTail ? 24 : 6)) return { kind: 'tail', side: 1 };
   const dx = x - a.x;
   if (Live2D.isOverModel(x, y)) return { kind: 'body', side: Math.sign(dx) || 1 };
   return null;

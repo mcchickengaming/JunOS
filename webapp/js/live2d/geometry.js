@@ -39,6 +39,40 @@ function drawableBox(candidates) {
   return null;
 }
 
+// where a set of drawables is on screen right now (client px): the box
+// around the visible ones and the middle of their vertices. for parts
+// that move, like her tail, so a touch spot can follow them
+export function drawablesSpot(ids) {
+  if (!model || !raw || !app || !ids || !ids.length) return null;
+  const D = raw.drawables;
+  if (!S.drawableIndexById) {
+    S.drawableIndexById = new Map();
+    for (let k = 0; k < D.count; k++) S.drawableIndexById.set(D.ids[k], k);
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, sx = 0, sy = 0, n = 0;
+  for (const id of ids) {
+    const i = S.drawableIndexById.get(id);
+    if (i === undefined) continue;
+    const forced = forcedDrawableOpacity.get(id);
+    const visible = (D.dynamicFlags[i] & 0x01) || (forced != null && forced > 0.0001);
+    if (!visible || (forced == null ? D.opacities[i] : forced) < 0.01) continue;
+    const vp = D.vertexPositions[i];
+    for (let k = 0; k < vp.length; k += 2) {
+      const x = vp[k], y = vp[k + 1];
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      sx += x; sy += y; n++;
+    }
+  }
+  if (!n) return null;
+  const tl = fromModelPoint(minX, maxY);
+  const br = fromModelPoint(maxX, minY);
+  const c = fromModelPoint(sx / n, sy / n);
+  return { x: c.x, y: c.y, left: tl.x, top: tl.y, right: br.x, bottom: br.y };
+}
+
 export function faceAnchor() {
   if (!model || !app) return placeholderAnchor();
   const r = app.view.getBoundingClientRect();

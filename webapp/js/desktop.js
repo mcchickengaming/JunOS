@@ -17,15 +17,15 @@ import * as ChatAPI from './core/chat-api.js?v=7';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
-import * as Gauges from './core/speech-card.js?v=19';
-import { configureTts, say } from './core/speech-card.js?v=19';
+import * as Gauges from './core/speech-card.js?v=20';
+import { configureTts, say } from './core/speech-card.js?v=20';
 import { localTimeString } from './core/util.js?v=1';
-import * as Actions from './live2d/actions.js?v=100';
+import * as Actions from './live2d/actions.js?v=101';
 import { fitModel } from './live2d/camera.js?v=78';
-import * as Live2D from './live2d/live2d.js?v=90';
+import * as Live2D from './live2d/live2d.js?v=91';
 import { S } from './live2d/state.js?v=75';
-import * as Outfit from './outfit/outfit.js?v=100';
-import * as Body from './desktop/body.js?v=24';
+import * as Outfit from './outfit/outfit.js?v=101';
+import * as Body from './desktop/body.js?v=25';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -820,9 +820,19 @@ function startCalibrate() {
   };
   const link = (kind) => { delete spots[kind].left; };
   const circles = [];
+  // her tail's spot is the tail itself, it follows her tail around
+  const tailAuto = Body.tailFollows();
   const place = () => {
     for (const c of circles) {
       const s = spots[c.kind];
+      if (c.kind === 'tail' && tailAuto) {
+        const t = Body.spotCircle('tail');
+        if (!t) continue;
+        c.el.style.left = t.x + 'px';
+        c.el.style.top = t.y + 'px';
+        c.el.style.width = c.el.style.height = Math.round(t.r * 2) + 'px';
+        continue;
+      }
       const o = own(c.kind, c.side);
       const dx = c.side < 0 && s.left ? o.dx : (s.pair ? c.side : 1) * o.dx;
       c.el.style.left = (a.x + dx * u) + 'px';
@@ -840,6 +850,12 @@ function startCalibrate() {
       el.textContent = s.label;
       calibEl.appendChild(el);
       circles.push({ kind, side, el });
+      if (kind === 'tail' && tailAuto) {
+        el.classList.add('auto');
+        el.textContent = 'Tail (follows it)';
+        el.title = 'Her tail moves, so this spot is the tail itself. Nothing to place.';
+        continue;
+      }
       el.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
@@ -871,6 +887,8 @@ function startCalibrate() {
     }
   }
   place();
+  // the tail swishes while he works, its circle keeps up
+  if (tailAuto) calibEl._tailTimer = setInterval(() => { if (calibEl) place(); }, 120);
   mirrorBox.addEventListener('change', () => {
     for (const k of pairs) { if (mirrorBox.checked) link(k); else unlink(k); }
     place();
@@ -893,7 +911,7 @@ function endCalibrate() {
   calibrating = false;
   D?.hold?.(false);
   document.body.classList.remove('calibrating');
-  if (calibEl) calibEl.remove();
+  if (calibEl) { clearInterval(calibEl._tailTimer); calibEl.remove(); }
   calibEl = null;
   hoverKind = undefined;
 }
