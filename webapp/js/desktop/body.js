@@ -57,7 +57,10 @@ export const TUNE = {
   patHandY: 0.6,      // ParamHeadpatY (the hand, up and down)
   patTilt: 0.5,       // ParamHeadZ: her head tilts with the hand
   patTurn: 0.25,      // ParamHeadX: and turns a little with it
-  patBody: 0.12,      // ParamBodyZ: her body sways along
+  patBody: 0.09,      // ParamBodyZ: her body sways along (owner: 25% less than 0.12, Nov 8)
+  // the hover headpat (rubbing over her head, no click): how far the hand
+  // slides sideways, which is also what leans her (owner: half of 0.6, Nov 8)
+  rubPatX: 0.3,
   patDip: 0.15,       // ParamHeadY: her head dips a little under the hand
   patEase: 0.35,      // 0..1 how quickly her head catches up with the hand (lower = softer, lazier)
 };
@@ -335,7 +338,7 @@ export function rubEffect(kind, ms, x) {
     const a = anchor();
     if (!a) return;
     setHeld('ParamHeadpat', 1, 700);
-    setHeld('ParamHeadpatX', clamp((x - a.x) / (a.headW * 0.5), -1, 1) * 0.6, 700);
+    setHeld('ParamHeadpatX', clamp((x - a.x) / (a.headW * 0.5), -1, 1) * TUNE.rubPatX, 700);
     setHeld('ParamEyesHappy', 1, 900);
     setHeld('ParamBlush', 0.6, 1500);
     if (onPat) onPat(ms);
