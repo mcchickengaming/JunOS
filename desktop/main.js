@@ -29,6 +29,9 @@ const SIZES = { small: 320, medium: 440, large: 560 };
 // room above her head for the chat line
 const HEADROOM = 76;
 const WALK_PX_PER_S = 70;
+// the hop in her walk: px high, seconds per step (matches strideMs / 2 in webapp/js/desktop/body.js)
+const HOP_PX = 4;
+const STEP_S = 0.55;
 const DOZE_AFTER_S = 5 * 60;
 
 app.setName('Jun');
@@ -432,8 +435,8 @@ function startWander() {
   const from = b.x, dist = Math.abs(to - b.x);
   let t = 0, last = Date.now();
   // she turns first (the page does that), then sets off. speeds up
-  // over her first steps and slows into the last ones, the bounce is
-  // in her body (desktop/body.js) so her feet stay on the taskbar
+  // over her first steps and slows into the last ones, a little hop
+  // in each step
   const TURN_S = 0.35, EASE_PX = Math.min(60, dist / 3);
   send('jun:walk-state', { state: 'walking', dir });
   walk = setInterval(() => {
@@ -443,13 +446,16 @@ function startWander() {
     last = now;
     t += dt;
     if (t < TURN_S) return;
+    // y wobbles with the hop, x is the only thing that walks
     const gone = Math.abs(win.getBounds().x - from);
     const left = dist - gone;
     const speed = WALK_PX_PER_S * Math.max(0.25, Math.min(1, gone / EASE_PX + 0.25, left / EASE_PX + 0.15));
     let x = win.getBounds().x + dir * Math.max(1, speed * dt);
     const done = dir > 0 ? x >= to : x <= to;
     if (done) x = to;
-    win.setPosition(Math.round(x), baseY);
+    // the hop in each step, one per footfall (two per stride)
+    const hop = done ? 0 : Math.round(Math.abs(Math.sin((t - TURN_S) * Math.PI / STEP_S)) * -HOP_PX);
+    win.setPosition(Math.round(x), baseY + hop);
     if (done) {
       stopWalk();
       cfg.stepX = Math.round(x);

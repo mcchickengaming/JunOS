@@ -23,7 +23,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=90';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=99';
-import * as Body from './desktop/body.js?v=2';
+import * as Body from './desktop/body.js?v=4';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -312,6 +312,7 @@ window.addEventListener('pointerdown', (e) => {
 window.addEventListener('pointermove', (e) => {
   if (!press || e.pointerId !== press.id) return;
   e.stopPropagation();
+  if (press.dragging) Body.carryMove(e.screenX, e.screenY);
   if (press.dragging || Math.hypot(e.screenX - press.x, e.screenY - press.y) < 5) return;
   press.dragging = true;
   if (dozing) wake(false);

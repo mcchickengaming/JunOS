@@ -15,18 +15,26 @@ import * as Actions from '../live2d/actions.js?v=99';
 import * as Live2D from '../live2d/live2d.js?v=90';
 
 export const TUNE = {
-  turnDeg: 26,        // how far the figure turns toward where she walks
+  turnDeg: 8,         // how far the figure turns toward where she walks
   turnMs: 320,        // how long the turn takes
   strideMs: 1100,     // one full stride, left step + right step
-  leg: 0.45,          // ParamLegL/R swing
-  arm: 0.3,           // ParamArmLRot/RRot swing
-  bob: 0.35,          // ParamBodyY bounce
-  roll: 0.22,         // ParamBodyZ hip roll
-  bodyTurn: 0.55,     // ParamBodyX toward the walk
-  headTurn: 0.6,      // ParamHeadX toward the walk
+  leg: 0.35,          // ParamLegL/R swing
+  arm: 0.2,           // ParamArmLRot/RRot swing
+  bob: 0.15,          // ParamBodyY bounce (the hop itself is the window, desktop/main.js HOP_PX)
+  roll: 0.05,         // ParamBodyZ hip roll
+  bodyTurn: 0.3,      // ParamBodyX toward the walk
+  headTurn: 0.45,     // ParamHeadX toward the walk
   tail: 0.7,          // ParamTailWiggle while walking
-  kick: 0.55,         // legs flailing while carried
-  kickMs: 520,
+  kick: 0.18,         // legs kicking a little on their own while carried
+  kickMs: 700,
+  // carried: arms and legs are a pendulum. moving her swings them
+  // the other way, they overshoot and settle when she stops
+  swingGain: 0.0016,  // how much speed turns into swing
+  swingSpring: 38,    // how fast they swing back (higher = snappier)
+  swingDamp: 3.2,     // how quickly the swinging dies down (lower = swings longer)
+  swingArm: 0.9,      // ParamArmLRot/RRot per unit of swing
+  swingLeg: 0.6,      // ParamLegL/R per unit of swing
+  liftGain: 0.0009,   // moving her up/down lifts/drops the arms
   lookEyes: 0.9,      // how far her eyes follow the cursor
   lookHead: 0.45,     // and her head
 };
@@ -44,6 +52,11 @@ let pat = null;           // headpat in progress
 let onPat = null;
 let busyMove = 0;         // an idle move is playing until this time
 let asleep = false;
+let lastMoving = 'walk';  // what the ease-out is easing out of
+// carried: the pendulum, and this pick-up's own arm pose so it isn't
+// the same every time
+const swing = { x: 0, v: 0, lift: 0, lv: 0 };
+let carry = null;       // { lastX, lastY, lastT, vx, vy, base }
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -76,11 +89,33 @@ export function setCarried(on) {
   carried = on;
   if (on) {
     walking(0);
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    carry = { lastX: null, lastY: null, lastT: 0, vx: 0, vy: 0, base: {
+      upL: rnd(0.05, 0.4), upR: rnd(0.05, 0.4), rotL: rnd(-0.25, 0.25), rotR: rnd(-0.25, 0.25),
+      kickSpeed: rnd(0.7, 1.3),
+    } };
+    swing.x = swing.v = swing.lift = swing.lv = 0;
     for (const a of Actions.parseActions('[A:emote|surprised]')) Actions.applyAction(a);
     Live2D.startLoop('ParamTailWiggle', 1, 380);
   } else {
     Live2D.stopLoop('ParamTailWiggle');
   }
+}
+
+// the pointer while she's being carried, in screen px. her window
+// moves with it, so screen coordinates are what tell how fast
+export function carryMove(sx, sy) {
+  if (!carry) return;
+  const now = performance.now();
+  if (carry.lastX != null) {
+    const dt = Math.max(8, now - carry.lastT) / 1000;
+    // smoothed, one jittery event shouldn't fling her arms
+    carry.vx = carry.vx * 0.6 + ((sx - carry.lastX) / dt) * 0.4;
+    carry.vy = carry.vy * 0.6 + ((sy - carry.lastY) / dt) * 0.4;
+  }
+  carry.lastX = sx;
+  carry.lastY = sy;
+  carry.lastT = now;
 }
 
 // feet hit the taskbar: a squash, a little bounce, ears shake it off
@@ -209,6 +244,7 @@ function frame(t) {
   const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0;
   lastT = t;
   const moving = !!walkDir || carried;
+  if (moving) lastMoving = carried ? 'carry' : 'walk';
 
   ramp = clamp(ramp + (moving ? dt / 0.3 : -dt / 0.25), 0, 1);
 
@@ -223,16 +259,30 @@ function frame(t) {
 
   if (ramp > 0) {
     const r = ramp;
-    if (carried) {
-      phase += (2 * Math.PI * dt * 1000) / TUNE.kickMs;
-      setHeld('ParamLegL', TUNE.kick * Math.sin(phase) * r);
-      setHeld('ParamLegR', TUNE.kick * Math.sin(phase + Math.PI * 0.6) * r);
-      setHeld('ParamArmLUp', 0.25 * r);
-      setHeld('ParamArmRUp', 0.25 * r);
-      setHeld('ParamArmLRot', 0.3 * Math.sin(phase * 0.7) * r);
-      setHeld('ParamArmRRot', -0.3 * Math.sin(phase * 0.7) * r);
-      setHeld('ParamBodyZ', 0.15 * Math.sin(phase * 0.5) * r);
-    } else {
+    if (carried && carry) {
+      // no new pointer event for a bit means the hand stopped
+      if (performance.now() - carry.lastT > 60) { carry.vx *= 0.7; carry.vy *= 0.7; }
+      // the pendulum: speed pushes the limbs back, a spring pulls them
+      // home, they overshoot and swing until the damping wins
+      const push = clamp(-carry.vx * TUNE.swingGain, -1.2, 1.2);
+      swing.v += (TUNE.swingSpring * (push - swing.x) - TUNE.swingDamp * swing.v) * dt;
+      swing.x = clamp(swing.x + swing.v * dt, -1.5, 1.5);
+      const liftPush = clamp(-carry.vy * TUNE.liftGain, -0.6, 0.6);
+      swing.lv += (TUNE.swingSpring * (liftPush - swing.lift) - TUNE.swingDamp * swing.lv) * dt;
+      swing.lift = clamp(swing.lift + swing.lv * dt, -0.8, 0.8);
+
+      const b = carry.base;
+      phase += (2 * Math.PI * dt * 1000 * b.kickSpeed) / TUNE.kickMs;
+      const sw = swing.x;
+      setHeld('ParamArmLRot', (b.rotL + sw * TUNE.swingArm) * r);
+      setHeld('ParamArmRRot', (b.rotR + sw * TUNE.swingArm) * r);
+      setHeld('ParamArmLUp', clamp(b.upL + swing.lift + 0.05 * Math.sin(phase * 0.6), 0, 1) * r);
+      setHeld('ParamArmRUp', clamp(b.upR + swing.lift + 0.05 * Math.sin(phase * 0.6 + 1), 0, 1) * r);
+      setHeld('ParamLegL', (sw * TUNE.swingLeg + TUNE.kick * Math.sin(phase)) * r);
+      setHeld('ParamLegR', (sw * TUNE.swingLeg + TUNE.kick * Math.sin(phase + Math.PI * 0.7)) * r);
+      setHeld('ParamBodyZ', sw * 0.25 * r);
+      setHeld('ParamHeadZ', -sw * 0.15 * r);
+    } else if (!carried && lastMoving === 'walk') {
       const d = walkDir || Math.sign(turn) || 1;
       phase += (2 * Math.PI * dt * 1000) / TUNE.strideMs;
       const s = Math.sin(phase);
