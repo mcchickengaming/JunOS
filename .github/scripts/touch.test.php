@@ -94,6 +94,22 @@ $has('not on a touch reaction', (function () use ($u) {
     db()->exec("UPDATE touch_state SET moment='{\"kind\":\"hug\",\"n\":500}'");
     $a = touch_context($u, 0, null, true); return $a . (str_contains(touch_context($u, 0), '500th hug') ? 'LATER' : ''); })(), 'LATER');
 
+// the android quirk: past a thousand, a rare exact count, days apart
+db()->exec("UPDATE touch_total SET n=3557 WHERE kind='headpat'");
+$s = touch_state($u);
+$live = touch_clean_now(['ongoing' => ['headpat']]);
+$eq('quirk: not when the dice say no', touch_count_line($u, $live, 3, $s, time(), 99), '');
+$q = touch_count_line($u, $live, 3, $s, time(), 1);
+$has('quirk: the exact running count', $q, "his 3,558th headpat ever");
+$has('quirk: a flavor of how to say it', $q, 'in your own words');
+$eq('quirk: then not for a few days', touch_count_line($u, $live, 3, $s, time(), 1), '');
+$s['count_at'] = 0;
+$eq('quirk: not for a Familiar face', touch_count_line($u, $live, 2, $s, time(), 1), '');
+$eq('quirk: only right as he does it', touch_count_line($u, touch_clean_now(['last' => 'headpat', 'ago' => 600]), 3, $s, time(), 1), '');
+db()->exec("UPDATE touch_total SET n=400 WHERE kind='headpat'");
+$eq('quirk: not before a thousand', touch_count_line($u, $live, 3, $s, time(), 1), '');
+db()->exec("UPDATE touch_total SET n=110 WHERE kind='headpat'");
+
 // yesterday + habits: move today's rows back a day, fill two weeks
 db()->exec("UPDATE touch_day SET day='" . touch_day_shift($today, -1) . "'");
 for ($d = 2; $d <= 6; $d++) {

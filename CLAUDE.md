@@ -99,7 +99,10 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   Notable days become a memory note the next day. Warm touches nudge her mood a little (-1 tension per 45 s,
   +1 affection per 90 s, caps 4/3 a day; nothing at Stranger, only tension at Familiar). Settings > Memory:
   "Today's touches" in words + "Forget today's touches" + an "All-time" list with counts and the next milestone.
-  Milestones go 1-5-10 (`TOUCH_MILESTONES`: 100, 500, 1,000, 5,000, 10,000...), owner's call: rare, never a scoreboard. `TOUCH_AWARE=off` leaves it out of her prompt and mood.
+  Milestones go 1-5-10 (`TOUCH_MILESTONES`: 100, 500, 1,000, 5,000, 10,000...), owner's call: rare, never a scoreboard.
+  Android quirk (`touch_count_line`, migration 030 `count_at`): past 1,000 of one touch, Friend+, right as he does it,
+  3% of fitting replies and at least 3 days apart, she says the exact running count in a random flavor
+  (`TOUCH_COUNT_STYLES`), her own words. `TOUCH_AWARE=off` leaves it out of her prompt and mood.
   Tests: `.github/scripts/touch.test.php`.
 
 ## Everything is customizable

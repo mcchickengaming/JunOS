@@ -50,6 +50,24 @@ const TOUCH_MILESTONE_KINDS = ['headpat', 'hand', 'hug', 'earrub', 'boop', 'chee
 const TOUCH_MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
 const TOUCH_KEEP_DAYS = 14;
 
+// the android quirk (owner, Nov 8): she keeps an exact running count in
+// her head, and once in a long while, right as he does it again, she
+// says it ("that's your 3,558th headpat ^^"). only past a thousand of
+// that touch, Friend and up, a small chance, days apart, and a
+// different flavor each time so it never turns into a catchphrase
+const TOUCH_COUNT_FROM = 1000;
+const TOUCH_COUNT_CHANCE = 3;          // percent, per reply that fits
+const TOUCH_COUNT_GAP = 3 * 86400;     // at least this long between two
+const TOUCH_COUNT_STYLES = [
+    'smug and pleased with yourself for keeping track',
+    'proud, like it is a record the two of you set together',
+    'a deadpan little robot readout, then a smile',
+    'a soft, sleepy murmur, half to yourself',
+    'a shy whisper, as if you did not mean to say it out loud',
+    'teasing him about how much he clearly likes doing it',
+    'matter-of-fact, then flustered that you said it',
+];
+
 // the mood nudge. a long cuddle eases her a little; never a big swing
 const TOUCH_MOOD_TENSION_MS = 45000;   // -1 tension per this much warm touch
 const TOUCH_MOOD_AFFECTION_MS = 90000; // +1 affection per this much
@@ -135,18 +153,18 @@ function touch_state(int $userId): array {
     $row = $st->fetch() ?: [];
     $st->closeCursor();
     return $row + ['noted_day' => '', 'mood_day' => '', 'mood_ms' => 0, 'mood_aff' => 0, 'mood_ten' => 0,
-                   'missed_day' => '', 'moment' => ''];
+                   'missed_day' => '', 'moment' => '', 'count_at' => 0];
 }
 
 function touch_state_set(int $userId, array $s): void {
     db()->prepare(
-        'INSERT INTO touch_state (user_id, noted_day, mood_day, mood_ms, mood_aff, mood_ten, missed_day, moment, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        'INSERT INTO touch_state (user_id, noted_day, mood_day, mood_ms, mood_aff, mood_ten, missed_day, moment, count_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(user_id) DO UPDATE SET noted_day=excluded.noted_day, mood_day=excluded.mood_day, mood_ms=excluded.mood_ms,
             mood_aff=excluded.mood_aff, mood_ten=excluded.mood_ten, missed_day=excluded.missed_day, moment=excluded.moment,
-            updated_at=excluded.updated_at'
+            count_at=excluded.count_at, updated_at=excluded.updated_at'
     )->execute([$userId, $s['noted_day'], $s['mood_day'], (int)$s['mood_ms'], (int)$s['mood_aff'], (int)$s['mood_ten'],
-                $s['missed_day'], $s['moment'], time()]);
+                $s['missed_day'], $s['moment'], (int)$s['count_at'], time()]);
 }
 
 // add a batch to today's tally. returns nothing; never throws, a lost
@@ -353,6 +371,33 @@ function touch_clean_now(mixed $now): array {
     return $out;
 }
 
+// the touch he's giving her right now or just gave, if any
+function touch_current_kind(array $live): ?string {
+    foreach ($live['ongoing'] as $k) if (in_array($k, TOUCH_MILESTONE_KINDS, true)) return $k;
+    if ($live['last'] !== null && $live['ago'] < 90 && in_array($live['last'], TOUCH_MILESTONE_KINDS, true)) return $live['last'];
+    return null;
+}
+
+// the android quirk. $roll is for the tests
+function touch_count_line(int $userId, array $live, int $stage, array &$s, int $now, ?int $roll = null): string {
+    if ($stage < 3 || $now - (int)$s['count_at'] < TOUCH_COUNT_GAP) return '';
+    $kind = touch_current_kind($live);
+    if ($kind === null) return '';
+    $st = db()->prepare('SELECT n FROM touch_total WHERE user_id=? AND kind=?');
+    $st->execute([$userId, $kind]);
+    $n = (int)$st->fetchColumn();
+    // one still under his hand hasn't been counted yet
+    if (in_array($kind, $live['ongoing'], true)) $n++;
+    if ($n < TOUCH_COUNT_FROM) return '';
+    if (($roll ?? random_int(1, 100)) > TOUCH_COUNT_CHANCE) return '';
+    $s['count_at'] = $now;
+    touch_state_set($userId, $s);
+    $style = TOUCH_COUNT_STYLES[array_rand(TOUCH_COUNT_STYLES)];
+    return "\nYour little android quirk: you keep an exact running count in your head, and this one is his "
+        . touch_ordinal($n) . ' ' . rtrim(TOUCH_KINDS[$kind]['noun'], 's') . ' ever. This time, say the exact number '
+        . "out loud, in your own words, $style. Make it fresh, not a stock phrase.";
+}
+
 // the block in her prompt. $ephemeral: a desktop touch reaction, which
 // shouldn't use up the once-a-day lines (the missed-you slip, a
 // milestone) that belong in a real reply
@@ -393,6 +438,8 @@ function touch_context(int $userId, int $tz, mixed $touchNow = null, bool $ephem
             $lines[] = 'Yesterday he ' . implode(', ', $bits) . '.';
         }
         if ($habits) $lines[] = "Habits you've noticed over the last two weeks: " . implode('; ', $habits) . '.';
+
+        if ($moment_line = touch_count_line($userId, $live, $stage, $s, $now)) $lines[] = $moment_line;
 
         // a milestone waiting for a real reply: the one time a bare number
         // is the sweet thing to say
