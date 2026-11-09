@@ -246,8 +246,23 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   `patFollow` (main.js `PCT_KEYS`, `pctOf` migrates old words on load) and desktop.fx `eAscii`. The settings page shows
   a dropdown of the steps plus a slider (`oftenControl`); menus show the steps + "Your own (N%)" + "Any amount you like…".
   "Settings…" is in the Jun menu (Ctrl+,), the tray and her right-click menu. Anime tsundere talk moved to
-  Her > Habits she's picked up (`#habitRows`, part B's page). Next steps: her main window's settings move in, the
-  tray/Jun menu get trimmed to quick actions, "Dates" becomes a "Do something together" button in her window.
+  Her > Habits she's picked up (`#habitRows`, part B's page).
+  **Step 2 (her window's settings in the home):** names, chat (model/reasoning/think/reload prompt/notifications),
+  idle nudges, voice (volume/TTS engine/language/voice + Play/speed) and mic rows are LIVE MIRRORS of her window's own
+  drawer controls: `js/app/home-bridge.js` (in index.html, wired after wireVoice) describes the rows in its `MIRROR`
+  list over BroadcastChannel 'jun-settings' and applies `{type:'set', id, value}` by setting the real control and
+  firing input/change, so every existing handler still runs; `js/home/herwin.js` renders them into `[data-mirror]`
+  hosts (structure change → rebuild, value change → patch, focused control untouched). Her window closed → "Open her
+  window" (`junDesktop.desk('openWindow')`). To mirror a new row: add its control id to `MIRROR`. Native in the home:
+  bond + gauges (read-only) + touches (relationship.php / touch.php), memories (the same `app/memory-graph.js` +
+  `memory-actions.js`; "open the chat" asks her window), timeline (`app/timeline.js`), Account & advanced (password,
+  game bridge, developer key, rated export, factory reset + sign out with a click-twice confirm, then `{type:'reload'}`
+  to her window). Developer tools stay in her window's drawer (live logs): `{type:'drawer', panel}` or
+  localStorage `jun.home.want` if her window has to open first. In the desktop app her gear and user chip open the
+  home (capture-phase click in home-bridge.js); a plain browser/phone keeps the drawer. Settings > Dates became
+  **"Do something together"** (`#togetherDrawer` in index.html, `js/app/together.js`, sidebar button next to
+  Achievements): rows have `data-group` (out/play/in), buttons still wired by main.js `wireDatesPanel`; a new activity
+  is one more row. Next: tray/Jun menu trimmed to quick actions, then polish.
 
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings

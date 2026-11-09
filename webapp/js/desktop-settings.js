@@ -11,6 +11,7 @@ import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
 import * as Fx from './desktop/fx.js?v=9';
 import * as Moods from './desktop/moods.js?v=11';
 import * as Often from './desktop/often.js?v=2';
+import * as HerWin from './home/herwin.js?v=5';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -36,7 +37,7 @@ function writeTheme(t) {
 // the settings home: one section at a time, picked in the sidebar.
 // old tab names (openSettings('spots'), #feedback...) still land in the right place
 
-const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'help'];
+const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'account', 'help'];
 const OLD_TABS = { colors: ['visuals'], feedback: ['touch'], spots: ['desktop', 'at-spots'], size: ['desktop', 'at-size'] };
 const tabs = [...document.querySelectorAll('nav button')];
 let current = 'help';
@@ -44,12 +45,15 @@ function show(tab, anchor) {
   tab = String(tab || '');
   if (OLD_TABS[tab]) [tab, anchor = anchor] = OLD_TABS[tab];
   if (!SECTIONS.includes(tab)) tab = 'help';
+  if (current === 'her' && tab !== 'her') HerWin.leaveHer();
   current = tab;
   for (const b of tabs) b.classList.toggle('on', b.dataset.tab === tab);
   for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== 'tab-' + tab;
   if (tab === 'desktop') { loadSpots(); setTimeout(loadSize); loadDesk(); } // size after this module has set itself up
   if (tab === 'touch') { previewTheme(); setTimeout(pvAskSnap); loadDesk(); }
-  if (tab === 'talk') loadDesk();
+  if (tab === 'talk') { loadDesk(); HerWin.hello(); }
+  if (tab === 'her') { HerWin.hello(); HerWin.loadHer(); }
+  if (tab === 'account') HerWin.loadAccount();
   if (tab === 'saves') setTimeout(loadSaves);
   const el = anchor && document.getElementById(anchor);
   if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 60);
@@ -1008,7 +1012,7 @@ D?.onDeskChanged?.((st) => { deskState = st; drawDesk(); });
 // scrolls to it, so nothing has to move around to be found
 
 const searchBox = document.getElementById('setSearch');
-const NAMES = { her: 'Her', talk: 'Talking & voice', touch: 'Touch & feelings', desktop: 'On the desktop', visuals: 'Visuals', saves: 'Saves & updates', help: 'How to play' };
+const NAMES = { her: 'Her', talk: 'Talking & voice', touch: 'Touch & feelings', desktop: 'On the desktop', visuals: 'Visuals', saves: 'Saves & updates', account: 'Account & advanced', help: 'How to play' };
 const norm = (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
 function runSearch() {
   const q = norm(searchBox.value);
@@ -1094,5 +1098,10 @@ window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); searchBox.focus(); searchBox.select(); }
 });
 
+// her window's settings (mirrors), her bond and memories, the account: js/home/herwin.js
+HerWin.wire();
+HerWin.setOnChange(() => { if (searchBox.value.trim()) runSearch(); });
+HerWin.startMirrors();
+HerWin.loadAccount();
 loadDesk();
 show(decodeURIComponent(location.hash.slice(1)) || 'help');

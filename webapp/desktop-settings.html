@@ -9,6 +9,8 @@
      how to play with her, her colors, her spots. the color picker is
      the closet's own (js/wardrobe/color-picker.js) -->
 <link rel="stylesheet" href="css/pages/wardrobe.css?v=3">
+<!-- the memory map, the timeline and the gauges, same styles as in her window -->
+<link rel="stylesheet" href="css/settings.css?v=11">
 <style>
   body { overflow: auto; padding: 0 0 24px; }
   /* the settings home: a sidebar when there's room, a row of icons along the top in the small window */
@@ -39,6 +41,44 @@
   section[hidden] { display: none; }
   .row.flash { animation: row-flash 1.6s ease-out; }
   @keyframes row-flash { 0%, 30% { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); } }
+
+  /* tokens settings.css expects (her window gets them from boot.css) */
+  :root { --dim: #8e8a99; --bg-hover: var(--bg-3); --bg-elev: var(--bg-3); --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --radius-pill: 999px; --track-empty: var(--bg-4); }
+  .card { padding: 12px; margin: 6px 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; }
+  .card > .mood-controls { margin-top: 12px; }
+  .count { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--bg-3); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+  .bond-block { margin: 0; }
+  .bond-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .bond-label { font-weight: 600; }
+  .bond-stage { color: var(--accent); font-weight: 600; }
+  .bond-step { margin-left: auto; opacity: .6; font-size: .85em; }
+  .bond-track { height: 10px; border-radius: 999px; background: var(--track-empty); overflow: hidden; }
+  .bond-fill { height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .6s ease; }
+  .touch-today { margin: 4px 0 6px; padding-left: 18px; }
+  .touch-today li { margin: 2px 0; }
+  .touch-all { margin-top: 10px; }
+  .touch-all summary { cursor: pointer; font-weight: 600; }
+  .touch-all-list { list-style: none; margin: 6px 0 0; padding: 0; }
+  .touch-all-list li { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .touch-all-list .n { margin-left: auto; font-weight: 600; color: var(--accent); }
+  .touch-all-list .next { opacity: .6; font-size: .85em; min-width: 9em; text-align: right; }
+  .touch-forget { margin-top: 4px; font: inherit; font-size: .85em; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
+  .memory-graph-wrap { margin: 6px 0; }
+  .memory-add-row { margin: 6px 0; }
+  .memory-add-row .cat { flex: 0 0 110px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .mirror-ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; flex: 0 1 auto; max-width: 60%; }
+  .mirror-ctl select.btn { max-width: 200px; }
+  .mirror-range { display: flex; align-items: center; gap: 6px; }
+  .mirror-range input[type=range] { width: 120px; }
+  .mirror-range .pct { width: auto; min-width: 38px; }
+  .mirror-text, .pw-fields input { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--bg-3); color: var(--fg); font: inherit; width: 160px; max-width: 100%; }
+  .pw-fields { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .pill { font-style: normal; font-size: 11px; padding: 0 7px; border-radius: 9px; background: var(--bg-3); color: var(--muted); }
+  .btn.armed { border-color: #f66; color: #ffb3b3; }
+  .privacy-frame { width: 100%; height: 420px; border: 1px solid var(--border); border-radius: 10px; background: #fff; margin: 0 0 6px; }
+  @media (max-width: 520px) { .mirror-row.wide { flex-wrap: wrap; } .mirror-row.wide .mirror-ctl { max-width: 100%; width: 100%; } }
   .row.off { opacity: .55; }
   .often { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
   .often-line { display: flex; align-items: center; gap: 6px; }
@@ -139,6 +179,7 @@
   <button type="button" data-tab="desktop"><i>🖥️</i><span>On the desktop</span></button>
   <button type="button" data-tab="visuals"><i>🎨</i><span>Visuals</span></button>
   <button type="button" data-tab="saves"><i>💾</i><span>Saves &amp; updates</span></button>
+  <button type="button" data-tab="account" title="Account &amp; advanced"><i>🔐</i><span>Account</span></button>
   <button type="button" data-tab="help" class="nav-help"><i>❓</i><span>How to play</span></button>
 </nav>
 <main>
@@ -149,22 +190,76 @@
 </section>
 
 <section id="tab-her" hidden>
-  <p class="hint">Who she is with you: what she's picked up from you so far, your bond, her memories.</p>
-  <h2>Habits she's picked up</h2>
+  <p class="hint">Who she is with you: your names, your bond, what she's picked up from you, and her memories.</p>
+  <h2 id="at-names">Names</h2>
+  <div data-mirror="her"></div>
+  <h2 id="at-bond">Your bond</h2>
+  <p class="hint">Where she stands with you right now. She moves these herself, one reply at a time.</p>
+  <div class="card">
+    <div class="bond-block" id="bondBlock" hidden>
+      <div class="bond-head"><span class="bond-label">Bond</span><span class="bond-stage" id="bondStage">Stranger</span><span class="bond-step" id="bondStep">1 / 6</span></div>
+      <div class="bond-track" aria-hidden="true"><div class="bond-fill" id="bondFill"></div></div>
+      <div class="hint bond-next" id="bondNext"></div>
+    </div>
+    <div class="mood-controls" id="gaugeBlock" hidden>
+      <div class="mood-row mood-row--affection"><span class="mood-label">Affection</span><div class="mood-track"><div class="mood-meter" aria-hidden="true"></div></div><span class="mood-val">-</span></div>
+      <div class="mood-row mood-row--trust"><span class="mood-label">Trust</span><div class="mood-track"><div class="mood-meter" aria-hidden="true"></div></div><span class="mood-val">-</span></div>
+      <div class="mood-row mood-row--tension"><span class="mood-label">Tension</span><div class="mood-track"><div class="mood-meter" aria-hidden="true"></div></div><span class="mood-val">-</span></div>
+    </div>
+  </div>
+  <h3 class="sub" id="at-touches">Touches</h3>
+  <div class="card touch-block" id="touchBlock" hidden>
+    <div class="bond-head"><span class="bond-label">Today's touches</span></div>
+    <ul class="touch-today" id="touchToday"></ul>
+    <div class="hint" id="touchEmpty">No headpats yet today.</div>
+    <div class="hint" id="touchOff" hidden>She isn't told about these right now (TOUCH_AWARE=off).</div>
+    <button type="button" class="touch-forget" id="touchForget" hidden>Forget today's touches</button>
+    <details class="touch-all" id="touchAllWrap" hidden>
+      <summary>All-time</summary>
+      <div class="hint">Every touch since you met. She keeps quiet count and only mentions the big ones (100, 500, 1,000, 5,000, 10,000...).</div>
+      <ul class="touch-all-list" id="touchAll"></ul>
+    </details>
+  </div>
+  <h2 id="at-habits">Habits she's picked up</h2>
   <p class="hint">Little things she catches from you over time, from what you watch, talk about and do together. They come in slowly, now and then.</p>
   <div id="habitRows"></div>
-  <h2>Bond, touches and memories</h2>
-  <p class="hint">Still in her window for now (Settings &gt; Memory). They move here in the next update.</p>
+  <h2 id="at-memories">Her memories <span class="count" id="memoryCount">0</span></h2>
+  <p class="hint">Notes she keeps about you between conversations, grouped by category alongside her journal. Click one to read it; drag to look around.</p>
+  <div class="memory-graph-wrap" id="memoryGraphWrap">
+    <canvas class="memory-graph" id="memoryGraph" aria-label="Interactive constellation of saved memories"></canvas>
+    <div class="memory-graph-status" id="memoryGraphStatus" aria-live="polite">Loading…</div>
+    <aside class="memory-reader" id="memoryReader" hidden>
+      <button class="memory-reader-close ghost" id="memoryReaderClose" type="button" aria-label="Close memory reader">×</button>
+      <div class="memory-reader-meta" id="memoryReaderMeta"></div>
+      <h3 class="memory-reader-title" id="memoryReaderTitle"></h3>
+      <div class="memory-reader-body" id="memoryReaderBody"></div>
+    </aside>
+  </div>
+  <ul class="sr-only" id="memoryA11y"></ul>
+  <div class="row"><div class="what"><b>Add a memory</b><span>Something you want her to remember about you.</span></div></div>
+  <div class="save-new memory-add-row">
+    <input type="text" id="memoryAddInput" maxlength="800" placeholder="Add a memory…" aria-label="New memory">
+    <input type="text" id="memoryAddCategory" maxlength="40" placeholder="category" aria-label="Memory category" class="cat">
+    <button type="button" class="btn accent" id="memoryAddBtn">Add</button>
+  </div>
+  <p><button type="button" class="btn danger" id="memoryClearBtn" hidden>Delete all memories</button></p>
+  <h2 id="at-timeline">Timeline</h2>
+  <p class="hint">How the gauges moved over time.</p>
+  <div class="card"><div class="rel-timeline" id="relTimeline" aria-label="How the gauges moved over time"></div></div>
 </section>
 
 <section id="tab-talk" hidden>
-  <p class="hint">How she talks with you.</p>
-  <h2>She speaks up on her own</h2>
+  <p class="hint">How she talks with you: her brain, when she speaks up, her voice and your microphone.</p>
+  <h2 id="at-chat">Chat</h2>
+  <div data-mirror="talk"></div>
+  <h2 id="at-speak">She speaks up on her own</h2>
   <p class="hint">Separate switches, so you can have her chatty in one place and quiet in another.</p>
+  <div data-mirror="speak"></div>
   <div id="talkRows"></div>
-  <p class="hint">"Silence idle nudges" (her window &gt; Settings &gt; Developer) moves here in the next update, next to these.</p>
-  <h2>Voice and microphone</h2>
-  <p class="hint">Still in her window for now (Settings &gt; Voice). They move here in the next update.</p>
+  <h2 id="at-voice">Her voice</h2>
+  <div data-mirror="voice"></div>
+  <h2 id="at-mic">Microphone</h2>
+  <div data-mirror="mic"></div>
 </section>
 
 
@@ -282,6 +377,39 @@
   <p class="hint" id="saveNote"></p>
 </section>
 
+<section id="tab-account" hidden>
+  <p class="hint">Your account, privacy, and the tools for tinkering.</p>
+  <h2>Account</h2>
+  <div class="row"><div class="what"><b>About</b><span>Jun OS - a fan-made local companion. Runs entirely on this machine.</span></div></div>
+  <div class="row"><div class="what"><b>Privacy notice</b><span>What Jun stores on this machine, and what she never sends anywhere.</span></div>
+    <button type="button" class="btn" id="privacyBtn">Show</button></div>
+  <iframe id="privacyFrame" class="privacy-frame" title="Privacy notice" hidden></iframe>
+  <form class="row" id="passwordForm">
+    <div class="what"><b>Password</b><span id="passwordDesc">Your recovery code keeps working after a change.</span>
+      <div class="pw-fields">
+        <input type="password" id="currentPasswordInput" autocomplete="current-password" placeholder="current" aria-label="Current password" required>
+        <input type="password" id="newPasswordInput" autocomplete="new-password" placeholder="new" aria-label="New password" minlength="8" required>
+      </div></div>
+    <button class="btn" id="changePasswordBtn" type="submit">Change</button>
+  </form>
+  <div class="row" id="bridgeRow" hidden><div class="what"><b>Game bridge</b><span id="bridgeDesc">Not paired.</span>
+      <input type="text" id="bridgeTokenInput" readonly hidden aria-label="Bridge token" class="mirror-text"></div>
+    <div class="adds"><button type="button" class="btn" id="bridgePairBtn">Pair</button><button type="button" class="btn danger" id="bridgeUnpairBtn" hidden>Unpair</button></div></div>
+  <h2>Advanced</h2>
+  <div class="row" id="devAccessRow"><div class="what"><b>Developer access</b><span id="devAccessDesc">Enter this server's developer key to unlock developer tools.</span>
+      <div class="pw-fields" id="devKeyBox"><input type="password" id="devKeyInput" autocomplete="off" aria-label="Developer key" placeholder="developer key"></div></div>
+    <button type="button" class="btn" id="promoteBtn">Unlock</button></div>
+  <div class="row" id="devToolsRow" hidden><div class="what"><b>Developer tools</b><span>Her live logs, the metrics overlay, the memory pass and the gauge override. They show her as she runs, so they open in her window.</span></div>
+    <button type="button" class="btn" id="devToolsBtn">Open in her window</button></div>
+  <div class="row" id="ratingsRow" hidden><div class="what"><b>Rated replies</b><span>Download the replies you rated.</span></div>
+    <button type="button" class="btn" id="ratingsBtn">Export</button></div>
+  <h2>Start over</h2>
+  <div class="row"><div class="what"><b>Factory reset</b><span id="resetDesc">Erase every conversation, memory and setting on this account. This cannot be undone (a save point from before can bring her back).</span></div>
+    <button type="button" class="btn danger" id="factoryResetBtn">Reset</button></div>
+  <div class="row"><div class="what"><b>Sign out</b><span>Sign out of Jun on this computer.</span></div>
+    <button type="button" class="btn danger" id="signOutBtn">Sign out</button></div>
+</section>
+
 <section id="tab-help" hidden>
   <p class="hint">Move your mouse over her: the cursor and a soft glow show what a click will do there.</p>
   <h2>Touch</h2>
@@ -332,6 +460,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=32"></script>
+<script type="module" src="js/desktop-settings.js?v=36"></script>
 </body>
 </html>

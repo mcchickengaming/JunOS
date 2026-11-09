@@ -30,6 +30,8 @@ import { DevHud, abortFn, currentConversationId, setDevHud } from './session.js?
 import { rerenderBubbleStream, sendMessage, sendTouchEvent } from './chat.js?v=61';
 import { setComposerText } from './composer.js?v=3';
 import * as Achievements from '../achievements/achievements.js?v=8';
+import * as Together from './together.js?v=2';
+import * as HomeBridge from './home-bridge.js?v=3';
 
 // the one app global left, on purpose. it's a console handle,
 // Welcome.preview('panicked') replays that welcome scene
@@ -266,6 +268,8 @@ export async function boot(me) {
   await wireTts();
 
   await wireVoice();
+  // the settings home mirrors these rows (names, chat, voice, mic) and changes them through here
+  HomeBridge.wire();
   // whatever she granted is spent the moment you're back on this
   // page, walked home or typed the URL, same thing
   const tripState = await tripStateP;
@@ -366,6 +370,9 @@ export async function boot(me) {
   const achievementsBtn = document.getElementById('achievementsBtn');
   achievementsBtn?.addEventListener('click', () => setSidebarOpen(false));
   Achievements.wire(achievementsBtn);
+  const togetherBtn = document.getElementById('togetherBtn');
+  togetherBtn?.addEventListener('click', () => setSidebarOpen(false));
+  Together.wire(togetherBtn);
   if (m.provider === 'litertlm-android') {
     document.documentElement.classList.add('android-app');
     AwayNotify.initNative(ui.toast);

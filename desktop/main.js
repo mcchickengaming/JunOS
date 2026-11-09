@@ -879,7 +879,7 @@ ipcMain.on('jun:menu', (e) => {
 });
 // her main window's Settings > Memory has a button for the saves tab
 // old tab names keep working (the page maps them onto the new sections)
-const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'colors', 'feedback', 'spots', 'size'];
+const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'account', 'colors', 'feedback', 'spots', 'size'];
 ipcMain.on('jun:open-settings', (e, tab) => {
   if (!fromWin(e)) return;
   openSettings(SETTINGS_TABS.includes(tab) ? tab : 'help');
@@ -952,6 +952,8 @@ ipcMain.handle('jun:desk', (e, action, key, value) => {
     else try { fs.unlinkSync(startupLink()); } catch (err) {}
     rebuildTrayMenu();
   } else if (action === 'calibrate') calibrate();
+  // the settings home: her chat/voice settings and developer tools live in her window, open it
+  else if (action === 'openWindow') { if (winMode === 'window' && win && !win.isDestroyed()) showJun(); else openMode('window', ''); }
   return deskInfo();
 });
 

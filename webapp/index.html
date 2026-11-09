@@ -660,7 +660,11 @@ html[data-pre-auth] #app { visibility: hidden; }
 
 <script type="module" src="js/core/pwa.js?v=2"></script>
 <script src="js/boot-gate.js?v=29"></script>
-<script type="module" src="js/app.js?v=159"></script>
+<script type="module" src="js/app.js?v=161"></script>
+<style>
+  /* "Do something together" panel (js/app/together.js) */
+  .together-drawer #togetherRows .set-row.tg-out { display: none; }
+</style>
 </head>
 <body>
 
@@ -816,6 +820,83 @@ html[data-pre-auth] #app { visibility: hidden; }
 <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
 <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
 
+<!-- "Do something together" (was Settings > Dates; owner, Nov 9: its own place, built to grow).
+     rows carry data-group; a new activity is one more row with the group it belongs to.
+     js/app/together.js opens it; the buttons are wired by main.js wireDatesPanel as before -->
+<div id="togetherBackdrop" class="drawer-backdrop ach-drawer-backdrop" aria-hidden="true"></div>
+<div id="togetherDrawer" class="settings-drawer ach-drawer together-drawer" role="dialog" aria-modal="true" aria-labelledby="togetherTitle">
+  <nav class="settings-nav" aria-label="Kinds of things to do">
+    <button type="button" class="settings-close" id="togetherClose" aria-label="Close" title="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="settings-navlist" role="tablist">
+      <button type="button" class="settings-navitem active" data-group="all" role="tab"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>Everything</span></button>
+      <button type="button" class="settings-navitem" data-group="out" role="tab"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Go out</span></button>
+      <button type="button" class="settings-navitem" data-group="play" role="tab"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4"/><circle cx="16" cy="11" r="1"/><circle cx="18" cy="13" r="1"/></svg><span>Play</span></button>
+      <button type="button" class="settings-navitem" data-group="in" role="tab"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Stay in</span></button>
+    </div>
+  </nav>
+  <div class="settings-main">
+    <header class="settings-main-head">
+      <h2 class="settings-main-title" id="togetherTitle">Do something together</h2>
+      <div class="set-row-desc">Ask her and she decides, or take her right there.</div>
+    </header>
+    <div class="settings-main-body" id="togetherRows">
+<div class="set-row" data-group="out">
+          <div class="set-row-text">
+            <div class="set-row-title">Annalie's shop</div>
+            <div class="set-row-desc">Ask Jun to go shopping - clothing layers, colors and decals. Her call.</div>
+          </div>
+          <div class="set-row-control">
+            <button class="secondary" id="askShopBtn" title="Ask her in chat">Ask her</button>
+            <button class="secondary force-btn" id="wardrobeBtn" hidden title="Walk to Annalie's shop">Force her</button>
+          </div>
+        </div>
+        <div class="set-row" data-group="play">
+          <div class="set-row-text">
+            <div class="set-row-title">Karaoke night</div>
+            <div class="set-row-desc">Bring a song - Jun sings the guide while you take the mic, then she scores your take.</div>
+          </div>
+          <div class="set-row-control">
+            <button class="secondary" id="askKaraokeBtn" title="Ask her in chat">Ask her</button>
+            <button class="secondary force-btn" id="karaokeOpenBtn" hidden disabled title="Checking availability…">Force her</button>
+          </div>
+        </div>
+        <div class="set-row" data-group="play">
+          <div class="set-row-text">
+            <div class="set-row-title">Blackjack</div>
+            <div class="set-row-desc">A few hands at the table, Jun deals. She reacts to every one.</div>
+          </div>
+          <div class="set-row-control">
+            <button class="secondary" id="askCardsBtn" title="Ask her in chat">Ask her</button>
+            <button class="secondary force-btn" id="forceCardsBtn" hidden title="Open the table">Force her</button>
+          </div>
+        </div>
+        <div class="set-row" data-group="out">
+          <div class="set-row-text">
+            <div class="set-row-title" id="dateRowTitle">Dinner out</div>
+            <div class="set-row-desc">Take her out to eat - you pick your dish, she orders her own.</div>
+          </div>
+          <div class="set-row-control">
+            <button class="secondary" id="askDateBtn" title="Ask her in chat">Ask her</button>
+            <button class="secondary force-btn" id="forceDateBtn" hidden title="Walk to the restaurant">Force her</button>
+          </div>
+        </div>
+        <div class="set-row" data-group="in" id="watchRow" hidden>
+          <div class="set-row-text">
+            <div class="set-row-title">Watch something</div>
+            <div class="set-row-desc">A video from your computer or a browser tab. She watches along and says what she thinks.</div>
+          </div>
+          <div class="set-row-control">
+            <button class="secondary" id="askWatchBtn" title="Ask her in chat">Ask her</button>
+            <button class="secondary force-btn" id="forceWatchBtn" hidden title="Sit down on the couch">Force her</button>
+          </div>
+        </div>
+      
+    </div>
+  </div>
+</div>
+
 <aside id="settingsDrawer" class="settings-drawer" aria-label="Settings" role="dialog" aria-modal="true">
 
   <nav class="settings-nav" aria-label="Settings categories">
@@ -830,10 +911,6 @@ html[data-pre-auth] #app { visibility: hidden; }
       <button class="settings-navitem" data-panel="voice" role="tab" aria-selected="false">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
         <span>Voice</span>
-      </button>
-      <button class="settings-navitem" data-panel="dates" role="tab" aria-selected="false">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        <span>Dates</span>
       </button>
       <button class="settings-navitem" data-panel="memory" role="tab" aria-selected="false">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -1008,58 +1085,6 @@ html[data-pre-auth] #app { visibility: hidden; }
         </div>
       </section>
 
-      <section class="settings-panel" data-panel="dates" hidden>
-        <div class="set-row">
-          <div class="set-row-text">
-            <div class="set-row-title">Annalie's shop</div>
-            <div class="set-row-desc">Ask Jun to go shopping - clothing layers, colors and decals. Her call.</div>
-          </div>
-          <div class="set-row-control">
-            <button class="secondary" id="askShopBtn" title="Ask her in chat">Ask her</button>
-            <button class="secondary force-btn" id="wardrobeBtn" hidden title="Walk to Annalie's shop">Force her</button>
-          </div>
-        </div>
-        <div class="set-row">
-          <div class="set-row-text">
-            <div class="set-row-title">Karaoke night</div>
-            <div class="set-row-desc">Bring a song - Jun sings the guide while you take the mic, then she scores your take.</div>
-          </div>
-          <div class="set-row-control">
-            <button class="secondary" id="askKaraokeBtn" title="Ask her in chat">Ask her</button>
-            <button class="secondary force-btn" id="karaokeOpenBtn" hidden disabled title="Checking availability…">Force her</button>
-          </div>
-        </div>
-        <div class="set-row">
-          <div class="set-row-text">
-            <div class="set-row-title">Blackjack</div>
-            <div class="set-row-desc">A few hands at the table, Jun deals. She reacts to every one.</div>
-          </div>
-          <div class="set-row-control">
-            <button class="secondary" id="askCardsBtn" title="Ask her in chat">Ask her</button>
-            <button class="secondary force-btn" id="forceCardsBtn" hidden title="Open the table">Force her</button>
-          </div>
-        </div>
-        <div class="set-row">
-          <div class="set-row-text">
-            <div class="set-row-title" id="dateRowTitle">Dinner out</div>
-            <div class="set-row-desc">Take her out to eat - you pick your dish, she orders her own.</div>
-          </div>
-          <div class="set-row-control">
-            <button class="secondary" id="askDateBtn" title="Ask her in chat">Ask her</button>
-            <button class="secondary force-btn" id="forceDateBtn" hidden title="Walk to the restaurant">Force her</button>
-          </div>
-        </div>
-        <div class="set-row" id="watchRow" hidden>
-          <div class="set-row-text">
-            <div class="set-row-title">Watch something</div>
-            <div class="set-row-desc">A video from your computer or a browser tab. She watches along and says what she thinks.</div>
-          </div>
-          <div class="set-row-control">
-            <button class="secondary" id="askWatchBtn" title="Ask her in chat">Ask her</button>
-            <button class="secondary force-btn" id="forceWatchBtn" hidden title="Sit down on the couch">Force her</button>
-          </div>
-        </div>
-      </section>
 
       <section class="settings-panel" data-panel="memory" hidden>
         <div class="set-block">
@@ -1379,6 +1404,10 @@ html[data-pre-auth] #app { visibility: hidden; }
         <button class="sidebar-item" id="searchChatsBtn" title="Search chats (Ctrl+K)" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <span>Search chats</span>
+        </button>
+        <button class="sidebar-item" id="togetherBtn" title="Do something together" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span>Do something together</span>
         </button>
         <button class="sidebar-item" id="achievementsBtn" title="Achievements" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/></svg>
