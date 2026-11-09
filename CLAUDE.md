@@ -35,7 +35,8 @@ companion of Jun from *My Dystopian Robot Girlfriend*. This fork adds features f
 - **Cache-busters.** Webapp JS/CSS is served `immutable` by its `?v=` URL. After changing any JS/CSS file run
   `python3 tools/bump-versions.py webapp <path relative to webapp>...` (cascades to every importer), then
   `bash .github/scripts/check-cache-busters.sh`. Small new styles can go inline in `webapp/index.html`
-  (never cached) to avoid renumbering stylesheets.
+  (never cached) to avoid renumbering stylesheets. Every `.html` page is served `no-cache` (nginx templates AND the
+  Windows portable router `tools/php-router.php`), so a new page shows right after an update without a reload.
 - **New `.env` knobs** go in `.env.example` AND `docs/configuration.md`, or `check-consistency.sh` fails.
 - **Migrations**: `webapp/api/migrations/NNN_name.sql`, next free number, ending with
   `INSERT INTO schema_version(v) VALUES (NNN);`. They run automatically on the next request.
