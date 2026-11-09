@@ -182,7 +182,13 @@ async function boot() {
     while (!await serverUp()) {
       if (Date.now() - t0 > 4 * 60 * 1000) {
         if (note && note.kind === 'update' && note.from && await offerUndoUpdate(note)) return;
-        showSplash("Jun didn't wake up. Open PowerShell in her folder and run .\\start.ps1 to see why.");
+        closeSplash();
+        const tail = wakeTail();
+        log("she didn't wake up" + (tail ? ':\n' + tail : ' (start.ps1 printed nothing)'));
+        await ask({ type: 'warning', message: "Jun didn't wake up.",
+          detail: (tail ? 'The last thing her start said:\n\n' + tail + '\n\n' : '') +
+            'Open PowerShell in her folder and run .\\start.ps1 to start her by hand. Her full start log is runtime\\logs\\desktop-wake.log.' });
+        app.exit(0);
         return;
       }
       await sleep(2000);
@@ -212,21 +218,84 @@ function serverUp() {
 }
 
 // started from the Start menu or Windows startup with her server
-// down: run start.ps1 hidden, the same thing he'd type himself
+// down, or restarted after going back to a save / an update: run
+// start.ps1 hidden, the same thing he'd type himself.
+//
+// NOT a detached spawn: that gives powershell no console at all, and
+// start.ps1 then silently does nothing (Nov 8, the first "go back to a
+// save"). a short powershell does a Start-Process instead, the same
+// way start.ps1 starts her own services: its own hidden console,
+// output in runtime\logs\desktop-wake.log, and it lives on by itself.
 let woke = false;
+let wakeFiles = null;
+const WAKE_LOG = () => (wakeFiles || [])[0] || path.join(JUN_HOME, 'runtime', 'logs', 'desktop-wake.log');
+const WAKE_ERR = () => (wakeFiles || [])[1] || path.join(JUN_HOME, 'runtime', 'logs', 'desktop-wake.err.log');
+// fresh, empty log files. a wake that hung earlier can still hold the
+// usual ones open, then this start gets its own names
+function pickWakeFiles() {
+  const dir = path.join(JUN_HOME, 'runtime', 'logs');
+  fs.mkdirSync(dir, { recursive: true });
+  for (const tag of ['', '-' + process.pid]) {
+    const files = [path.join(dir, `desktop-wake${tag}.log`), path.join(dir, `desktop-wake${tag}.err.log`)];
+    try {
+      for (const f of files) {
+        if (fs.existsSync(f)) fs.renameSync(f, f.replace(/\.log$/, '.prev.log'));
+        fs.writeFileSync(f, '');
+      }
+      return files;
+    } catch (e) { log('wake log ' + files[0] + ' is busy: ' + e.message); }
+  }
+  return null;
+}
+// what start.ps1 sets for her services. an app it opened inherits
+// them, and a start that finds them set would skip reading .env
+const START_ENV = ['AI_PROVIDER', 'OLLAMA_URL', 'LLAMACPP_URL', 'TTS_URL', 'SIDECAR_SECRET', 'KARAOKE_URL',
+  'OMEGA_STATE_DIR', 'JUN_CA_FILE', 'OMEGA_ALLOWED_HOSTS', 'OMEGA_ALLOWED_ORIGINS', 'OMEGA_GPU_VRAM_MB',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'MTP_AUTOTUNE_RUNNING', 'JUN_LINK_CHECKED', 'ELECTRON_RUN_AS_NODE',
+  // a PowerShell 7 window's module path breaks Windows PowerShell 5.1
+  'PSModulePath'];
+function freshEnv() {
+  const env = { ...process.env };
+  let keys = START_ENV.slice();
+  try {
+    for (const line of fs.readFileSync(path.join(JUN_HOME, '.env'), 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+      if (m) keys.push(m[1]);
+    }
+  } catch (e) {}
+  keys = new Set(keys.map(k => k.toUpperCase()));
+  for (const k of Object.keys(env)) if (keys.has(k.toUpperCase())) delete env[k];
+  return env;
+}
+const psQuote = (s) => "'" + String(s).replace(/'/g, "''") + "'";
 function wakeServer() {
   if (woke || process.platform !== 'win32') return;
   const script = path.join(JUN_HOME, 'start.ps1');
   if (!fs.existsSync(script)) return;
   woke = true;
   try {
-    const logDir = path.join(JUN_HOME, 'runtime', 'logs');
-    fs.mkdirSync(logDir, { recursive: true });
-    const out = fs.openSync(path.join(logDir, 'desktop-wake.log'), 'w');
-    spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-NoBrowser'], {
-      cwd: JUN_HOME, detached: true, windowsHide: true, stdio: ['ignore', out, out],
-    }).unref();
-  } catch (e) {}
+    wakeFiles = pickWakeFiles();
+    const cmd = `Start-Process -FilePath 'powershell.exe' -WorkingDirectory ${psQuote(JUN_HOME)} -WindowStyle Hidden ` +
+      `-RedirectStandardOutput ${psQuote(WAKE_LOG())} -RedirectStandardError ${psQuote(WAKE_ERR())} ` +
+      `-ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ${psQuote('"' + script + '"')}, '-NoBrowser')`;
+    const p = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(cmd, 'utf16le').toString('base64')],
+      { cwd: JUN_HOME, env: freshEnv(), windowsHide: true, stdio: 'ignore' });
+    p.on('error', (e) => log('wake failed to start: ' + e.message));
+    p.on('exit', (code) => { if (code) log('wake: Start-Process exited with ' + code); });
+  } catch (e) { log('wake failed: ' + e.message); }
+}
+
+// the last lines start.ps1 printed, for "she didn't wake up"
+function wakeTail() {
+  const out = [];
+  for (const f of [WAKE_LOG(), WAKE_ERR()]) {
+    try {
+      // her ✓/ℹ marks and the color codes mean nothing in a dialog
+      const t = fs.readFileSync(f, 'utf8').replace(/\x1b\[[0-9;]*m/g, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      out.push(...t.slice(-8));
+    } catch (e) {}
+  }
+  return out.join('\n').slice(-900);
 }
 
 function showSplash(text) {

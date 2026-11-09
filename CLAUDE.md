@@ -150,7 +150,13 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   what happened (dialog). Update: branch must be `jun-dev` with an upstream, `git fetch`, refuses with local commits
   or hand-edited tracked files, lists up to 10 commit subjects, before-update save, `git merge --ff-only @{u}` (fails
   → nothing stopped), clear the http cache, stop, relaunch. If she doesn't wake within 4 min after an update the app
-  offers `git reset --keep <old head>` and restarts. git runs with `GIT_TERMINAL_PROMPT=0`. Logs:
+  offers `git reset --keep <old head>` and restarts. git runs with `GIT_TERMINAL_PROMPT=0`. Waking her server (main.js
+  `wakeServer`, used by every start that finds her down, incl. after a restore/update) is NOT a detached spawn:
+  detached = no console and start.ps1 silently did nothing (owner's first restore, Nov 8). A short powershell
+  (`-EncodedCommand`) does `Start-Process powershell -File start.ps1 -NoBrowser -WindowStyle Hidden` with output in
+  `runtime\logs\desktop-wake.log` / `.err.log` (relies on libuv's job allowing silent breakaway, so her server outlives
+  the app), with start.ps1's own env vars, every `.env` key and PSModulePath removed (`freshEnv`). If she isn't up in
+  4 min the dialog shows the log's last lines (`wakeTail`) and the app closes. Logs:
   `runtime\logs\desktop-saves.log`, `desktop-relaunch.log`. Tests: `.github/scripts/js/saves.test.mjs` (needs php).
 
 ## Everything is customizable
