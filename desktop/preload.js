@@ -45,4 +45,11 @@ contextBridge.exposeInMainWorld('junDesktop', {
   // her size: action 'get' | 'set' (slider moving) | 'done' | 'growFx'
   size: (action, value) => ipcRenderer.invoke('jun:size', action, value),
   onCommand: on('jun:command'),
+  // save points + the update (settings window "Saves & updates" tab):
+  // action 'get' | 'save' (name) | 'restore' (file) | 'delete' (file) |
+  // 'pickDir' | 'resetDir' | 'keep' (n) | 'openDir' | 'update'
+  saves: (action, a) => ipcRenderer.invoke('jun:saves', String(action), a == null ? null : String(a)),
+  onSavesChanged: on('jun:saves-changed'),
+  // her main window: open a tab of the settings window
+  openSettings: (tab) => ipcRenderer.send('jun:open-settings', String(tab || '')),
 });

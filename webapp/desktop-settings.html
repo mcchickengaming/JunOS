@@ -76,12 +76,26 @@
   .size-ctl .hint { margin: 0; }
   #sizeQuick .btn.on { border-color: var(--accent); color: var(--accent); }
   .gal-name { margin: 10px 0 4px; font-size: 12.5px; color: var(--muted); }
+  .save-new { display: flex; gap: 8px; }
+  .save-new input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--bg-2); color: var(--fg); font: inherit; }
+  .save-new input:focus { outline: none; border-color: var(--accent); }
+  .btn.accent { border-color: var(--accent); color: var(--fg); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .save-row .what b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .save-row .acts { display: flex; gap: 6px; flex: 0 0 auto; }
+  .save-kind { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 9px; font-size: 11px; line-height: 18px;
+    background: var(--bg-3); color: var(--muted); }
+  .save-kind.named { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--fg); }
+  .save-kind.broken { background: #f663; color: var(--fg); }
+  .save-path { word-break: break-all; }
+  #saveMsg.err, #saveNote.err { color: #ff8a8a; }
+  @media (max-width: 440px) { .save-row { flex-wrap: wrap; } .save-row .acts { width: 100%; justify-content: flex-end; } }
 </style>
 </head>
 <body>
 <header>
   <h1>Jun on the desktop</h1>
-  <p class="sub">How to play with her, her colors, how her touches look, her spots and her size.</p>
+  <p class="sub">How to play with her, her colors, how her touches look, her spots, her size, her saves and updates.</p>
 </header>
 <nav>
   <button type="button" data-tab="help">How to play</button>
@@ -89,6 +103,7 @@
   <button type="button" data-tab="feedback">Touch feedback</button>
   <button type="button" data-tab="spots">Her spots</button>
   <button type="button" data-tab="size">Her size</button>
+  <button type="button" data-tab="saves">Saves &amp; updates</button>
 </nav>
 
 <section id="tab-help" hidden>
@@ -202,6 +217,40 @@
   <p class="hint">Her walk, her hop, throwing her and her spots always follow her size.</p>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=12"></script>
+<section id="tab-saves" hidden>
+  <p class="hint">A save keeps everything that makes her her: chats, memories, bond, touches, moods and her desktop settings.
+    You can always go back to one.</p>
+  <h2>Save Jun now</h2>
+  <div class="save-new">
+    <input type="text" id="saveName" maxlength="80" placeholder="Name it, like &quot;Before our first date&quot;" aria-label="Name for the save">
+    <button type="button" class="btn accent" id="saveNow">Save Jun now</button>
+  </div>
+  <p class="hint" id="saveMsg" role="status"></p>
+  <h2>Her saves</h2>
+  <div id="saveRows"></div>
+  <p class="hint" id="noSaves" hidden>No saves yet. Jun makes one by herself every day, or save her now above.</p>
+  <h2>Automatic saves</h2>
+  <div class="row"><div class="what"><b>Every day</b><span>Jun saves herself once a day. The oldest daily saves go away so they don't pile up.
+    Your own named saves are never deleted by themselves.</span></div>
+    <select id="saveKeep" class="btn" aria-label="Daily saves to keep"></select></div>
+  <p class="hint">Before going back to a save and before an update she also saves herself first (the last 5 of each are kept).</p>
+  <h2>Where saves go</h2>
+  <div class="row"><div class="what"><b id="saveDirWhat">In Jun's folder</b><span class="save-path" id="saveDir"></span></div></div>
+  <p class="adds"><button type="button" class="btn" id="savePick">Choose a folder…</button>
+    <button type="button" class="btn" id="saveDefault">Use the default</button>
+    <button type="button" class="btn" id="saveOpen">Open the folder</button></p>
+  <p class="hint">Tip: a folder on another drive (like D:) keeps her safe even if this drive ever fails.</p>
+  <h2>Updates</h2>
+  <div class="row"><div class="what"><b>Get the latest update</b><span>Jun checks GitHub for new changes, saves herself, updates and restarts.
+    If anything goes wrong she tells you and stays as she is.</span></div>
+    <button type="button" class="btn" id="updateNow">Check now</button></div>
+  <h2>Good to know</h2>
+  <p class="hint">Her memories are locked with your password. Going back to an old save brings back the password you had then.</p>
+  <p class="hint">The game art and her brain (the model files) aren't in a save, they come back from your game copy and the download.
+    Her setup file (.env) is kept in a save only for reference: going back never changes it, so she always starts the way she's set up now.</p>
+  <p class="hint" id="saveNote"></p>
+</section>
+
+<script type="module" src="js/desktop-settings.js?v=14"></script>
 </body>
 </html>

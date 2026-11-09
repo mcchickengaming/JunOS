@@ -283,3 +283,15 @@ for (const k of ['affection', 'trust', 'tension']) setMoodFill(k, moodBaseline[k
 applyMoodAccent(moodBaseline);
 renderGreeting(moodBaseline);
 if (moodRefreshBtn) moodRefreshBtn.addEventListener('click', loadMood);
+
+// Settings > Memory > Save points: the desktop app's "Saves & updates" tab
+{
+  const D = window.junDesktop;
+  const btn = document.getElementById('savePointsBtn');
+  if (btn && D?.openSettings) {
+    btn.hidden = false;
+    const off = document.getElementById('savePointsOff');
+    if (off) off.hidden = true;
+    btn.addEventListener('click', () => D.openSettings('saves'));
+  }
+}

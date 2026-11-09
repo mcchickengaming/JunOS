@@ -9,13 +9,14 @@
 // "Jun" Start menu shortcut this file writes:
 //   electron.exe <this folder> --jun-url=https://127.0.0.1:8080 --jun-home=<install>
 
-const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, powerMonitor, screen, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, powerMonitor, screen, shell, session } = require('electron');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
 const path = require('path');
 const { spawn } = require('child_process');
 const Props = require('./props');
+const Saves = require('./saves');
 
 const switchValue = (name) => app.commandLine.getSwitchValue(name) || '';
 const JUN_URL = (switchValue('jun-url') || process.env.JUN_URL || 'https://127.0.0.1:8080').replace(/\/+$/, '');
@@ -80,9 +81,14 @@ function loadCfg() {
   cfg.desk = { ...DEFAULTS.desk, ...(cfg.desk || {}) };
 }
 let saveTimer = null;
+// set while she's going back to a save: the save's desktop.json goes
+// in after this app closes, so nothing here may write over it
+let cfgFrozen = false;
 function saveCfg() {
   clearTimeout(saveTimer);
+  if (cfgFrozen) return;
   saveTimer = setTimeout(() => {
+    if (cfgFrozen) return;
     try {
       fs.mkdirSync(path.dirname(CFG_FILE()), { recursive: true });
       fs.writeFileSync(CFG_FILE(), JSON.stringify(cfg, null, 2));
@@ -110,6 +116,9 @@ if (!app.requestSingleInstanceLock()) {
   // just brings the running one forward
   app.quit();
 } else {
+  // a save's desktop part that relaunch.js couldn't put in place
+  // (a file was still held): now, before anything opens the storage
+  try { Saves.applyPendingDesktop(JUN_HOME); } catch (e) {}
   app.on('second-instance', () => showJun());
   app.whenReady().then(boot);
 }
@@ -163,12 +172,16 @@ async function boot() {
   setInterval(pollIdle, 10000);
   setInterval(pollCursor, 90);
 
+  // left by a restore or an update just before this start
+  const note = Saves.takeNote(JUN_HOME);
   if (!await serverUp()) {
-    showSplash('Waking Jun up…');
+    showSplash(note && note.kind === 'restore' ? `Waking Jun up, back at “${note.name}”…`
+      : note && note.kind === 'update' ? 'Waking Jun up with her update…' : 'Waking Jun up…');
     wakeServer();
     const t0 = Date.now();
     while (!await serverUp()) {
       if (Date.now() - t0 > 4 * 60 * 1000) {
+        if (note && note.kind === 'update' && note.from && await offerUndoUpdate(note)) return;
         showSplash("Jun didn't wake up. Open PowerShell in her folder and run .\\start.ps1 to see why.");
         return;
       }
@@ -177,6 +190,10 @@ async function boot() {
   }
   openMode(cfg.mode, '');
   closeSplash();
+  if (note) setTimeout(() => afterRestart(note), 1500);
+  // the daily save: a minute after she's up, then checked every hour
+  setTimeout(dailySave, 60 * 1000);
+  setInterval(dailySave, 60 * 60 * 1000);
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -769,6 +786,11 @@ ipcMain.on('jun:menu', (e) => {
   if (!fromWin(e)) return;
   Menu.buildFromTemplate(modeItems(true)).popup({ window: win });
 });
+// her main window's Settings > Memory has a button for the saves tab
+ipcMain.on('jun:open-settings', (e, tab) => {
+  if (!fromWin(e)) return;
+  openSettings(['saves', 'help', 'colors', 'feedback', 'spots', 'size'].includes(tab) ? tab : 'help');
+});
 ipcMain.on('jun:focus', (e, on) => {
   if (!fromWin(e)) return;
   if (on) win.focus();
@@ -863,6 +885,7 @@ function windowMenu() {
       { type: 'separator' },
       { label: 'How to play with her', click: () => openSettings('help') },
       { label: 'Customize colors…', click: () => openSettings('colors') },
+      savesMenu(),
       { type: 'separator' },
       { label: 'Hide (she stays by the clock)', accelerator: 'CmdOrCtrl+H', click: hideJun },
       { label: 'Close the desktop app', click: () => { quitting = true; app.quit(); } },
@@ -1037,6 +1060,9 @@ function rebuildTrayMenu() {
     { label: 'How to play with her', click: () => openSettings('help') },
     { label: 'Customize colors…', click: () => openSettings('colors') },
     { type: 'separator' },
+    savesMenu(),
+    { label: 'Get the latest update', enabled: !busy, click: () => updateFlow() },
+    { type: 'separator' },
     { label: 'Open her window when Jun starts', type: 'checkbox', checked: envDesktopOn(), click: (i) => setEnvDesktop(i.checked) },
     { label: 'Start Jun with Windows', type: 'checkbox', checked: fs.existsSync(startupLink()), enabled: process.platform === 'win32', click: (i) => {
       if (i.checked) writeShortcut(startupLink());
@@ -1094,3 +1120,315 @@ function writeShortcut(file) {
     });
   } catch (e) {}
 }
+
+// ---------------------------------------------------------------
+// save points and the one-click update (desktop/saves.js does the
+// files; this does the windows, the questions and the restarts).
+// Settings window "Saves & updates" tab, the tray, the Jun menu.
+
+let busy = '';
+const shortErr = (t) => String(t || '').trim().split(/\r?\n/).filter(Boolean).slice(-6).join('\n').slice(0, 600);
+const askParent = () => (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible() ? settingsWin : win && !win.isDestroyed() && winMode === 'window' && win.isVisible() ? win : null);
+async function ask(opts) {
+  const o = { title: 'Jun', icon: ICON_PNG, noLink: true, ...opts };
+  const parent = askParent();
+  return parent ? dialog.showMessageBox(parent, o) : dialog.showMessageBox(o);
+}
+function sayWhen(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+function setBusy(what) {
+  busy = what;
+  rebuildMenus();
+  if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('jun:saves-changed', { busy });
+}
+
+// never a password prompt nobody can see: a hidden git waiting for
+// one would just hang
+const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
+function git(args, timeout = 60000) { return Saves.run('git', args, { cwd: JUN_HOME, timeout, env: GIT_ENV }); }
+async function gitHead() {
+  const r = await git(['rev-parse', '--short', 'HEAD'], 10000);
+  return r.code ? '' : r.stdout.trim();
+}
+
+// her page's storage lives in runtime\desktop too: written to disk
+// before a save copies it
+async function flushStorage() {
+  try { session.defaultSession.flushStorageData(); } catch (e) {}
+  await sleep(400);
+}
+
+async function savesInfo() {
+  const st = Saves.loadSettings(JUN_HOME);
+  return {
+    ...st, defaultDir: Saves.paths(JUN_HOME).defaultDir, keepChoices: Saves.KEEP_CHOICES, busy,
+    saves: await Saves.listSaves(st.dir), windows: process.platform === 'win32',
+  };
+}
+
+// kind: named | daily | before-restore | before-update
+async function saveNow(name, kind = 'named') {
+  const st = Saves.loadSettings(JUN_HOME);
+  await flushStorage();
+  const r = await Saves.makeSave({ home: JUN_HOME, dir: st.dir, name, kind, gitHead: await gitHead() });
+  if (r.ok) await Saves.prune(st.dir, kind, kind === 'daily' ? st.keep : Saves.KEEP_AUTO[kind] || 0);
+  return r;
+}
+
+let dailyRunning = false;
+async function dailySave() {
+  if (busy || dailyRunning) return;
+  const st = Saves.loadSettings(JUN_HOME);
+  const today = Saves.localDay();
+  if (st.lastDaily === today) return;
+  dailyRunning = true;
+  try {
+    if (!(await Saves.listSaves(st.dir)).some(s => s.kind === 'daily' && s.day === today)) {
+      const r = await saveNow('', 'daily');
+      if (!r.ok) { log('daily save failed: ' + r.error); return; }
+    }
+    Saves.writeSettings(JUN_HOME, { lastDaily: today });
+    if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('jun:saves-changed', { busy });
+  } finally { dailyRunning = false; }
+}
+
+function log(m) {
+  try {
+    const dir = path.join(JUN_HOME, 'runtime', 'logs');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'desktop-saves.log'), `${new Date().toISOString()} ${m}\n`);
+  } catch (e) {}
+}
+
+// start.ps1 stop, leaving this app (and its windows' processes) up
+function stopServer() {
+  if (process.platform !== 'win32') return Promise.resolve({ code: 0 });
+  return Saves.run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(JUN_HOME, 'start.ps1'), 'stop', '-Keep', String(process.pid)],
+    { cwd: JUN_HOME, timeout: 120000 });
+}
+
+// close everything she shows, so nothing writes while files change
+function putHerToSleep(text) {
+  quitting = true;
+  stopWalk();
+  try { Props.hide(); } catch (e) {}
+  for (const w of BrowserWindow.getAllWindows()) if (w !== splash && !w.isDestroyed()) w.destroy();
+  win = null;
+  settingsWin = null;
+  showSplash(text);
+}
+
+// this app closes and relaunch.js opens it again (when it's really
+// gone), then the new start wakes her server like any other start
+function relaunch() {
+  try {
+    const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1' };
+    const job = { pid: process.pid, home: JUN_HOME, exe: process.execPath, args: process.argv.slice(1) };
+    spawn(process.execPath, [path.join(__dirname, 'relaunch.js'), JSON.stringify(job)],
+      { cwd: JUN_HOME, env, detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  } catch (e) { log('relaunch failed: ' + e.message); }
+  quitting = true;
+  setTimeout(() => app.exit(0), 300);
+}
+
+async function goBack(file) {
+  if (busy) return { ok: false, error: 'Jun is busy with ' + busy + '. Try again in a moment.' };
+  let man;
+  try { ({ man } = await Saves.readManifest(file)); } catch (e) { return { ok: false, error: "That file isn't a Jun save, or it's damaged." }; }
+  const { response } = await ask({
+    type: 'question', buttons: ['Go back to this save', 'Cancel'], defaultId: 1, cancelId: 1,
+    message: `Go back to “${man.name}”?`,
+    detail: `Saved ${sayWhen(man.created)}.\n\nHer chats, memories, bond, touches and desktop settings go back to how they were then. ` +
+      'First Jun saves how she is right now ("Before going back"), so you can always undo this.\n\n' +
+      'She closes for a moment and wakes up again. Her memories are locked with your password: if she asks you to sign in, use the password you had back then.',
+  });
+  if (response !== 0) return { ok: false, cancelled: true };
+  setBusy('going back to a save');
+  showSplash('Checking the save…');
+  const check = await Saves.checkSave(JUN_HOME, file);
+  if (!check.ok) { closeSplash(); setBusy(''); return { ok: false, error: check.error }; }
+  showSplash('Saving how she is right now…');
+  const safety = await saveNow(`Before going back to “${man.name}”`.slice(0, 80), 'before-restore');
+  if (!safety.ok) {
+    closeSplash(); setBusy('');
+    return { ok: false, error: "Jun didn't go back, because she couldn't save how she is now first: " + safety.error };
+  }
+  cfgFrozen = true;
+  putHerToSleep('Jun is closing her eyes for a moment…');
+  const stop = await stopServer();
+  if (stop.code) log('stop said: ' + shortErr(stop.stderr || stop.stdout));
+  showSplash(`Going back to “${man.name}”…`);
+  try {
+    await Saves.restoreSave(JUN_HOME, file);
+    Saves.writeNote(JUN_HOME, { kind: 'restore', name: man.name, created: man.created, safety: safety.manifest.name });
+    log('went back to ' + file);
+  } catch (e) {
+    // the old state is still in place (restoreSave puts it back)
+    log('going back failed: ' + e.message);
+    Saves.writeNote(JUN_HOME, { kind: 'restore-failed', name: man.name, error: e.message });
+  }
+  showSplash('Waking her up…');
+  relaunch();
+  return { ok: true };
+}
+
+// ---- the update
+
+async function checkUpdate() {
+  const r0 = await git(['rev-parse', '--abbrev-ref', 'HEAD'], 15000);
+  if (r0.err && r0.err.code === 'ENOENT') return { state: 'error', error: "Git isn't installed on this PC, so Jun can't get updates this way." };
+  if (r0.code) return { state: 'error', error: "Jun's folder isn't a git copy, so she can't update this way.\n\n" + shortErr(r0.stderr) };
+  const branch = r0.stdout.trim();
+  if (branch !== 'jun-dev') return { state: 'error', error: `Jun is on “${branch}”, not “jun-dev”, so the update stopped to be safe. Nothing was changed.` };
+  const up = await git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], 15000);
+  if (up.code) return { state: 'error', error: "jun-dev isn't linked to your copy on GitHub, so Jun doesn't know where to get updates from. Nothing was changed." };
+  const fetch = await git(['fetch', '--quiet'], 3 * 60 * 1000);
+  if (fetch.code) return { state: 'error', error: "Jun couldn't reach GitHub. Check the internet and try again.\n\n" + shortErr(fetch.stderr) };
+  const head = (await git(['rev-parse', 'HEAD'])).stdout.trim();
+  const behind = Number((await git(['rev-list', '--count', 'HEAD..@{u}'])).stdout.trim()) || 0;
+  const ahead = Number((await git(['rev-list', '--count', '@{u}..HEAD'])).stdout.trim()) || 0;
+  const subjects = behind ? (await git(['log', '--format=%s', '-n', '10', 'HEAD..@{u}'])).stdout.trim().split(/\r?\n/).filter(Boolean) : [];
+  const dirty = (await git(['status', '--porcelain', '--untracked-files=no'])).stdout.split(/\r?\n/).filter(Boolean).map(l => l.slice(3));
+  return { state: behind ? 'available' : 'uptodate', head, behind, ahead, subjects, dirty };
+}
+
+async function updateFlow() {
+  if (busy) { await ask({ type: 'info', message: 'Jun is busy with ' + busy + '. Try again in a moment.' }); return; }
+  setBusy('checking for an update');
+  let c;
+  try { c = await checkUpdate(); } finally { setBusy(''); }
+  if (c.state === 'error') { await ask({ type: 'warning', message: "Jun couldn't update", detail: c.error }); return; }
+  if (c.state === 'uptodate') { await ask({ type: 'info', message: "You're up to date.", detail: 'Jun already has the latest version.' }); return; }
+  if (c.ahead) {
+    await ask({ type: 'warning', message: "Jun couldn't update", detail: "This PC has changes of its own on jun-dev that aren't on GitHub, so the update stopped to keep them safe. Nothing was changed." });
+    return;
+  }
+  if (c.dirty.length) {
+    await ask({ type: 'warning', message: "Jun couldn't update",
+      detail: "Some of Jun's files were changed on this PC, so the update stopped to keep them safe. Nothing was changed.\n\n" + c.dirty.slice(0, 8).join('\n') + (c.dirty.length > 8 ? '\n…' : '') });
+    return;
+  }
+  const list = c.subjects.map(s => '• ' + s).join('\n') + (c.behind > c.subjects.length ? `\n…and ${c.behind - c.subjects.length} more` : '');
+  const { response } = await ask({
+    type: 'question', buttons: ['Update now', 'Not now'], defaultId: 0, cancelId: 1,
+    message: c.behind === 1 ? 'There is 1 new change for Jun.' : `There are ${c.behind} new changes for Jun.`,
+    detail: list + '\n\nJun saves herself first ("Before an update"), then gets the update and restarts. It takes about as long as starting her.',
+  });
+  if (response !== 0) return;
+  setBusy('updating');
+  showSplash('Saving her first…');
+  const safety = await saveNow('', 'before-update');
+  if (!safety.ok) {
+    closeSplash(); setBusy('');
+    await ask({ type: 'warning', message: "Jun didn't update", detail: "She couldn't save herself first, so nothing was changed.\n\n" + safety.error });
+    return;
+  }
+  showSplash('Getting the update…');
+  const m = await git(['merge', '--ff-only', '@{u}'], 3 * 60 * 1000);
+  if (m.code) {
+    closeSplash(); setBusy('');
+    log('update merge failed: ' + shortErr(m.stderr || m.stdout));
+    await ask({ type: 'warning', message: "Jun couldn't update", detail: 'Git said:\n\n' + shortErr(m.stderr || m.stdout) + "\n\nShe's still running as before." });
+    return;
+  }
+  const to = (await git(['rev-parse', 'HEAD'])).stdout.trim();
+  log(`updated ${c.head} -> ${to}`);
+  Saves.writeNote(JUN_HOME, { kind: 'update', from: c.head, to, count: c.behind });
+  putHerToSleep('Restarting Jun with her update…');
+  try { await session.defaultSession.clearCache(); } catch (e) {}
+  const stop = await stopServer();
+  if (stop.code) log('stop said: ' + shortErr(stop.stderr || stop.stdout));
+  relaunch();
+}
+
+// the update went in but she doesn't wake up: offer the version before
+async function offerUndoUpdate(note) {
+  closeSplash();
+  const { response } = await ask({
+    type: 'warning', buttons: ['Go back to the version before', 'Keep waiting'], defaultId: 0, cancelId: 1,
+    message: "Jun didn't wake up after the update.",
+    detail: 'Go back to the version she had before the update? Her memories and everything else stay as they are.',
+  });
+  if (response !== 0) return false;
+  showSplash('Going back to the version before…');
+  // --keep refuses to touch a file that was changed by hand
+  const r = await git(['reset', '--keep', note.from], 60000);
+  if (r.code) {
+    closeSplash();
+    await ask({ type: 'error', message: "Jun couldn't go back", detail: shortErr(r.stderr || r.stdout) });
+    return false;
+  }
+  Saves.writeNote(JUN_HOME, { kind: 'update-undone', from: note.to, to: note.from });
+  await stopServer();
+  relaunch();
+  return true;
+}
+
+async function afterRestart(note) {
+  if (note.kind === 'restore') {
+    await ask({ type: 'info', message: `Jun is back to “${note.name}”.`,
+      detail: `Saved ${sayWhen(note.created)}. Changed your mind? “${note.safety || 'Before going back'}” in Saves & updates has how she was just before.` +
+        '\n\nIf she asks you to sign in, use the password you had back then.' });
+  } else if (note.kind === 'restore-failed') {
+    await ask({ type: 'warning', message: "Jun couldn't go back to that save.", detail: "She's just as she was before.\n\n" + shortErr(note.error) });
+  } else if (note.kind === 'update') {
+    await ask({ type: 'info', message: 'Jun is up to date.', detail: (note.count === 1 ? '1 new change' : `${note.count} new changes`) + ' went in. If a page looks odd, press Ctrl+F5 in it.' });
+  } else if (note.kind === 'update-undone') {
+    await ask({ type: 'info', message: 'Jun is back on the version she had before the update.', detail: 'Tell Claude what happened, the update can be fixed and tried again.' });
+  }
+}
+
+function savesMenu() {
+  return { label: 'Saves & updates', submenu: [
+    { label: 'Save Jun now…', enabled: !busy, click: () => openSettings('saves') },
+    { label: 'Her saves (go back to one)…', click: () => openSettings('saves') },
+    { type: 'separator' },
+    { label: 'Get the latest update', enabled: !busy, click: () => updateFlow() },
+  ] };
+}
+
+// the settings window's "Saves & updates" tab
+ipcMain.handle('jun:saves', async (e, action, a) => {
+  if (!fromSettings(e)) return null;
+  if (action === 'save') {
+    if (busy) return { ok: false, error: 'Jun is busy with ' + busy + '.' };
+    setBusy('saving');
+    try {
+      const r = await saveNow(String(a || ''), 'named');
+      return r.ok ? { ok: true, info: await savesInfo(), saved: r.manifest } : { ok: false, error: r.error };
+    } finally { setBusy(''); }
+  }
+  if (action === 'restore') return goBack(String(a || ''));
+  if (action === 'delete') {
+    const st = Saves.loadSettings(JUN_HOME);
+    const s = (await Saves.listSaves(st.dir)).find(x => x.file === a);
+    if (!s) return { ok: false, error: 'That save is gone already.' };
+    const { response } = await ask({ type: 'question', buttons: ['Delete', 'Cancel'], defaultId: 1, cancelId: 1,
+      message: `Delete “${s.name}”?`, detail: `Saved ${sayWhen(s.created)}. This can't be undone.` });
+    if (response !== 0) return { ok: false, cancelled: true };
+    await Saves.removeSave(st.dir, s.file);
+  } else if (action === 'pickDir') {
+    const parent = askParent();
+    const opts = { title: 'Where should Jun keep her saves?', properties: ['openDirectory', 'createDirectory'], defaultPath: Saves.loadSettings(JUN_HOME).dir };
+    const r = parent ? await dialog.showOpenDialog(parent, opts) : await dialog.showOpenDialog(opts);
+    if (r.canceled || !r.filePaths[0]) return { ok: false, cancelled: true };
+    const why = Saves.checkDir(JUN_HOME, r.filePaths[0]);
+    if (why) return { ok: false, error: why };
+    Saves.writeSettings(JUN_HOME, { dir: r.filePaths[0] });
+  } else if (action === 'resetDir') {
+    Saves.writeSettings(JUN_HOME, { dir: '' });
+  } else if (action === 'keep') {
+    Saves.writeSettings(JUN_HOME, { keep: Number(a) });
+    const st = Saves.loadSettings(JUN_HOME);
+    await Saves.prune(st.dir, 'daily', st.keep);
+  } else if (action === 'openDir') {
+    const dir = Saves.loadSettings(JUN_HOME).dir;
+    try { fs.mkdirSync(dir, { recursive: true }); } catch (e2) {}
+    shell.openPath(dir);
+  } else if (action === 'update') {
+    updateFlow();
+  }
+  return { ok: true, info: await savesInfo() };
+});

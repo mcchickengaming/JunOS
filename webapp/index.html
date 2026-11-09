@@ -660,7 +660,7 @@ html[data-pre-auth] #app { visibility: hidden; }
 
 <script type="module" src="js/core/pwa.js?v=2"></script>
 <script src="js/boot-gate.js?v=29"></script>
-<script type="module" src="js/app.js?v=152"></script>
+<script type="module" src="js/app.js?v=153"></script>
 </head>
 <body>
 
@@ -1144,6 +1144,14 @@ html[data-pre-auth] #app { visibility: hidden; }
             <div class="set-row-title">Timeline</div>
           </div>
           <div class="rel-timeline" id="relTimeline" aria-label="How the gauges moved over time"></div>
+        </div>
+        <div class="set-block">
+          <div class="set-block-head">
+            <div class="set-row-title">Save points</div>
+          </div>
+          <div class="set-row-desc">Save everything that makes her her (chats, memories, bond, touches, desktop settings) and go back to a save any time. She saves herself once a day too.</div>
+          <button class="secondary" id="savePointsBtn" type="button" hidden>Saves &amp; updates…</button>
+          <div class="set-row-desc" id="savePointsOff">Open her desktop app (tray icon next to the clock &gt; Saves &amp; updates) to save her or get an update.</div>
         </div>
       </section>
 

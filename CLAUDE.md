@@ -27,6 +27,9 @@ companion of Jun from *My Dystopian Robot Girlfriend*. This fork adds features f
   ```
   then Ctrl+F5 in the browser. Never tell him to use the Jun OS app's **Update** button: it switches the
   install back to upstream release tags.
+- Since Nov 8 he can also update with one click: tray (or Jun menu) > **Get the latest update** (or Saves & updates
+  tab > Check now). It does the same `git pull` on `jun-dev`, saves her first and restarts everything. The three
+  commands stay the fallback (e.g. when the desktop app itself won't start).
 
 ## Rules that bite
 - **Cache-busters.** Webapp JS/CSS is served `immutable` by its `?v=` URL. After changing any JS/CSS file run
@@ -127,6 +130,28 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   setting `growFx` "Touch feedback grows with her" is off). fx.js CSS and desktop.html's ring/pin/cloud/particles/zzz
   multiply their px by `--fx-k`; `Fx.setScale` (ripple), `Body.setCursorScale` (cursor icons, 22–96 px). Jun menu >
   Her size on the desktop has the quick picks + "Any size you like…".
+
+- **Save points + one-click update** (`desktop/saves.js`, `desktop/relaunch.js`, `tools/jun-save-db.php`, main.js
+  "save points" section, settings window tab `saves`, Settings > Memory > Save points button via `junDesktop.openSettings`).
+  A save is one `.junsave` file (a plain zip, `jun-save.json` manifest inside): `state/` = runtime\state (her db copied
+  with sqlite `VACUUM INTO` through the portable php, so it's safe while she runs; memory files; caches `rl/`,
+  `consolidating/`, `*.stamp` skipped), `desktop/` = runtime\desktop's `desktop.json`, `Local Storage`, `IndexedDB`
+  (no chromium caches, no leveldb LOCK), `env/.env` for reference only (going back never writes .env). Written as
+  `.part`, renamed when whole. Kinds: named (never auto-deleted), daily (one a day, a minute after start + hourly check,
+  keep 3/7/14/30, default 7), before-restore / before-update (last 5 each). Settings in `runtime\saves.json` (outside
+  everything a restore swaps): `dir` (default `runtime\saves`, git-ignored; `checkDir` refuses her own folders and
+  anything in the Jun folder outside runtime\), `keep`, `lastDaily`. Going back: check the file (every entry's crc +
+  sqlite integrity_check) → safety save → close her windows (`cfgFrozen` so desktop.json isn't written over) →
+  `start.ps1 stop -Keep <app pid>` (new `-Keep` param: Stop-Strays spares that pid and its children, so the app stays
+  up to show progress) → `restoreSave` swaps runtime\state (old one kept as `state.previous`, put back on failure) and
+  unpacks the desktop part into `runtime\desktop-pending` → `relaunch()`: `relaunch.js` runs under the app's own
+  electron.exe as node (`ELECTRON_RUN_AS_NODE`), waits for the old app to exit, `applyPendingDesktop`, starts the app
+  again, whose normal boot wakes her server. A note (`runtime\jun-restart-note.json`, 30 min) tells the new start
+  what happened (dialog). Update: branch must be `jun-dev` with an upstream, `git fetch`, refuses with local commits
+  or hand-edited tracked files, lists up to 10 commit subjects, before-update save, `git merge --ff-only @{u}` (fails
+  → nothing stopped), clear the http cache, stop, relaunch. If she doesn't wake within 4 min after an update the app
+  offers `git reset --keep <old head>` and restarts. git runs with `GIT_TERMINAL_PROMPT=0`. Logs:
+  `runtime\logs\desktop-saves.log`, `desktop-relaunch.log`. Tests: `.github/scripts/js/saves.test.mjs` (needs php).
 
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings

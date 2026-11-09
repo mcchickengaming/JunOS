@@ -41,6 +41,7 @@ function show(tab) {
   if (tab === 'spots') loadSpots();
   if (tab === 'feedback') previewTheme();
   if (tab === 'size') setTimeout(loadSize); // after this module has set itself up
+  if (tab === 'saves') setTimeout(loadSaves);
 }
 tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
 show(decodeURIComponent(location.hash.slice(1)) || 'help');
@@ -508,3 +509,142 @@ sizeRange.addEventListener('change', () => {
 growFx.addEventListener('change', async () => {
   if (D?.size) sizeState = await D.size('growFx', growFx.checked);
 });
+
+// ---------------------------------------------------------------
+// saves & updates (desktop/main.js 'jun:saves', desktop/saves.js).
+// a save is one .junsave file; going back and updating restart her,
+// main.js asks first and shows the progress itself
+
+const $ = (id) => document.getElementById(id);
+const KIND_WORDS = { named: 'Yours', daily: 'Daily', 'before-restore': 'Before going back', 'before-update': 'Before an update', broken: "Can't be read" };
+let savesBusy = false;
+
+function sizeText(n) {
+  if (n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(1) + '\u00a0GB';
+  if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(n >= 10 * 1024 * 1024 ? 0 : 1) + '\u00a0MB';
+  return Math.max(1, Math.round(n / 1024)) + '\u00a0KB';
+}
+function whenText(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const today = new Date();
+  const yest = new Date(Date.now() - 864e5);
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === today.toDateString()) return 'Today, ' + time;
+  if (d.toDateString() === yest.toDateString()) return 'Yesterday, ' + time;
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' }) + ', ' + time;
+}
+function saveMsg(text, err) {
+  const m = $('saveMsg');
+  m.textContent = text || '';
+  m.classList.toggle('err', !!err);
+  if (err) m.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function drawSaves(info) {
+  const rows = $('saveRows');
+  rows.textContent = '';
+  const busy = !!info.busy || savesBusy;
+  $('noSaves').hidden = info.saves.length > 0;
+  for (const s of info.saves) {
+    const row = document.createElement('div');
+    row.className = 'row save-row';
+    const what = document.createElement('div');
+    what.className = 'what';
+    const b = document.createElement('b');
+    b.textContent = s.name;
+    b.title = s.name;
+    const sub = document.createElement('span');
+    const kind = document.createElement('span');
+    kind.className = 'save-kind ' + s.kind;
+    kind.textContent = KIND_WORDS[s.kind] || s.kind;
+    sub.append(kind, document.createTextNode([whenText(s.created), sizeText(s.size)].filter(Boolean).join(' · ')));
+    what.append(b, sub);
+    const acts = document.createElement('div');
+    acts.className = 'acts';
+    if (!s.broken) {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'btn';
+      back.textContent = 'Go back to this';
+      back.disabled = busy;
+      back.addEventListener('click', async () => {
+        saveMsg('');
+        const r = await D.saves('restore', s.file);
+        if (r && !r.ok && r.error) saveMsg(r.error, true);
+      });
+      acts.append(back);
+    }
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn danger';
+    del.textContent = 'Delete';
+    del.disabled = busy;
+    del.addEventListener('click', async () => {
+      const r = await D.saves('delete', s.file);
+      if (r?.info) drawSaves(r.info);
+      else if (r && r.error) saveMsg(r.error, true);
+    });
+    acts.append(del);
+    row.append(what, acts);
+    rows.append(row);
+  }
+  $('saveDirWhat').textContent = info.custom ? 'In a folder you picked' : "In Jun's folder (the default)";
+  $('saveDir').textContent = info.dir;
+  $('saveDefault').disabled = !info.custom;
+  const keep = $('saveKeep');
+  keep.textContent = '';
+  for (const n of info.keepChoices) {
+    const o = document.createElement('option');
+    o.value = String(n);
+    o.textContent = `Keep the last ${n}`;
+    keep.append(o);
+  }
+  keep.value = String(info.keep);
+  $('saveNow').disabled = busy;
+  $('updateNow').disabled = busy;
+  $('updateNow').textContent = info.busy === 'checking for an update' ? 'Checking…' : 'Check now';
+  if (info.busy) saveMsg('Jun is ' + info.busy + '…');
+}
+
+async function loadSaves() {
+  const note = $('saveNote');
+  if (!D?.saves) {
+    for (const id of ['saveNow', 'saveName', 'savePick', 'saveDefault', 'saveOpen', 'saveKeep', 'updateNow']) $(id).disabled = true;
+    note.textContent = 'Open this from the Jun desktop app (tray icon > Saves & updates) to save her or update.';
+    return;
+  }
+  note.textContent = '';
+  const r = await D.saves('get');
+  if (r?.info) drawSaves(r.info);
+}
+
+async function savesCall(action, a) {
+  const r = await D.saves(action, a);
+  if (r?.info) drawSaves(r.info);
+  if (r && !r.ok && r.error) saveMsg(r.error, true);
+  return r;
+}
+
+$('saveNow').addEventListener('click', async () => {
+  if (!D?.saves || savesBusy) return;
+  savesBusy = true;
+  $('saveNow').disabled = true;
+  saveMsg('Saving…');
+  try {
+    const r = await D.saves('save', $('saveName').value.trim());
+    if (r?.ok) {
+      $('saveName').value = '';
+      saveMsg(`Saved “${r.saved.name}” (${sizeText(r.saved.size)}).`);
+    } else saveMsg((r && r.error) || "Jun couldn't save.", true);
+    savesBusy = false;
+    if (r?.info) drawSaves(r.info); else loadSaves();
+  } finally { savesBusy = false; $('saveNow').disabled = false; }
+});
+$('saveName').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('saveNow').click(); });
+$('savePick').addEventListener('click', () => D?.saves && savesCall('pickDir').then(r => { if (r?.ok) saveMsg('Saves go to the new folder from now on. The old saves stay where they were.'); }));
+$('saveDefault').addEventListener('click', () => D?.saves && savesCall('resetDir'));
+$('saveOpen').addEventListener('click', () => D?.saves && savesCall('openDir'));
+$('saveKeep').addEventListener('change', () => D?.saves && savesCall('keep', $('saveKeep').value));
+$('updateNow').addEventListener('click', () => D?.saves && savesCall('update'));
+D?.onSavesChanged?.(() => { if (!$('tab-saves').hidden) loadSaves(); });

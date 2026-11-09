@@ -5,7 +5,11 @@ param(
     [switch]$NoBrowser,
     [switch]$IgnoreSecurity,
     # phone only: JunOS.exe already asked about turning LAN mode on
-    [switch]$Yes
+    [switch]$Yes,
+    # stop only: process ids (and their children) to leave running.
+    # the desktop app passes its own when it restarts her server for
+    # a save point or an update, so it can stay up and show progress
+    [int[]]$Keep = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -660,7 +664,7 @@ if ($Action -eq 'stop') {
             Warn_ "could not stop $name (pid $($p.Id)): $($_.Exception.Message)"
         }
     }
-    Stop-Strays -AndDesktop
+    Stop-Strays -keep $Keep -AndDesktop
     Remove-Item $PidFile -ErrorAction SilentlyContinue
     Write-Host ''
     Ok 'all services stopped'
