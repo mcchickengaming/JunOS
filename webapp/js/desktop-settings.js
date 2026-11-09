@@ -261,7 +261,13 @@ function pvLoadSnap() {
   let next = null;
   try { next = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null'); } catch { next = null; }
   if (!next || !next.img || (next.v || 1) < 2) { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); return; }
-  pvHer.onload = () => { snap = next; pvHer.hidden = false; preview.classList.add('has-her'); };
+  pvHer.onload = () => {
+    snap = next;
+    const fx = Number.isFinite(next.fx) ? Math.max(0.1, Math.min(0.9, next.fx)) : 0.5;
+    pvHer.style.setProperty('--pv-fx', String(fx));
+    pvHer.hidden = false;
+    preview.classList.add('has-her');
+  };
   pvHer.onerror = () => { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); };
   pvHer.src = next.img;
 }
@@ -275,8 +281,11 @@ function pvFace() {
   if (snap && !pvHer.hidden) {
     const r = pvHer.getBoundingClientRect();
     const h = r.height;
-    return { x: r.left + r.width * snap.fx, y: r.top + h * snap.fy, headW: h * snap.headW, modelW: h * snap.modelW,
-      modelH: h * snap.modelH, top: r.top };
+    // a bad number in the picture's note must never put her face outside the picture
+    const num = (v, lo, hi, d) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d);
+    return { x: r.left + r.width * num(snap.fx, 0.1, 0.9, 0.5), y: r.top + h * num(snap.fy, 0.03, 0.7, 0.22),
+      headW: h * num(snap.headW, 0.08, 0.6, 0.25), modelW: h * num(snap.modelW, 0.2, 3, 0.7),
+      modelH: h * num(snap.modelH, 0.5, 4, 2), top: r.top };
   }
   const head = preview.querySelector('.pv-head');
   const r = head.getBoundingClientRect();
@@ -305,8 +314,9 @@ function pvShowIcon(kind) {
   // just above her head, wherever it sits in the box
   const a = pvFace();
   const box = preview.getBoundingClientRect();
-  pvEmote.style.left = (a.x - box.left) + 'px';
-  pvEmote.style.top = Math.max(34, a.top - box.top - (snap ? 0 : 14)) + 'px';
+  // always inside the box, whatever the picture says
+  pvEmote.style.left = Math.max(40, Math.min(box.width - 40, a.x - box.left)) + 'px';
+  pvEmote.style.top = Math.max(38, Math.min(box.height - 10, a.top - box.top - (snap ? 0 : 14))) + 'px';
   pvEmote.classList.remove('show');
   void pvEmote.offsetWidth;
   pvEmote.classList.add('show');

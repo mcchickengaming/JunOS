@@ -57,10 +57,11 @@
     clip-path: polygon(50% 0, 100% 100%, 0 100%); }
   .preview .pv-head::before { left: 2px; } .preview .pv-head::after { right: 2px; }
   /* her real picture (taken by the desktop page), head to waist, breathing a little */
-  .preview .pv-her { position: absolute; left: 50%; top: 34px; height: 100%; transform: translateX(-50%); transform-origin: 50% 100%;
+  .preview .pv-her { position: absolute; left: 50%; top: 34px; height: 100%; transform: translateX(calc(var(--pv-fx, .5) * -100%)); transform-origin: 50% 100%;
     pointer-events: none; animation: pv-breathe 4.2s ease-in-out infinite; }
   .preview.has-her .pv-head { display: none; }
-  @keyframes pv-breathe { 0%, 100% { transform: translateX(-50%) scale(1, 1); } 50% { transform: translateX(-50%) scale(1.006, 1.012); } }
+  /* her face in the middle of the box (--pv-fx), whatever else is in the picture */
+  @keyframes pv-breathe { 0%, 100% { transform: translateX(calc(var(--pv-fx, .5) * -100%)) scale(1, 1); } 50% { transform: translateX(calc(var(--pv-fx, .5) * -100%)) scale(1.006, 1.012); } }
   /* a short settings window: a smaller preview, so the controls under it still have room */
   @media (max-height: 640px) { .preview { height: 125px; } }
   .preview-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
@@ -267,6 +268,6 @@
   <p class="hint" id="saveNote"></p>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=22"></script>
+<script type="module" src="js/desktop-settings.js?v=24"></script>
 </body>
 </html>

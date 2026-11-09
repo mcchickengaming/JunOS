@@ -146,7 +146,10 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   `mGlowFade` seconds; "Show the glow" previews it.
 - **Her picture in the settings preview** (`webapp/js/desktop/snapshot.js`, served by BOTH her main window
   (js/app/main.js) and the desktop page, so it works without the desktop page ever opened): `take()` renders the model
-  with `app.renderer.extract.canvas(model)`, then TRIMS to her visible pixels (the model's bounds are far bigger than
+  with `app.renderer.extract.canvas(model)`, then TRIMS to her visible pixels (columns/rows with too few of her pixels
+  don't count, so stray specks from hidden parts are ignored; the face comes from the rig only if it lands in her top
+  third, else from the middle of her head's pixels; the preview centers the picture on her face via `--pv-fx` and
+  clamps every number, and the icon always stays inside the box) (the model's bounds are far bigger than
   her art: hidden parts count, which made her tiny in a corner at first), crops from the top of her head to her waist,
   360 px tall, and stores `localStorage['desktop.snapshot']` = `{ v: 2, img (webp), fx (share of width), fy, headW,
   modelW, modelH (shares of height) }`; the face comes from the rig's face drawables (geometry.js `faceBox`). Taken

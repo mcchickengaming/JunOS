@@ -33,34 +33,45 @@ export function take() {
     scan.height = sh;
     const g = scan.getContext('2d', { willReadFrequently: true });
     g.drawImage(full, 0, 0, sw, sh);
-    // the box round her visible pixels
+    // the box round her visible pixels, ignoring stray specks (a hidden
+    // part that still draws a few pixels far from her): a column or row
+    // only counts with enough of her in it
     const px = g.getImageData(0, 0, sw, sh).data;
-    let x0 = sw, y0 = sh, x1 = -1, y1 = -1;
-    for (let y = 0; y < sh; y++) {
-      for (let x = 0; x < sw; x++) {
-        if (px[(y * sw + x) * 4 + 3] > 12) {
-          if (x < x0) x0 = x;
-          if (x > x1) x1 = x;
-          if (y < y0) y0 = y;
-          if (y > y1) y1 = y;
-        }
-      }
-    }
-    if (x1 < 0) return false;
+    const on = (x, y) => px[(y * sw + x) * 4 + 3] > 12;
+    const cols = new Uint32Array(sw), rows = new Uint32Array(sh);
+    for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) if (on(x, y)) { cols[x]++; rows[y]++; }
+    const colMax = Math.max(...cols), rowMax = Math.max(...rows);
+    if (!colMax) return false;
+    let x0 = 0, x1 = sw - 1, y0 = 0, y1 = sh - 1;
+    const colThr = Math.max(2, colMax * 0.04), rowThr = Math.max(2, rowMax * 0.02);
+    while (x0 < sw && cols[x0] < colThr) x0++;
+    while (x1 > x0 && cols[x1] < colThr) x1--;
+    while (y0 < sh && rows[y0] < rowThr) y0++;
+    while (y1 > y0 && rows[y1] < rowThr) y1--;
+    if (x1 <= x0 || y1 <= y0) return false;
     const tw = x1 - x0 + 1, th = y1 - y0 + 1;
     // her face, in scan px: from the rig if it can, else a guess from her shape
     const toScan = sw / b.width; // client px -> scan px
     const vr = app.view.getBoundingClientRect();
     const fb = faceBox();
-    let face;
+    // a guess from her shape: the middle of her head (the top tenth of her), as wide as it is
+    let hx0 = x1, hx1 = x0;
+    for (let y = y0; y < y0 + th * 0.12; y++) for (let x = x0; x <= x1; x++) if (on(x, y)) { if (x < hx0) hx0 = x; if (x > hx1) hx1 = x; }
+    const guess = hx1 > hx0
+      ? { x: (hx0 + hx1) / 2, y: y0 + th * 0.1, w: Math.min(hx1 - hx0, th * 0.2) }
+      : { x: x0 + tw / 2, y: y0 + th * 0.1, w: Math.max(tw * 0.3, th * 0.1) };
+    let face = guess;
     if (fb && fb.right > fb.left) {
       face = {
         x: (((fb.left + fb.right) / 2) - vr.left - b.x) * toScan,
         y: (((fb.top + fb.bottom) / 2) - vr.top - b.y) * toScan,
         w: (fb.right - fb.left) * toScan,
       };
-    } else {
-      face = { x: x0 + tw / 2, y: y0 + th * 0.1, w: Math.max(tw * 0.3, th * 0.1) };
+      // only if it's really on her: inside her top third, a sensible size
+      const ok = [face.x, face.y, face.w].every(Number.isFinite)
+        && face.x > x0 && face.x < x1 && face.y > y0 && face.y < y0 + th * 0.35
+        && face.w > tw * 0.05 && face.w < tw;
+      if (!ok) face = guess;
     }
     // the crop: her top half, at least down past her face, as wide as she is there
     const cy0 = y0;
@@ -68,10 +79,9 @@ export function take() {
     const cropH = Math.min(th, ch);
     let cx0 = sw, cx1 = -1;
     for (let y = Math.floor(cy0); y < Math.min(sh, cy0 + cropH); y++) {
-      for (let x = 0; x < sw; x++) {
-        if (px[(y * sw + x) * 4 + 3] > 12) { if (x < cx0) cx0 = x; if (x > cx1) cx1 = x; }
-      }
+      for (let x = x0; x <= x1; x++) if (on(x, y)) { if (x < cx0) cx0 = x; if (x > cx1) cx1 = x; }
     }
+    if (cx1 < cx0) { cx0 = x0; cx1 = x1; }
     // a little room round her
     const pad = Math.round(cropH * 0.03);
     cx0 = Math.max(0, cx0 - pad);

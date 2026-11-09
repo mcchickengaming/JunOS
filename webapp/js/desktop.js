@@ -29,7 +29,7 @@ import * as Body from './desktop/body.js?v=40';
 import * as TouchLog from './core/touch-log.js?v=1';
 import * as Fx from './desktop/fx.js?v=5';
 import * as Moods from './desktop/moods.js?v=6';
-import * as Snapshot from './desktop/snapshot.js?v=2';
+import * as Snapshot from './desktop/snapshot.js?v=4';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
