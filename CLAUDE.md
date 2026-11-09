@@ -118,6 +118,16 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   a basic icon a different way now and then by bond and mood, never the same icon twice in a row; idle thoughts by
   mood, hour and bond (`pickFromPool`); bubble pops in a mix of ways (`eAnim`); robot faces never/sometimes/often.
 
+- **Her size on the desktop** (`desktop/main.js` `setSize`, settings window "Her size" tab): `cfg.size` is a share of
+  the screen's height (0.15–0.7; Small/Medium/Large = 0.31/0.425/0.54, old string values migrate), so she looks the
+  same on every monitor; a monitor of another height re-fits her when she lands on it. She resizes live around her
+  feet (no reload). Every px number in main.js is for her at `REF_PX` (440 px) and scales with `sizeK()`: headroom
+  (never under 80%), walk speed (k^0.6), hop, throw/gravity/bounces. The page gets `size, herPx, k, headroom` with
+  `jun:settings`; `applySize` in js/desktop.js sets `--headroom` and `--fx-k` on `<body>` (0.8–2.2, 1 when the desk
+  setting `growFx` "Touch feedback grows with her" is off). fx.js CSS and desktop.html's ring/pin/cloud/particles/zzz
+  multiply their px by `--fx-k`; `Fx.setScale` (ripple), `Body.setCursorScale` (cursor icons, 22–96 px). Jun menu >
+  Her size on the desktop has the quick picks + "Any size you like…".
+
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings
 page using the closet's picker (`makeItemColorButton` from `js/wardrobe/color-picker.js`), like

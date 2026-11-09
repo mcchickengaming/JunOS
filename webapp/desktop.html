@@ -28,7 +28,8 @@
   html.fade-chat .talk:hover, html.fade-chat .talk:focus-within, html.fade-chat .talk.thinking { opacity: 1; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; user-select: none;
     font-family: Arial, Helvetica, sans-serif; color: var(--ink); }
-  #stage { position: absolute; left: 0; right: 0; top: 110px; bottom: 0; }
+  /* the room over her head grows and shrinks with her (desktop/main.js headroom()) */
+  #stage { position: absolute; left: 0; right: 0; top: var(--headroom, 110px); bottom: 0; }
   html.mode-compact #stage { top: 0; bottom: 58px; }
   #stage canvas { display: block; }
   /* her speech card (core/speech-card.js) sizes itself off her width, which is
@@ -68,12 +69,12 @@
   .note[hidden] { display: none; }
   .note button { margin-top: 8px; border: 0; padding: 6px 10px; font: 800 13px Arial, Helvetica, sans-serif; color: var(--ink); background: var(--accent); cursor: pointer; }
 
-  .zzz { position: absolute; left: 58%; top: 34%; z-index: 5; pointer-events: none; font: 800 20px Arial, Helvetica, sans-serif;
-    color: var(--ink); text-shadow: 0 0 6px var(--accent), 0 1px 2px #000; }
+  .zzz { position: absolute; left: 58%; top: 34%; z-index: 5; pointer-events: none; font: 800 calc(20px * var(--fx-k, 1)) Arial, Helvetica, sans-serif;
+    color: var(--ink); text-shadow: 0 0 calc(6px * var(--fx-k, 1)) var(--accent), 0 calc(1px * var(--fx-k, 1)) calc(2px * var(--fx-k, 1)) #000; }
   .zzz[hidden] { display: none; }
   .zzz span { position: absolute; opacity: 0; animation: zzz 3.6s ease-in-out infinite; }
-  .zzz span:nth-child(2) { animation-delay: 1.2s; font-size: 16px; }
-  .zzz span:nth-child(3) { animation-delay: 2.4s; font-size: 24px; }
+  .zzz span:nth-child(2) { animation-delay: 1.2s; font-size: calc(16px * var(--fx-k, 1)); }
+  .zzz span:nth-child(3) { animation-delay: 2.4s; font-size: calc(24px * var(--fx-k, 1)); }
   /* her shadow on the taskbar. placed at her feet by js/desktop.js */
   .shadow { position: absolute; z-index: 0; pointer-events: none; height: 14px; border-radius: 50%;
     background: radial-gradient(closest-side, rgba(0, 0, 0, var(--shadow-alpha)), rgba(0, 0, 0, calc(var(--shadow-alpha) * .45)) 60%, transparent);
@@ -108,22 +109,22 @@
   .glow.on { opacity: .6; transform: translate(-50%, -50%) scale(.9); }
 
   /* her thinking cloud while she works out a reply */
-  .cloud { position: absolute; z-index: 5; pointer-events: none; display: flex; gap: 4px; padding: 7px 10px; border-radius: 16px;
-    background: var(--bubble-bg); border: 2px solid var(--edge); transform: translate(-50%, -100%) scale(0); opacity: 0;
+  .cloud { position: absolute; z-index: 5; pointer-events: none; display: flex; gap: calc(4px * var(--fx-k, 1)); padding: calc(7px * var(--fx-k, 1)) calc(10px * var(--fx-k, 1)); border-radius: calc(16px * var(--fx-k, 1));
+    background: var(--bubble-bg); border: calc(2px * var(--fx-k, 1)) solid var(--edge); transform: translate(-50%, -100%) scale(0); opacity: 0;
     transition: opacity .2s ease, transform .25s cubic-bezier(.2, .9, .3, 1.4); }
   .cloud.on { opacity: 1; transform: translate(-50%, -100%) scale(1); }
-  .cloud::before, .cloud::after { content: ''; position: absolute; border-radius: 50%; background: var(--bubble-bg); border: 2px solid var(--edge); }
-  .cloud::before { width: 9px; height: 9px; left: 30%; bottom: -10px; }
-  .cloud::after { width: 5px; height: 5px; left: 22%; bottom: -17px; }
-  .cloud i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); animation: cloud-dot 1s ease-in-out infinite; }
+  .cloud::before, .cloud::after { content: ''; position: absolute; border-radius: 50%; background: var(--bubble-bg); border: calc(2px * var(--fx-k, 1)) solid var(--edge); }
+  .cloud::before { width: calc(9px * var(--fx-k, 1)); height: calc(9px * var(--fx-k, 1)); left: 30%; bottom: calc(-10px * var(--fx-k, 1)); }
+  .cloud::after { width: calc(5px * var(--fx-k, 1)); height: calc(5px * var(--fx-k, 1)); left: 22%; bottom: calc(-17px * var(--fx-k, 1)); }
+  .cloud i { width: calc(6px * var(--fx-k, 1)); height: calc(6px * var(--fx-k, 1)); border-radius: 50%; background: var(--ink); animation: cloud-dot 1s ease-in-out infinite; }
   .cloud i:nth-child(2) { animation-delay: .15s; } .cloud i:nth-child(3) { animation-delay: .3s; }
   @keyframes cloud-dot { 0%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 
   /* particles: hearts, sparkles, dust */
   .particle { position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%); animation: particle-fly linear forwards; }
-  .heart-p { color: var(--accent); font-size: 16px; text-shadow: 0 0 4px rgba(255, 255, 255, .5); }
-  .spark-p { color: #fff6c2; font-size: 13px; text-shadow: 0 0 6px var(--glow); }
-  .dust-p { color: rgba(190, 180, 170, .7); font-size: 9px; filter: blur(.6px); }
+  .heart-p { color: var(--accent); font-size: calc(16px * var(--fx-k, 1)); text-shadow: 0 0 calc(4px * var(--fx-k, 1)) rgba(255, 255, 255, .5); }
+  .spark-p { color: #fff6c2; font-size: calc(13px * var(--fx-k, 1)); text-shadow: 0 0 calc(6px * var(--fx-k, 1)) var(--glow); }
+  .dust-p { color: rgba(190, 180, 170, .7); font-size: calc(9px * var(--fx-k, 1)); filter: blur(calc(.6px * var(--fx-k, 1))); }
   @keyframes particle-fly {
     0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); }
     15% { opacity: 1; }
@@ -159,8 +160,8 @@
   .calib-bar label { display: flex; align-items: center; gap: 4px; margin-right: 4px; cursor: pointer; }
 
   /* a hand left in place (two hands): sits on the spot, clickable to lift */
-  .pin { position: absolute; z-index: 9; transform: translate(-50%, -50%); font-size: 26px; cursor: pointer;
-    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .6)); animation: pin-in .25s ease-out; }
+  .pin { position: absolute; z-index: 9; transform: translate(-50%, -50%); font-size: calc(26px * var(--fx-k, 1)); cursor: pointer;
+    filter: drop-shadow(0 calc(2px * var(--fx-k, 1)) calc(3px * var(--fx-k, 1)) rgba(0, 0, 0, .6)); animation: pin-in .25s ease-out; }
   .pin.rubbing { animation: pin-in .25s ease-out, pin-rub .28s ease-in-out .25s infinite alternate; }
   .pin:hover { filter: drop-shadow(0 0 6px var(--glow)); }
   @keyframes pin-in { from { transform: translate(-50%, -80%) scale(.4); opacity: 0; } }
@@ -168,14 +169,14 @@
 
   /* feedback at the pointer */
   /* the ripple and the labels: js/desktop/fx.js (shared with the settings preview) */
-  .ring { position: absolute; z-index: 7; pointer-events: none; width: 46px; height: 46px; border-radius: 50%;
+  .ring { position: absolute; z-index: 7; pointer-events: none; width: calc(46px * var(--fx-k, 1)); height: calc(46px * var(--fx-k, 1)); border-radius: 50%;
     transform: translate(-50%, -50%); opacity: 0;
     background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), color-mix(in srgb, var(--panel) 70%, transparent) 0);
-    -webkit-mask: radial-gradient(circle, transparent 15px, #000 16px); mask: radial-gradient(circle, transparent 15px, #000 16px); }
+    -webkit-mask: radial-gradient(circle, transparent calc(15px * var(--fx-k, 1)), #000 calc(16px * var(--fx-k, 1))); mask: radial-gradient(circle, transparent calc(15px * var(--fx-k, 1)), #000 calc(16px * var(--fx-k, 1))); }
   @property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
   .ring.on { opacity: 1; animation: ring-fill var(--hold, 450ms) linear forwards; }
   @keyframes ring-fill { from { --p: 0; } to { --p: 1; } }
-  @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, -60px); } }
+  @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(26px * var(--fx-k, 1)), calc(-60px * var(--fx-k, 1))); } }
 </style>
 </head>
 <body>
@@ -208,6 +209,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=47"></script>
+<script type="module" src="js/desktop.js?v=48"></script>
 </body>
 </html>

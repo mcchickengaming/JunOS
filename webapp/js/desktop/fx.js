@@ -66,6 +66,16 @@ export function applyFx(next) {
 }
 export function currentFx() { return fx; }
 
+// her size on the desktop: the ripple, labels and thought bubbles grow
+// and shrink with her (1 = her medium size). the css reads --fx-k off
+// <body>; the settings window's preview never sets it, so stays at 1
+let fxK = 1;
+export function setScale(k) {
+  fxK = num(k, 0.4, 3, 1);
+  if (document.body) document.body.style.setProperty('--fx-k', String(fxK));
+}
+export function scale() { return fxK; }
+
 // ---------------------------------------------------------------
 // the css, injected once. the labels' base look moved here from
 // desktop.html so the settings window's preview matches exactly
@@ -90,29 +100,29 @@ const CSS = `
   100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); } }
 
 /* the labels */
-.action-label { position: absolute; z-index: 8; pointer-events: none; padding: 3px 9px; white-space: nowrap;
-  font: 800 var(--label-size, 12px) var(--label-font, Arial, Helvetica, sans-serif);
+.action-label { position: absolute; z-index: 8; pointer-events: none; padding: calc(3px * var(--fx-k, 1)) calc(9px * var(--fx-k, 1)); white-space: nowrap;
+  font: 800 calc(var(--label-size, 12px) * var(--fx-k, 1)) var(--label-font, Arial, Helvetica, sans-serif);
   color: var(--label-ink, var(--ink, #fff)); text-shadow: var(--outline, none);
   background: color-mix(in srgb, var(--label, var(--bubble, #191233)) calc(var(--label-a, 1) * var(--bubble-a, 1) * 100%), transparent);
-  border: var(--label-border, 1px) solid var(--label-edge, var(--edge, #ec0054)); border-radius: 10px;
+  border: var(--label-border, calc(1px * var(--fx-k, 1))) solid var(--label-edge, var(--edge, #ec0054)); border-radius: calc(10px * var(--fx-k, 1));
   transform: translate(-50%, -100%) scale(.8); opacity: 0; }
 .action-label.on { animation: label-pop 1.25s ease forwards; }
 .rub-label { transform: translate(-50%, -100%) scale(.9); transition: opacity .25s ease, transform .25s ease, left .2s ease, top .2s ease; }
 .rub-label.on { animation: none !important; opacity: 1; transform: translate(-50%, -100%) scale(1); }
-body.lbl-box-pill .action-label { border-radius: 999px; padding: 3px 12px; }
-body.lbl-box-square .action-label { border-radius: 3px; }
-body.lbl-box-bubble .action-label { margin-top: -7px; }
-body.lbl-box-bubble .action-label::after { content: ''; position: absolute; left: 50%; bottom: calc(-6px - var(--label-border, 1px)); width: 9px; height: 9px;
+body.lbl-box-pill .action-label { border-radius: calc(999px * var(--fx-k, 1)); padding: calc(3px * var(--fx-k, 1)) calc(12px * var(--fx-k, 1)); }
+body.lbl-box-square .action-label { border-radius: calc(3px * var(--fx-k, 1)); }
+body.lbl-box-bubble .action-label { margin-top: calc(-7px * var(--fx-k, 1)); }
+body.lbl-box-bubble .action-label::after { content: ''; position: absolute; left: 50%; bottom: calc(calc(-6px * var(--fx-k, 1)) - var(--label-border, calc(1px * var(--fx-k, 1)))); width: calc(9px * var(--fx-k, 1)); height: calc(9px * var(--fx-k, 1));
   background: inherit; border-right: inherit; border-bottom: inherit; transform: translateX(-50%) rotate(45deg); }
-body.lbl-box-cloud .action-label { border-radius: 18px; padding: 5px 13px; margin-top: -10px; }
+body.lbl-box-cloud .action-label { border-radius: calc(18px * var(--fx-k, 1)); padding: calc(5px * var(--fx-k, 1)) calc(13px * var(--fx-k, 1)); margin-top: calc(-10px * var(--fx-k, 1)); }
 body.lbl-box-cloud .action-label::before, body.lbl-box-cloud .action-label::after { content: ''; position: absolute; border-radius: 50%;
   background: inherit; border: inherit; }
-body.lbl-box-cloud .action-label::before { width: 8px; height: 8px; left: 32%; bottom: -10px; }
-body.lbl-box-cloud .action-label::after { width: 4px; height: 4px; left: 24%; bottom: -16px; }
-body.lbl-box-jun .action-label { border-radius: 0; border-width: 0; border-left: calc(var(--label-border, 1px) + 3px) solid var(--label-edge, var(--edge, #ec0054));
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%); padding: 3px 11px 3px 8px; }
+body.lbl-box-cloud .action-label::before { width: calc(8px * var(--fx-k, 1)); height: calc(8px * var(--fx-k, 1)); left: 32%; bottom: calc(-10px * var(--fx-k, 1)); }
+body.lbl-box-cloud .action-label::after { width: calc(4px * var(--fx-k, 1)); height: calc(4px * var(--fx-k, 1)); left: 24%; bottom: calc(-16px * var(--fx-k, 1)); }
+body.lbl-box-jun .action-label { border-radius: 0; border-width: 0; border-left: calc(var(--label-border, calc(1px * var(--fx-k, 1))) + calc(3px * var(--fx-k, 1))) solid var(--label-edge, var(--edge, #ec0054));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - calc(7px * var(--fx-k, 1))), calc(100% - calc(7px * var(--fx-k, 1))) 100%, 0 100%); padding: calc(3px * var(--fx-k, 1)) calc(11px * var(--fx-k, 1)) calc(3px * var(--fx-k, 1)) calc(8px * var(--fx-k, 1)); }
 body.lbl-box-none .action-label { background: none; border: 0; padding: 0;
-  text-shadow: 0 0 2px #000, 0 0 3px #000, 1px 1px 0 #000, -1px -1px 0 #000, 0 0 8px var(--label-edge, var(--edge, #ec0054)); }
+  text-shadow: 0 0 calc(2px * var(--fx-k, 1)) #000, 0 0 calc(3px * var(--fx-k, 1)) #000, calc(1px * var(--fx-k, 1)) calc(1px * var(--fx-k, 1)) 0 #000, calc(-1px * var(--fx-k, 1)) calc(-1px * var(--fx-k, 1)) 0 #000, 0 0 calc(8px * var(--fx-k, 1)) var(--label-edge, var(--edge, #ec0054)); }
 body.lbl-anim-bounce .action-label.on { animation-name: label-bounce; }
 body.lbl-anim-float .action-label.on { animation-name: label-float; animation-duration: 1.4s; }
 body.lbl-anim-wiggle .action-label.on { animation-name: label-wiggle; }
@@ -131,25 +141,25 @@ body.lbl-anim-glitch .action-label.on { animation-name: label-glitch; }
   50% { transform: translate(-50%, -100%) rotate(0); } 80% { opacity: 1; transform: translate(-50%, -105%); } 100% { opacity: 0; transform: translate(-50%, -115%); } }
 @keyframes label-fade { 0% { opacity: 0; transform: translate(-50%, -100%) scale(1); } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1); } }
 @keyframes label-glitch { 0% { opacity: 0; transform: translate(-50%, -100%); }
-  5% { opacity: 1; transform: translate(-56%, -100%) skewX(18deg); text-shadow: 2px 0 #0ff, -2px 0 #f0a; }
+  5% { opacity: 1; transform: translate(-56%, -100%) skewX(18deg); text-shadow: calc(2px * var(--fx-k, 1)) 0 #0ff, calc(-2px * var(--fx-k, 1)) 0 #f0a; }
   10% { transform: translate(-46%, -96%) skewX(-12deg); } 15% { opacity: .4; transform: translate(-51%, -103%); }
   20% { opacity: 1; transform: translate(-50%, -100%); text-shadow: var(--outline, none); }
-  62% { transform: translate(-50%, -100%); } 64% { transform: translate(-53%, -100%) skewX(10deg); text-shadow: 2px 0 #0ff, -2px 0 #f0a; }
+  62% { transform: translate(-50%, -100%); } 64% { transform: translate(-53%, -100%) skewX(10deg); text-shadow: calc(2px * var(--fx-k, 1)) 0 #0ff, calc(-2px * var(--fx-k, 1)) 0 #f0a; }
   67% { transform: translate(-50%, -100%); text-shadow: var(--outline, none); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -100%); } }
 
 /* her thought icons */
-.emote { position: absolute; z-index: 5; pointer-events: none; min-width: 30px; height: 30px; padding: 0 6px; box-sizing: border-box; white-space: nowrap;
-  display: flex; align-items: center; justify-content: center; font: 800 18px Arial, Helvetica, sans-serif; color: var(--ink, #fff); text-shadow: var(--outline, none);
-  background: var(--bubble-bg, #191233); border: 2px solid var(--edge, #ec0054); border-radius: 15px; transform: translate(-50%, -100%) scale(0); opacity: 0; }
-.emote::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 10px; height: 10px; background: var(--bubble-bg, #191233);
-  border-right: 2px solid var(--edge, #ec0054); border-bottom: 2px solid var(--edge, #ec0054); transform: translateX(-50%) rotate(45deg); }
+.emote { position: absolute; z-index: 5; pointer-events: none; min-width: calc(30px * var(--fx-k, 1)); height: calc(30px * var(--fx-k, 1)); padding: 0 calc(6px * var(--fx-k, 1)); box-sizing: border-box; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center; font: 800 calc(18px * var(--fx-k, 1)) Arial, Helvetica, sans-serif; color: var(--ink, #fff); text-shadow: var(--outline, none);
+  background: var(--bubble-bg, #191233); border: calc(2px * var(--fx-k, 1)) solid var(--edge, #ec0054); border-radius: calc(15px * var(--fx-k, 1)); transform: translate(-50%, -100%) scale(0); opacity: 0; }
+.emote::after { content: ''; position: absolute; left: 50%; bottom: calc(-7px * var(--fx-k, 1)); width: calc(10px * var(--fx-k, 1)); height: calc(10px * var(--fx-k, 1)); background: var(--bubble-bg, #191233);
+  border-right: calc(2px * var(--fx-k, 1)) solid var(--edge, #ec0054); border-bottom: calc(2px * var(--fx-k, 1)) solid var(--edge, #ec0054); transform: translateX(-50%) rotate(45deg); }
 .emote.show { animation: emote-pop 1.9s ease forwards; }
-.emote.pic { font-size: 17px; }
+.emote.pic { font-size: calc(17px * var(--fx-k, 1)); }
 @keyframes emote-pop { 0% { opacity: 0; transform: translate(-50%, -80%) scale(0); } 12% { opacity: 1; transform: translate(-50%, -105%) scale(1.15); }
   20% { transform: translate(-50%, -100%) scale(1); } 80% { opacity: 1; transform: translate(-50%, -100%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -120%) scale(.9); } }
 /* ascii faces get a little terminal look */
-.emote.ascii { font-family: "Consolas", "Courier New", monospace; font-size: 15px; letter-spacing: -.02em; padding: 0 7px; }
-.emote .caret { display: inline-block; width: 6px; height: 13px; margin-left: 2px; background: currentColor; animation: fx-caret .5s steps(1) infinite; }
+.emote.ascii { font-family: "Consolas", "Courier New", monospace; font-size: calc(15px * var(--fx-k, 1)); letter-spacing: -.02em; padding: 0 calc(7px * var(--fx-k, 1)); }
+.emote .caret { display: inline-block; width: calc(6px * var(--fx-k, 1)); height: calc(13px * var(--fx-k, 1)); margin-left: calc(2px * var(--fx-k, 1)); background: currentColor; animation: fx-caret .5s steps(1) infinite; }
 @keyframes fx-caret { 50% { opacity: 0; } }
 .emote.show.ico-bounce { animation-name: emote-bounce; }
 .emote.show.ico-wobble { animation-name: emote-wobble; }
@@ -213,8 +223,8 @@ export function ripple(x, y, opts = {}) {
   const size = num(opts.size ?? fx.rSize, 0.4, 3, 1);
   const speed = num(fx.rSpeed, 0.3, 3, 1);
   const rings = Math.round(num(opts.rings ?? fx.rRings, 1, 4, 1));
-  const width = num(fx.rWidth, 0.5, 6, 2);
-  const px = Math.round(34 * size);
+  const width = num(fx.rWidth, 0.5, 6, 2) * Math.max(0.6, Math.sqrt(fxK));
+  const px = Math.round(34 * size * fxK);
   const ms = Math.round((motion === 'pulse' ? 900 : motion === 'wavy' || motion === 'shaky' ? 750 : 550) / speed);
   const gap = Math.round((motion === 'pulse' ? 230 : 140) / speed);
   const made = [];
@@ -236,7 +246,7 @@ export function ripple(x, y, opts = {}) {
     for (let i = 0; i < n; i++) {
       const a = turn + i * 2 * Math.PI / n;
       const dist = px * (0.9 + Math.random() * 0.5);
-      const p = shapeEl(shape, Math.max(7, Math.round(px * 0.3)), width, true);
+      const p = shapeEl(shape, Math.max(5, Math.round(px * 0.3)), width, true);
       p.style.setProperty('--dx', (Math.cos(a) * dist).toFixed(1) + 'px');
       p.style.setProperty('--dy', (Math.sin(a) * dist).toFixed(1) + 'px');
       p.style.setProperty('--rot', Math.round((Math.random() - 0.5) * 180) + 'deg');

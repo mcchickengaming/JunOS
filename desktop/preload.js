@@ -42,5 +42,7 @@ contextBridge.exposeInMainWorld('junDesktop', {
   // the settings window (webapp/desktop-settings.html)
   spots: (action, a, b, c) => ipcRenderer.invoke('jun:spots', action, a, b, c),
   onSettingsTab: on('jun:settings-tab'),
+  // her size: action 'get' | 'set' (slider moving) | 'done' | 'growFx'
+  size: (action, value) => ipcRenderer.invoke('jun:size', action, value),
   onCommand: on('jun:command'),
 });

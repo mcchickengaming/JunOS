@@ -25,9 +25,9 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=37';
+import * as Body from './desktop/body.js?v=38';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=2';
+import * as Fx from './desktop/fx.js?v=3';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -552,8 +552,10 @@ function particle(text, x, y, cls, dx = 0, dy = -60, ms = 1400) {
   el.textContent = text;
   el.style.left = x + 'px';
   el.style.top = y + 'px';
-  el.style.setProperty('--dx', dx + 'px');
-  el.style.setProperty('--dy', dy + 'px');
+  // they drift as far as she is big
+  const k = Fx.scale();
+  el.style.setProperty('--dx', dx * k + 'px');
+  el.style.setProperty('--dy', dy * k + 'px');
   el.style.animationDuration = ms + 'ms';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), ms + 50);
@@ -654,12 +656,27 @@ const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
 const PAT_FOLLOW = { lots: 1.6, normal: 1, little: 0.45, none: 0 };
 const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
 D?.onSettings?.((s) => {
+  const before = settings.herPx;
   settings = { ...settings, ...s };
+  applySize(before !== settings.herPx);
   Body.setWatch(WATCH[settings.watch] ?? 1);
   Body.setPatFollow(PAT_FOLLOW[settings.patFollow] ?? 1);
   if (settings.quiet) D?.stopWalk();
   showSpots(!!settings.showSpots);
 });
+
+// her size on the desktop (desktop/main.js setSize): the room over her
+// head, and touch feedback that grows with her unless he switched that off
+function applySize(changed) {
+  const k = Number(settings.k) || 1;
+  // never below 80%: the labels stop being readable
+  const fk = settings.growFx === false ? 1 : Math.max(0.8, Math.min(2.2, k));
+  if (MODE === 'stepout' && settings.headroom) document.body.style.setProperty('--headroom', settings.headroom + 'px');
+  Fx.setScale(fk);
+  Body.setCursorScale(fk);
+  hoverKind = undefined; // fresh cursor icon on the next move
+  if (changed) setTimeout(frame, 30);
+}
 
 // "Show touch spots": faint outlines of every spot that's on, while he
 // plays with her normally. they follow her (and her tail) around
@@ -840,7 +857,8 @@ function rubTrail(x, y) {
   const now = Date.now();
   if (now - lastTrail < 140) return;
   lastTrail = now;
-  particle('✦', x + (Math.random() - 0.5) * 14, y + (Math.random() - 0.5) * 10, 'spark-p', (Math.random() - 0.5) * 16, -18, 700);
+  const k = Fx.scale();
+  particle('✦', x + (Math.random() - 0.5) * 14 * k, y + (Math.random() - 0.5) * 10 * k, 'spark-p', (Math.random() - 0.5) * 16, -18, 700);
 }
 
 // a rub's label: one steady tag above her head while the rub goes on.
@@ -867,9 +885,10 @@ function rubLabel(kind, region) {
   // just above the spot being rubbed; head and ears share one place, so
   // crossing between them doesn't move it
   const c = Body.spotCircle(rubShown === 'ear' ? 'head' : rubShown, rubSide);
-  const x = c ? c.x : lastX, y = c ? c.y - c.r - 8 : lastY - 26;
-  rubTag.style.left = Math.max(40, Math.min(window.innerWidth - 40, x)) + 'px';
-  rubTag.style.top = Math.max(26, y) + 'px';
+  const k = Fx.scale();
+  const x = c ? c.x : lastX, y = c ? c.y - c.r - 8 * k : lastY - 26 * k;
+  rubTag.style.left = Math.max(40 * k, Math.min(window.innerWidth - 40 * k, x)) + 'px';
+  rubTag.style.top = Math.max(26 * k, y) + 'px';
   rubTag.classList.add('on');
   rubHideTimer = setTimeout(() => { rubTag.classList.remove('on'); rubShown = null; }, 900);
 }
@@ -879,8 +898,9 @@ const label = document.getElementById('actionLabel');
 function actionLabel(text, x, y) {
   if (!text) return;
   const ms = Fx.labelText(label, text, 1300);
-  label.style.left = Math.max(40, Math.min(window.innerWidth - 40, x)) + 'px';
-  label.style.top = Math.max(16, y - 26) + 'px';
+  const k = Fx.scale();
+  label.style.left = Math.max(40 * k, Math.min(window.innerWidth - 40 * k, x)) + 'px';
+  label.style.top = Math.max(26 * k, y - 26 * k) + 'px';
   label.classList.remove('on');
   void label.offsetWidth;
   label.classList.add('on');

@@ -8,7 +8,7 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=37';
-import * as Fx from './desktop/fx.js?v=2';
+import * as Fx from './desktop/fx.js?v=3';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -40,6 +40,7 @@ function show(tab) {
   for (const s of document.querySelectorAll('section')) s.hidden = s.id !== 'tab-' + tab;
   if (tab === 'spots') loadSpots();
   if (tab === 'feedback') previewTheme();
+  if (tab === 'size') setTimeout(loadSize); // after this module has set itself up
 }
 tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
 show(decodeURIComponent(location.hash.slice(1)) || 'help');
@@ -428,4 +429,82 @@ document.getElementById('resetFx').addEventListener('click', () => {
   writeTheme(t);
   previewTheme();
   buildFeedback();
+});
+
+// ---------------------------------------------------------------
+// her size: a share of the screen's height (desktop/main.js setSize).
+// she grows and shrinks live while the slider moves
+
+const sizeRange = document.getElementById('sizeRange');
+const growFx = document.getElementById('growFx');
+let sizeState = null;
+const QUICK_NAMES = { small: 'Small', medium: 'Medium', large: 'Large' };
+function sizeWords(share) {
+  if (share < 0.22) return 'Tiny';
+  if (share < 0.36) return 'Small';
+  if (share < 0.48) return 'Medium';
+  if (share < 0.6) return 'Large';
+  return 'Huge';
+}
+function drawSize(share) {
+  const st = sizeState;
+  document.getElementById('sizeWords').textContent = sizeWords(share) + ' (' + Math.round(share * 100) + '% of the screen)';
+  // the little screen is 65 px tall above its taskbar
+  document.getElementById('sizeJun').style.height = Math.round(share * 65) + 'px';
+  const px = st ? Math.round(share * st.screenPx) : null;
+  document.getElementById('sizePx').textContent = px ? 'About ' + px + ' px tall on this screen.' : '';
+  for (const b of document.querySelectorAll('#sizeQuick .btn')) b.classList.toggle('on', Math.abs(Number(b.dataset.v) - share) < 0.012);
+}
+async function loadSize() {
+  const note = document.getElementById('sizeNote');
+  sizeState = D?.size ? await D.size('get') : null;
+  const quick = document.getElementById('sizeQuick');
+  quick.innerHTML = '';
+  if (!sizeState) {
+    sizeRange.disabled = growFx.disabled = true;
+    note.textContent = 'Open this from the Jun desktop app to change her size.';
+    drawSize(0.425);
+    return;
+  }
+  sizeRange.disabled = growFx.disabled = false;
+  sizeRange.min = String(Math.round(sizeState.min * 100));
+  sizeRange.max = String(Math.round(sizeState.max * 100));
+  sizeRange.value = String(Math.round(sizeState.size * 100));
+  growFx.checked = !!sizeState.growFx;
+  for (const [k, v] of Object.entries(sizeState.quick)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn';
+    b.dataset.v = String(v);
+    b.textContent = QUICK_NAMES[k] || k;
+    b.addEventListener('click', async () => {
+      sizeState = await D.size('done', v);
+      sizeRange.value = String(Math.round(v * 100));
+      drawSize(v);
+    });
+    quick.appendChild(b);
+  }
+  note.textContent = sizeState.outside ? '' : "You'll see it when she's out on the desktop (Ctrl+Shift+S, or Jun menu > Step out).";
+  drawSize(sizeState.size);
+}
+let sizeBusy = false, sizeNext = null;
+async function pushSize(v, done) {
+  // one call at a time: the slider fires faster than her window resizes
+  if (sizeBusy && !done) { sizeNext = v; return; }
+  sizeBusy = true;
+  try { sizeState = (await D.size(done ? 'done' : 'set', v)) || sizeState; } finally { sizeBusy = false; }
+  if (sizeNext != null && !done) { const n = sizeNext; sizeNext = null; pushSize(n, false); }
+}
+sizeRange.addEventListener('input', () => {
+  const v = Number(sizeRange.value) / 100;
+  drawSize(v);
+  if (D?.size) pushSize(v, false);
+});
+sizeRange.addEventListener('change', () => {
+  const v = Number(sizeRange.value) / 100;
+  sizeNext = null;
+  if (D?.size) pushSize(v, true);
+});
+growFx.addEventListener('change', async () => {
+  if (D?.size) sizeState = await D.size('growFx', growFx.checked);
 });

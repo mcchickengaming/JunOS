@@ -25,9 +25,14 @@ const LOOPBACK = /^(127\.0\.0\.1|localhost|\[::1\])$/.test(new URL(JUN_URL).host
 const ICON_PNG = path.join(__dirname, 'jun.png');
 const ICON_ICO = path.join(__dirname, 'jun.ico');
 
-// her height on the desktop, in screen px, per size setting
-const SIZES = { small: 320, medium: 440, large: 560 };
-// room above her head for the chat line
+// her height on the desktop: a share of the screen's height (cfg.size),
+// so the same setting looks right on every monitor. the quick picks
+// match the old fixed sizes (320/440/560 px) on a 1080p screen
+const SIZE_MIN = 0.15, SIZE_MAX = 0.7;
+const SIZES = { small: 0.31, medium: 0.425, large: 0.54 };
+// every px number below is for her at REF_PX tall (medium on 1080p);
+// sizeK() scales them with her
+const REF_PX = 440;
 // room above her head for the chat line, her bubbles and drifting hearts
 const HEADROOM = 110;
 const WALK_PX_PER_S = 70;
@@ -48,10 +53,10 @@ if (process.platform === 'win32') app.setAppUserModelId('JunOS.Desktop');
 
 const CFG_FILE = () => path.join(app.getPath('userData'), 'desktop.json');
 const DEFAULTS = {
-  mode: 'window', inside: 'window', onTop: false, size: 'medium',
+  mode: 'window', inside: 'window', onTop: false, size: 0.425,
   window: null, compact: null, stepX: null, displayId: null, tipShown: false,
   // "On the desktop" settings, the page reads them (jun:settings)
-  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false, patFollow: 'normal' },
+  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false, patFollow: 'normal', growFx: true },
 };
 const WALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
 const DOZE_CHOICES = [[2, 'After 2 minutes'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [0, 'Never']];
@@ -59,9 +64,15 @@ const TALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely',
 const WATCH_CHOICES = [['often', 'Often'], ['normal', 'Now and then'], ['rarely', 'Rarely'], ['never', 'Never']];
 const PATFOLLOW_CHOICES = [['lots', 'A lot'], ['normal', 'Normal'], ['little', 'A little'], ['none', 'Not at all (only the hand moves)']];
 let cfg = { ...DEFAULTS };
+function clampSize(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(SIZE_MIN, Math.min(SIZE_MAX, Math.round(n * 1000) / 1000)) : SIZES.medium;
+}
 function loadCfg() {
   try { cfg = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(CFG_FILE(), 'utf8')) }; } catch (e) { cfg = { ...DEFAULTS }; }
-  if (!SIZES[cfg.size]) cfg.size = 'medium';
+  // old installs saved 'small' / 'medium' / 'large'
+  if (typeof cfg.size === 'string') cfg.size = SIZES[cfg.size] || SIZES.medium;
+  cfg.size = clampSize(cfg.size);
   if (!Array.isArray(cfg.spots)) cfg.spots = [];
   if (cfg.stay && !cfg.spots.some(s => s.id === cfg.stay)) cfg.stay = null;
   if (!['window', 'compact', 'stepout'].includes(cfg.mode)) cfg.mode = 'window';
@@ -129,8 +140,8 @@ async function boot() {
     saveCfg,
     getWin: () => (win && !win.isDestroyed() ? win : null),
     getMode: () => winMode,
-    herHeight: () => SIZES[cfg.size],
-    feet: () => (feetPx == null ? Math.round(SIZES[cfg.size] * 0.04) : feetPx),
+    herHeight: () => herPx(),
+    feet: () => (feetPx == null ? Math.round(herPx() * 0.04) : feetPx),
     send,
     stopWalk,
     isBusy: () => !!(drag || fall),
@@ -236,16 +247,27 @@ function onScreen(b) {
 // swinging arm) needs see-through room, or the window edge cuts it
 // off. the extra is click-through, so it costs nothing
 function stepoutSize() {
-  const h = SIZES[cfg.size];
-  return { width: Math.round(Math.max(460, h * 1.45)), height: h + HEADROOM };
+  const h = herPx();
+  return { width: Math.round(Math.max(460, h * 1.45)), height: h + headroom() };
 }
 
+// her height in px on the monitor she's on (or will step out onto)
+function herPx(display) {
+  if (!display) display = displayFor(win && !win.isDestroyed() && winMode === 'stepout' ? win.getBounds() : null);
+  return Math.max(110, Math.round(cfg.size * display.workArea.height));
+}
+// how big she is next to the size every px number was made for
+const sizeK = () => herPx() / REF_PX;
+// the room over her head shrinks with her, but never so far that the
+// chat line and her bubbles have nowhere to go
+const headroom = () => Math.round(HEADROOM * Math.max(0.8, Math.min(1.8, sizeK())));
+
 // half her body's width, what has to stay on screen
-const herHalf = () => SIZES[cfg.size] * 0.2;
+const herHalf = () => herPx() * 0.2;
 
 function floorY(display, height) {
   const wa = display.workArea;
-  const feet = feetPx == null ? Math.round(SIZES[cfg.size] * 0.04) : feetPx;
+  const feet = feetPx == null ? Math.round(herPx(display) * 0.04) : feetPx;
   return wa.y + wa.height - height + feet;
 }
 
@@ -496,18 +518,19 @@ function endDrag() {
     const a = hist[0], z = hist[hist.length - 1];
     const dt = Math.max(16, z.t - a.t) / 1000;
     const vx = (z.x - a.x) / dt, vy = (z.y - a.y) / dt;
-    if (Math.hypot(vx, vy) > THROW_MIN) { fly(vx, vy); return; }
+    if (Math.hypot(vx, vy) > THROW_MIN * Math.sqrt(sizeK())) { fly(vx, vy); return; }
   }
   // let go of her anywhere and she drops back down to the taskbar
   const range = stripRange(displayFor(b), b.width);
   const x = Math.round(Math.max(range.lo, Math.min(range.hi, b.x)));
   const target = floorAt(range.strip, x, b.width, b.height);
   let y = b.y, v = 0;
+  const fallK = sizeK();
   stopFall();
   if (Math.abs(target - y) < 3) { win.setPosition(x, target); landed(x); return; }
   fall = setInterval(() => {
     if (!win || win.isDestroyed()) { stopFall(); return; }
-    v += 2.2;
+    v += 2.2 * fallK;
     y = y < target ? Math.min(target, y + v) : Math.max(target, y - 18);
     win.setPosition(x, Math.round(y));
     send('jun:fly', { vx: 0, vy: v * 60 });
@@ -523,7 +546,10 @@ function fly(vx, vy) {
   const b = win.getBounds();
   const { strip, lo, hi, top: roof } = stripRange(displayFor(b), b.width);
   const top = roof - b.height * 0.35;
-  const cap = (v) => Math.max(-THROW_MAX, Math.min(THROW_MAX, v));
+  // a bigger Jun flies a bigger arc, a tiny one a tiny one: the same
+  // throw feels the same at every size
+  const k = sizeK();
+  const cap = (v) => Math.max(-THROW_MAX * k, Math.min(THROW_MAX * k, v));
   let x = b.x, y = b.y, last = Date.now(), bounces = 0, past = 0;
   vx = cap(vx); vy = cap(vy);
   stopFall();
@@ -533,13 +559,13 @@ function fly(vx, vy) {
     const now = Date.now();
     const dt = Math.min(0.033, (now - last) / 1000);
     last = now;
-    vy += GRAVITY * dt;
+    vy += GRAVITY * k * dt;
     vx *= Math.pow(0.6, dt);         // air slows her a little
     x += vx * dt;
     y += vy * dt;
     // a hard enough throw carries her part way off the screen
-    if (x < lo && !past && vx < -EDGE_THROW) past = -1;
-    if (x > hi && !past && vx > EDGE_THROW) past = 1;
+    if (x < lo && !past && vx < -EDGE_THROW * k) past = -1;
+    if (x > hi && !past && vx > EDGE_THROW * k) past = 1;
     const l = past < 0 ? lo - herHalf() * 1.3 : lo, h = past > 0 ? hi + herHalf() * 1.3 : hi;
     if (x < l) { x = l; vx = Math.abs(vx) * 0.45; send('jun:walk-state', { state: 'bonk' }); }
     if (x > h) { x = h; vx = -Math.abs(vx) * 0.45; send('jun:walk-state', { state: 'bonk' }); }
@@ -547,7 +573,7 @@ function fly(vx, vy) {
     const floor = floorAt(strip, x, b.width, b.height);
     if (y >= floor) {
       y = floor;
-      if (vy > 650 && bounces < 2) {
+      if (vy > 650 * k && bounces < 2) {
         bounces++;
         vy = -vy * 0.35;
         vx *= 0.7;
@@ -568,6 +594,8 @@ function landed(x, speed = 0, edge = 0) {
   if (win && !win.isDestroyed()) cfg.displayId = displayFor(win.getBounds()).id;
   saveCfg();
   send('jun:walk-state', { state: 'landed', speed: Math.round(speed), edge });
+  // flown onto a monitor that's taller or shorter: same share of THIS screen
+  if (winMode === 'stepout' && win && !win.isDestroyed() && Math.abs(win.getBounds().height - stepoutSize().height) > 2) setSize(cfg.size, true);
   // dropped onto a spot she sits in it; off it, she'll head back later
   if (winMode === 'stepout' && win && !win.isDestroyed()) setTimeout(() => Props.afterLanding(win.getBounds()), 400);
   Props.zOrder();
@@ -583,7 +611,11 @@ function startWander(opts = {}) {
   if (Props.onSpot()) Props.leave();
   // her mood sets the pace (webapp/js/desktop.js)
   const pace = Math.max(0.5, Math.min(1.6, Number(opts.speed) || 1));
-  const hopPx = Math.max(0, Math.min(10, Number(opts.hop) || HOP_PX));
+  // her steps grow with her; her speed a little less than that, so a
+  // giant Jun doesn't race across the taskbar
+  const k = sizeK();
+  const hopPx = Math.max(0, Math.min(10, Number(opts.hop) || HOP_PX)) * Math.max(0.4, k);
+  const walkPx = WALK_PX_PER_S * Math.pow(k, 0.6);
   const b = win.getBounds();
   const display = displayFor(b);
   const wa = display.workArea;
@@ -591,7 +623,7 @@ function startWander(opts = {}) {
   // mostly a stroll; now and then a long walk, which on more than one
   // monitor can take her over to the next screen
   const far = strip.length > 1 && Math.random() < 0.2;
-  const span = Math.min(hi - lo, far ? wa.width * 0.9 : Math.max(180, wa.width * 0.35));
+  const span = Math.min(hi - lo, far ? wa.width * 0.9 : Math.max(180 * Math.min(1, k), wa.width * 0.35));
   let to = b.x + (Math.random() < 0.5 ? -1 : 1) * (span * (0.4 + Math.random() * 0.6));
   if (to < lo || to > hi) to = b.x - (to - b.x);
   // back onto the screen after being thrown half off it
@@ -625,7 +657,7 @@ function startWander(opts = {}) {
     // y wobbles with the hop, x is the only thing that walks
     const gone = Math.abs(win.getBounds().x - from);
     const left = dist - gone;
-    const speed = WALK_PX_PER_S * pace * Math.max(0.25, Math.min(1, gone / EASE_PX + 0.25, left / EASE_PX + 0.15));
+    const speed = walkPx * pace * Math.max(0.25, Math.min(1, gone / EASE_PX + 0.25, left / EASE_PX + 0.15));
     let x = win.getBounds().x + dir * Math.max(1, speed * dt);
     const done = dir > 0 ? x >= to : x <= to;
     if (done) x = to;
@@ -685,7 +717,10 @@ function sendIdle(s) {
   const mins = Number(cfg.desk.doze);
   send('jun:idle', { seconds: s, dozeAfter: mins > 0 ? mins * 60 : Infinity });
 }
-function sendSettings() { send('jun:settings', { ...cfg.desk }); }
+function sendSettings() { send('jun:settings', { ...cfg.desk, ...sizeInfo() }); }
+function sizeInfo() {
+  return { size: cfg.size, herPx: herPx(), k: Math.round(sizeK() * 1000) / 1000, headroom: headroom() };
+}
 
 function send(channel, data) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, data);
@@ -772,6 +807,16 @@ ipcMain.handle('jun:spots', (e, action, a, b, c) => {
   else if (action === 'stay') Props.stay(a || null);
   if (action !== 'list') rebuildMenus();
   return { spots: Props.list(), types: Props.types(), stay: cfg.stay || null };
+});
+
+// her size, from the settings window's "Her size" tab
+ipcMain.handle('jun:size', (e, action, value) => {
+  if (!fromSettings(e)) return null;
+  if (action === 'set' || action === 'done') setSize(value, action === 'done');
+  else if (action === 'growFx') { cfg.desk.growFx = !!value; saveCfg(); sendSettings(); }
+  const display = displayFor(win && !win.isDestroyed() && winMode === 'stepout' ? win.getBounds() : null);
+  return { size: cfg.size, min: SIZE_MIN, max: SIZE_MAX, quick: SIZES, screenPx: display.workArea.height,
+    herPx: herPx(display), growFx: cfg.desk.growFx !== false, outside: winMode === 'stepout' };
 });
 
 // the spot and ball windows (desktop/prop-preload.js)
@@ -907,15 +952,42 @@ function rebuildMenus() {
 }
 
 function sizeMenu() {
-  return { label: 'Her size on the desktop', submenu: Object.keys(SIZES).map(k => ({
-    label: k[0].toUpperCase() + k.slice(1), type: 'radio', checked: cfg.size === k, click: () => {
-      cfg.size = k;
-      saveCfg();
-      if (winMode === 'stepout') openMode('stepout', '');
-      Props.rebuild();
-      rebuildTrayMenu();
-    },
-  })) };
+  const near = (v) => Math.abs(cfg.size - v) < 0.012;
+  return { label: 'Her size on the desktop', submenu: [
+    ...Object.keys(SIZES).map(k => ({
+      label: k[0].toUpperCase() + k.slice(1), type: 'radio', checked: near(SIZES[k]), click: () => setSize(SIZES[k], true),
+    })),
+    ...(Object.values(SIZES).some(near) ? [] : [{ label: `Your own (${Math.round(cfg.size * 100)}% of the screen)`, type: 'radio', checked: true, enabled: false }]),
+    { type: 'separator' },
+    { label: 'Any size you like…', click: () => openSettings('size') },
+  ] };
+}
+
+// a new size: her window grows or shrinks around her feet, right
+// where she stands, no reload. live = the slider, still moving
+let sizeMenuTimer = null;
+function setSize(v, done) {
+  cfg.size = clampSize(v);
+  if (win && !win.isDestroyed() && winMode === 'stepout' && !drag && !fall) {
+    stopWalk();
+    const b = win.getBounds();
+    const display = displayFor(b);
+    const size = stepoutSize();
+    const cx = b.x + b.width / 2;
+    const x = clampX(display, Math.round(cx - size.width / 2), size.width);
+    // her old feet offset is for her old size: guess the new one until the page reports it
+    if (feetPx != null) feetPx = Math.round(feetPx * size.height / Math.max(1, b.height));
+    win.setBounds({ x: Math.round(x), y: restYFor(display, size.height), width: size.width, height: size.height });
+    cfg.stepX = Math.round(x);
+  }
+  sendSettings();
+  // her spots, the menus and the saved file only once he lets go of the slider
+  clearTimeout(sizeMenuTimer);
+  sizeMenuTimer = setTimeout(() => { saveCfg(); Props.rebuild(); rebuildMenus(); }, done ? 0 : 400);
+}
+function restYFor(display, height) {
+  const y = Props.onSpot() ? Props.restY() : null;
+  return y != null ? y : floorY(display, height);
 }
 
 function trayIcon() {

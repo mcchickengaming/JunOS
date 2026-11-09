@@ -682,11 +682,21 @@ CURSOR_ICON.holding = '🤝';
 CURSOR_ICON.hugging = '🤗';
 CURSOR_ICON.squishing = '🤏';
 CURSOR_ICON.feettickle = '🪶';
+// the icons grow and shrink with her size. Windows only takes cursor
+// pictures up to 128 px, so they stop well before that
+let cursorPx = 32;
+export function setCursorScale(k) {
+  const px = Math.max(22, Math.min(96, Math.round(32 * (Number(k) || 1))));
+  if (px === cursorPx) return;
+  cursorPx = px;
+  for (const k2 of Object.keys(cursorCache)) delete cursorCache[k2];
+}
 export function cursorFor(kind) {
   if (!kind || !CURSOR_ICON[kind]) return '';
   if (!cursorCache[kind]) {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><text x="16" y="24" font-size="22" text-anchor="middle">${CURSOR_ICON[kind]}</text></svg>`;
-    cursorCache[kind] = `url("data:image/svg+xml,${encodeURIComponent(svg)}") 16 16, pointer`;
+    const n = cursorPx, h = Math.round(n / 2);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${n}" height="${n}"><text x="${h}" y="${Math.round(n * 0.75)}" font-size="${Math.round(n * 0.69)}" text-anchor="middle">${CURSOR_ICON[kind]}</text></svg>`;
+    cursorCache[kind] = `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${h} ${h}, pointer`;
   }
   return cursorCache[kind];
 }
