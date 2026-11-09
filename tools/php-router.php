@@ -192,7 +192,10 @@ if ($isApi) {
     $_SERVER['PHP_SELF'] = $path;
     require $target;
     return true;
-} elseif ($path === '/' || $path === '/index.html') {
+} elseif ($path === '/' || str_ends_with(strtolower($target), '.html')) {
+    // every page, not just index.html (like the nginx templates): the settings window, desktop.html,
+    // wardrobe.html... otherwise the browser keeps an old copy by its own guess, with old ?v= numbers,
+    // and an update only shows after a reload
     header('Cache-Control: no-cache');
 } elseif (isset($_GET['v'])) {
     header('Cache-Control: public, max-age=31536000, immutable');
