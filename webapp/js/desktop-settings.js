@@ -7,7 +7,7 @@
 // get colors later (her rooms, furniture, the chat window) should add
 // a row to GROUPS the same way.
 
-import { makeItemColorButton } from './wardrobe/color-picker.js?v=37';
+import { makeItemColorButton } from './wardrobe/color-picker.js?v=38';
 import * as Fx from './desktop/fx.js?v=5';
 import * as Moods from './desktop/moods.js?v=6';
 
@@ -260,7 +260,7 @@ let snap = null;
 function pvLoadSnap() {
   let next = null;
   try { next = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null'); } catch { next = null; }
-  if (!next || !next.img) { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); return; }
+  if (!next || !next.img || (next.v || 1) < 2) { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); return; }
   pvHer.onload = () => { snap = next; pvHer.hidden = false; preview.classList.add('has-her'); };
   pvHer.onerror = () => { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); };
   pvHer.src = next.img;

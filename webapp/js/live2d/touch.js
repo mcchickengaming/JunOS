@@ -1,5 +1,5 @@
-import * as Actions from './actions.js?v=102';
-import * as Live2D from './live2d.js?v=92';
+import * as Actions from './actions.js?v=103';
+import * as Live2D from './live2d.js?v=93';
 import * as TouchLog from '../core/touch-log.js?v=1';
 
 // her touch tally (core/touch-log.js): the same kinds her desktop counts

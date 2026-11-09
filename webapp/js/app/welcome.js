@@ -1,12 +1,12 @@
 import { chatInput, sendBtn } from './dom.js?v=77';
-import { replayFaceBubbleIntro, scheduleFaceBubbleHide, showFaceBubble } from './face-bubble.js?v=94';
-import { loadMood } from './mood.js?v=97';
+import { replayFaceBubbleIntro, scheduleFaceBubbleHide, showFaceBubble } from './face-bubble.js?v=95';
+import { loadMood } from './mood.js?v=98';
 import { escapeHtml } from '../core/util.js?v=1';
 import * as Names from '../core/names.js?v=1';
 import { inject } from '../trip/scene.js?v=1';
-import * as TTS from '../voice/tts.js?v=93';
-import * as VoiceMode from '../voice/voicemode.js?v=93';
-import * as Live2D from '../live2d/live2d.js?v=92';
+import * as TTS from '../voice/tts.js?v=94';
+import * as VoiceMode from '../voice/voicemode.js?v=94';
+import * as Live2D from '../live2d/live2d.js?v=93';
 
 // the phone's slide in welcome.css is .6s after a .15s delay
 const RIG_IN_MS = 750;

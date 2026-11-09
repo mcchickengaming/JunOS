@@ -144,13 +144,16 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   her)/heart/star (masked `.ma-shape` inside a blurred `.mood-aura`), `mGlowMove` feel (per feeling)/breathe/beat/spin/
   still, `mGlowSpeed` ×, `mGlowColor` feeling/one (`--mood-glow` in the theme)/rainbow, `mGlowLayer` behind/front,
   `mGlowFade` seconds; "Show the glow" previews it.
-- **Her picture in the settings preview**: desktop.js `takeSnapshot` renders the live2d model with
-  `app.renderer.extract.canvas(model)`, crops the top half (head to waist), scales it to 360 px tall and stores
-  `localStorage['desktop.snapshot']` = `{ img (webp data url), fx, fy, headW, modelW, modelH }` (the faceAnchor shape
-  as shares of the picture's height). Taken 2.5 s after she's ready, every 15 min, and when the settings window writes
-  `desktop.snapshot.want` (on opening the Touch feedback tab). The settings page shows it as `#pvHer` (breathing a
-  little) instead of the stand-in head; `pvFace()` gives the anchor for ripples, icons and moods. The preview box has
-  `clip-path` so the fixed-position effects don't float out over the tabs. No rig (placeholder) = stand-in head.
+- **Her picture in the settings preview** (`webapp/js/desktop/snapshot.js`, served by BOTH her main window
+  (js/app/main.js) and the desktop page, so it works without the desktop page ever opened): `take()` renders the model
+  with `app.renderer.extract.canvas(model)`, then TRIMS to her visible pixels (the model's bounds are far bigger than
+  her art: hidden parts count, which made her tiny in a corner at first), crops from the top of her head to her waist,
+  360 px tall, and stores `localStorage['desktop.snapshot']` = `{ v: 2, img (webp), fx (share of width), fy, headW,
+  modelW, modelH (shares of height) }`; the face comes from the rig's face drawables (geometry.js `faceBox`). Taken
+  2.5 s after she's dressed, every 15 min, and whenever the settings window writes `desktop.snapshot.want` (on opening
+  the Touch feedback tab, so outfit changes show). The settings page shows it as `#pvHer` (breathing a little) instead
+  of the stand-in head and ignores snapshots older than v 2; `pvFace()` gives the anchor for ripples, icons and moods.
+  The preview box has `clip-path` so the fixed-position effects don't float out over the tabs. No rig = stand-in head.
 
 - **Her size on the desktop** (`desktop/main.js` `setSize`, settings window "Her size" tab): `cfg.size` is a share of
   the screen's height (0.05–0.9, widened on the owner's request; at the big end the room over her head shrinks so her

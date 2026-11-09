@@ -11,8 +11,8 @@
 // every number that shapes a move is in TUNE, so a walk that looks
 // off on the real rig is a one-line change.
 
-import * as Actions from '../live2d/actions.js?v=102';
-import * as Live2D from '../live2d/live2d.js?v=92';
+import * as Actions from '../live2d/actions.js?v=103';
+import * as Live2D from '../live2d/live2d.js?v=93';
 
 export const TUNE = {
   turnDeg: 8,         // how far the figure turns toward where she walks

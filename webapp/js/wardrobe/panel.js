@@ -1,14 +1,14 @@
-import * as Live2D from '../live2d/live2d.js?v=92';
+import * as Live2D from '../live2d/live2d.js?v=93';
 import { BODY_VARIANTS, CLOTHING_VARIANTS, COLOR_GROUPS, ITEMS, ITEM_COLOR_GROUPS, ITEM_VARIANTS, VARIANTS } from '../outfit/catalog.js?v=5';
-import { fillTile, makeOptOrb, makeSwatch, makeTile, openTilePopup, syncOptionsPopup, wdMoveGhost, wdShowGhost } from './tiles.js?v=37';
+import { fillTile, makeOptOrb, makeSwatch, makeTile, openTilePopup, syncOptionsPopup, wdMoveGhost, wdShowGhost } from './tiles.js?v=38';
 import { state, variantState } from '../outfit/current.js?v=5';
-import { itemThumb, variantThumb } from './tile-bake.js?v=32';
-import { looksOpen, toggleLooks } from './looks.js?v=37';
-import { reset, setItem } from '../outfit/apply.js?v=32';
-import { wornDrawableMap, wornHitAt, wornLabel, wornRemove, wornWear } from './worn.js?v=33';
-import { buildWardrobeSection, syncModTiles } from '../mods/section.js?v=37';
-import { activate, playOutro } from './reactions.js?v=92';
-import { refreshColorButtons } from './color-picker.js?v=37';
+import { itemThumb, variantThumb } from './tile-bake.js?v=33';
+import { looksOpen, toggleLooks } from './looks.js?v=38';
+import { reset, setItem } from '../outfit/apply.js?v=33';
+import { wornDrawableMap, wornHitAt, wornLabel, wornRemove, wornWear } from './worn.js?v=34';
+import { buildWardrobeSection, syncModTiles } from '../mods/section.js?v=38';
+import { activate, playOutro } from './reactions.js?v=93';
+import { refreshColorButtons } from './color-picker.js?v=38';
 import { hooks } from '../outfit/hooks.js?v=1';
 
 export let clearWornHover = null;

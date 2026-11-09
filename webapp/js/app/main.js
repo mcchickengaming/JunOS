@@ -1,32 +1,33 @@
-import { IDLE_AFTER_REPLY_MS, TYPING_POLL_MS, consolidating, reportActivity, resetIdleNudge, runPassNow, scheduleIdleNudge, showConsolidatingBubble, syncConsolidationStatus } from './consolidation.js?v=131';
+import { IDLE_AFTER_REPLY_MS, TYPING_POLL_MS, consolidating, reportActivity, resetIdleNudge, runPassNow, scheduleIdleNudge, showConsolidatingBubble, syncConsolidationStatus } from './consolidation.js?v=132';
 import { chatInput, devNoIdleChk, missingParamsEl, modelSelect, narrowSidebarQuery, reasoningSelect, sendBtn, siteVolumeInput, stageEl, thinkChk } from './dom.js?v=77';
-import { faceBubble, hideFaceBubble, latestAssistantReply, restartFaceBubbleHide, scheduleFaceBubblePosition, setLatestAssistantReply } from './face-bubble.js?v=94';
+import { faceBubble, hideFaceBubble, latestAssistantReply, restartFaceBubbleHide, scheduleFaceBubblePosition, setLatestAssistantReply } from './face-bubble.js?v=95';
 import { logAction, logMissing, setStageStatus } from './logging.js?v=78';
-import { loadMood } from './mood.js?v=97';
-import { applyRoleGates, setSiteVolume, syncThinkToggle, updateSiteVolumeLabel, wireNameSettings } from './settings.js?v=136';
-import { loadConversation, refreshSidebar, setSidebarOpen } from './sidebar.js?v=131';
+import { loadMood } from './mood.js?v=98';
+import { applyRoleGates, setSiteVolume, syncThinkToggle, updateSiteVolumeLabel, wireNameSettings } from './settings.js?v=137';
+import { loadConversation, refreshSidebar, setSidebarOpen } from './sidebar.js?v=132';
 import { escapeHtml, mealNow } from '../core/util.js?v=1';
-import { wireTts } from './wire-tts.js?v=135';
-import { wireVoice } from './wire-voice.js?v=136';
-import { WELCOME_TIERS, fetchWelcome, playWelcome, previewWelcome } from './welcome.js?v=105';
+import { wireTts } from './wire-tts.js?v=136';
+import { wireVoice } from './wire-voice.js?v=137';
+import { WELCOME_TIERS, fetchWelcome, playWelcome, previewWelcome } from './welcome.js?v=106';
 import * as Names from '../core/names.js?v=1';
 import * as AwayNotify from './away-notify.js?v=5';
 import * as Prefs from '../core/prefs.js?v=7';
 import * as ui from '../core/ui.js?v=1';
 import * as ChatAPI from '../core/chat-api.js?v=8';
 import * as MobileViewport from '../core/viewport.js?v=1';
-import * as Actions from '../live2d/actions.js?v=102';
-import * as Live2D from '../live2d/live2d.js?v=92';
-import * as ModelTouch from '../live2d/touch.js?v=106';
-import * as Outfit from '../outfit/outfit.js?v=102';
-import { playIntro } from '../wardrobe/reactions.js?v=92';
+import * as Actions from '../live2d/actions.js?v=103';
+import * as Live2D from '../live2d/live2d.js?v=93';
+import * as Snapshot from '../desktop/snapshot.js?v=2';
+import * as ModelTouch from '../live2d/touch.js?v=107';
+import * as Outfit from '../outfit/outfit.js?v=103';
+import { playIntro } from '../wardrobe/reactions.js?v=93';
 import * as BootFX from './boot-fx.js?v=2';
-import * as Cards from './cards.js?v=37';
+import * as Cards from './cards.js?v=38';
 import * as History from './history.js?v=2';
 import { startSkybox } from '../trip/skybox.js?v=2';
 import * as TripLoader from '../trip/trip-loader.js?v=1';
 import { DevHud, abortFn, currentConversationId, setDevHud } from './session.js?v=1';
-import { rerenderBubbleStream, sendMessage, sendTouchEvent } from './chat.js?v=59';
+import { rerenderBubbleStream, sendMessage, sendTouchEvent } from './chat.js?v=60';
 import { setComposerText } from './composer.js?v=3';
 import * as Achievements from '../achievements/achievements.js?v=8';
 
@@ -142,7 +143,7 @@ export async function boot(me) {
     .then(r => r.ok ? r.json() : null).catch(() => null);
 
   // devhud.js owns Ctrl+Shift+D, so only admins get that module
-  if (currentUser?.role === 'admin') setDevHud(await import('./devhud.js?v=112'));
+  if (currentUser?.role === 'admin') setDevHud(await import('./devhud.js?v=113'));
   startSkybox();
   // marked is a global and app.js's loadScripts only brings it in
   // side by side with this module. at module scope it's not there
@@ -251,6 +252,9 @@ export async function boot(me) {
 
     await Outfit.load();
     Outfit.applyAll();
+    // her picture for the desktop settings window's preview, from here too,
+    // so it doesn't need her desktop page open (desktop/snapshot.js)
+    if (!live2dInfo.placeholder) Snapshot.serve(() => true);
   } catch (e) {
     console.error(e);
     if (fromTrip) TripLoader.fail('Live2D load error: ' + e.message);

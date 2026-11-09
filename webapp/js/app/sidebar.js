@@ -1,19 +1,19 @@
 import { currentConversationId, messages, setCurrentConversationId, stopActiveStream } from './session.js?v=1';
-import { appendMsg, renderMarkdown, scrollToLatest, updateEmptyState } from './messages.js?v=23';
+import { appendMsg, renderMarkdown, scrollToLatest, updateEmptyState } from './messages.js?v=24';
 import { dropDraft, useDraftFor } from './composer.js?v=3';
-import { addReplyActions, discardActiveResponse } from './chat.js?v=59';
-import { setConversationTitle } from './face-bubble.js?v=94';
-import { announceMobileReply, faceBubble, hideFaceBubble, latestAssistantReply, scheduleFaceBubbleHide, setLatestAssistantReply, showFaceBubble } from './face-bubble.js?v=94';
-import { IDLE_AFTER_JOIN_MS, cancelAutoReset, reportActivity, resetIdleNudge, scheduleIdleNudge } from './consolidation.js?v=131';
+import { addReplyActions, discardActiveResponse } from './chat.js?v=60';
+import { setConversationTitle } from './face-bubble.js?v=95';
+import { announceMobileReply, faceBubble, hideFaceBubble, latestAssistantReply, scheduleFaceBubbleHide, setLatestAssistantReply, showFaceBubble } from './face-bubble.js?v=95';
+import { IDLE_AFTER_JOIN_MS, cancelAutoReset, reportActivity, resetIdleNudge, scheduleIdleNudge } from './consolidation.js?v=132';
 import { chatInput, conversationSidebar, messagesEl, mobileConversationTitle, mobileMenuBtn, narrowSidebarQuery, reloadPromptBtn, resetLive2DBtn, sidebarBackdrop, sidebarBackground } from './dom.js?v=77';
 import { logAction } from './logging.js?v=78';
-import { makeStreamBuffer } from './stream-filters.js?v=109';
+import { makeStreamBuffer } from './stream-filters.js?v=110';
 import { escapeHtml, phoneMode } from '../core/util.js?v=1';
 import * as Names from '../core/names.js?v=1';
 import * as ui from '../core/ui.js?v=1';
 import * as History from './history.js?v=2';
-import * as TTS from '../voice/tts.js?v=93';
-import * as Live2D from '../live2d/live2d.js?v=92';
+import * as TTS from '../voice/tts.js?v=94';
+import * as Live2D from '../live2d/live2d.js?v=93';
 
 const conversationTitles = new Map();
 let sidebarRefreshGeneration = 0;

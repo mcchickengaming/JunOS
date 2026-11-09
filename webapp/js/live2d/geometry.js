@@ -73,6 +73,13 @@ export function drawablesSpot(ids) {
   return { x: c.x, y: c.y, left: tl.x, top: tl.y, right: br.x, bottom: br.y };
 }
 
+// her face's box on screen (client px), from the rig's face drawables,
+// or null (placeholder art)
+export function faceBox() {
+  if (!model || !raw || !app) return null;
+  return drawableBox(FACE_DRAWABLES);
+}
+
 export function faceAnchor() {
   if (!model || !app) return placeholderAnchor();
   const r = app.view.getBoundingClientRect();
