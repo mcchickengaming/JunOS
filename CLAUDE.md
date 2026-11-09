@@ -123,6 +123,23 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   a basic icon a different way now and then by bond and mood, never the same icon twice in a row; idle thoughts by
   mood, hour and bond (`pickFromPool`); bubble pops in a mix of ways (`eAnim`); robot faces never/sometimes/often.
 
+- **Touch moods** (`webapp/js/desktop/moods.js`, shared by js/desktop.js and the settings window's Touch feedback tab,
+  section "How she feels"): every touch has a feeling, one of not ready / flustered / likes it / loves it / giggly,
+  from tables per touch and closeness (`HOLDS`: [from ms, feeling] steps over the length of a hold or rub, so it
+  follows body.js: a friend's foot tickle turns "not ready" at 2.6 s just before she pulls her foot away, a friend's
+  thigh squish turns "not ready" when the wriggle starts; `POKES` for clicks). A bad mood takes the edge off
+  (`byMood`). Power 0..1 = bond stage + length of the touch (+ a poke bonus, + happy). Effects round her head or near
+  the touch (`puff`): sweat drops/"!"/shiver lines; blush lines/steam/swirls; sparkles/notes/glow dots; hearts/a heart
+  ring; "hehe"/bubbles/stars; plus a robot face per feeling following the "Robot faces" setting. Never the same piece
+  twice in a row; a change of heart puffs right away. A glow behind her (`.mood-aura`, inserted first in its box) in
+  the feeling's color. Slots per hand (`begin(slot, kind, t0, at, stale)`: 'press' for holds/hold-to-pat, 'rub' for
+  hover rubs with a 700 ms stale timeout since mousemoves stop when the mouse leaves her window, 'pin' for a hand left
+  in place via `move()`); `poke`, `combo`, `burst` for one-off moments (wriggled free, foot pulled away, too many
+  pokes). `rippleFor` gives "let her pick" a feeling-based ripple now and then. Settings in desktop.fx: `mAmount`
+  off/some/lots, `mGlow`; colors `--mood-notready/-flustered/-likes/-loves/-giggly` in the theme. Context from
+  refreshMood (`setContext({ stage: Gauges.bondStage, mood })`). The tab previews each feeling, a build-up, a
+  friend's foot tickle (the real rules) and a headpat at every bond. Tests: `.github/scripts/js/moods.test.mjs`.
+
 - **Her size on the desktop** (`desktop/main.js` `setSize`, settings window "Her size" tab): `cfg.size` is a share of
   the screen's height (0.05–0.9, widened on the owner's request; at the big end the room over her head shrinks so her
   window still fits the screen, `headroom()`, never under 40 px; Small/Medium/Large = 0.31/0.425/0.54, old string values migrate), so she looks the

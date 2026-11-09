@@ -27,7 +27,8 @@ import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
 import * as Body from './desktop/body.js?v=39';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=3';
+import * as Fx from './desktop/fx.js?v=4';
+import * as Moods from './desktop/moods.js?v=3';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -63,6 +64,9 @@ window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) applyTheme(
 Fx.installCss();
 Fx.applyFx();
 window.addEventListener('storage', (e) => { if (e.key === Fx.FX_KEY) Fx.applyFx(); });
+// how she feels about each touch, shown around her (desktop/moods.js)
+Moods.installCss();
+Moods.setAnchor(() => (ready ? Live2D.faceAnchor() : null), document.body);
 
 const OOC = '(OOC stage direction, not spoken by Anon: ';
 const NOTES = {
@@ -304,6 +308,7 @@ function fireCombo(c, now) {
   // a combo is a big moment: her pick of ripple, right on her face
   if (a && Fx.currentFx().rHerPick) Fx.ripple(a.x, a.y, closeness() >= 3 ? { shape: 'heart', motion: 'burst' } : { shape: 'sparkle', motion: 'spin', rings: 2 });
   sparkles(5);
+  Moods.combo(c.id);
   TouchLog.tap('combo_' + c.id);
   maybeSay('combo:' + c.id);
 }
@@ -351,6 +356,10 @@ function pinHand() {
     }, 120);
   }
   if (!next) return false;
+  // her feeling about it goes on with the hand left in place
+  if (next.type === 'hold') Moods.move('press', 'pin');
+  else if (next.step === 'head' && next.type === 'rub' && !wasRubbing) { Moods.end('press'); Moods.begin('pin', 'head', Date.now() - 2500, { x: next.x, y: next.y }); }
+  else { Moods.move('rub', 'pin'); Moods.move('press', 'pin'); }
   pin = next;
   const el = document.createElement('div');
   el.className = 'pin' + (pin.type === 'rub' ? ' rubbing' : '');
@@ -368,6 +377,7 @@ function pinHand() {
 function releasePin() {
   if (!pin) return;
   if (pin.type === 'hold') endHold(pin.p);
+  Moods.end('pin');
   TouchLog.end('pin');
   clearInterval(pin.timer);
   if (pin.el) pin.el.remove();
@@ -641,6 +651,7 @@ async function refreshMood() {
   const m = moodTier({ affection: Gauges.affection, trust: Gauges.trust, tension: Gauges.tension });
   const part = daypart();
   Body.setMood(m, part);
+  Moods.setContext({ stage: Gauges.bondStage, mood: m });
   pace = {
     happy: { speed: 1.2, hop: 6 }, neutral: { speed: 1, hop: 4 }, nervous: { speed: 1.05, hop: 3 },
     upset: { speed: 0.8, hop: 2 }, scared: { speed: 0.85, hop: 2 },
@@ -799,6 +810,13 @@ window.addEventListener('mousemove', (e) => {
   if (ready) watchWaveBack(e.clientX, e.clientY);
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;
   if (rub) { rubTrail(e.clientX, e.clientY); rubLabel(rub, region); }
+  // how she feels about the rub, as it goes on
+  if (rub) Moods.begin('rub', rub, Date.now(), { x: e.clientX, y: e.clientY }, 700);
+  else if (wasRubbing) {
+    Moods.end('rub');
+    // she pulled her foot away from a tickle: had enough
+    if (wasRubbing === 'feettickle' && Body.feetPulledAway()) Moods.burst('notready', 0.85, { x: e.clientX, y: e.clientY });
+  }
   // the tally: a rub is one touch, however long it goes on
   if (rub !== wasRubbing) {
     if (rub) TouchLog.begin('rub', RUB_KIND[rub]);
@@ -820,7 +838,7 @@ window.addEventListener('mousemove', (e) => {
   showHover(region);
   setThrough(!(onUi || region));
 }, true);
-document.addEventListener('mouseleave', () => { if (!press) { setThrough(true); showHover(null); } });
+document.addEventListener('mouseleave', () => { Moods.end('rub'); if (!press) { setThrough(true); showHover(null); } });
 
 // ---------------------------------------------------------------
 // feedback at the pointer: a ripple where you click, a ring that
@@ -836,7 +854,7 @@ const RUB_LABEL = { head: 'Headpat', ear: 'Ear rub', side: 'Tickle!', thigh: 'Th
 // takes the touch: shaky when it's a touch she isn't fond of yet, a
 // burst of hearts for a hug or a headpat once they're close
 function ripple(x, y, region) {
-  const mine = region ? Fx.reactionRipple(region.kind, closeness(), Body.currentMood()) : null;
+  const mine = region ? Fx.reactionRipple(region.kind, closeness(), Body.currentMood()) || Moods.rippleFor(region.kind) : null;
   Fx.ripple(x, y, mine || {});
 }
 
@@ -1128,6 +1146,8 @@ window.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
   press = { x: e.screenX, y: e.screenY, cx: e.clientX, cy: e.clientY, dragging: false, id: e.pointerId, region, hold: null, holdTimer: null, hugTimer: null };
   const p = press;
+  // a press takes over from a hover rub
+  Moods.end('rub');
   ripple(e.clientX, e.clientY, region);
   // holds: her hand (hold hands), her torso (a hug), her tail (grab it)
   if (region.kind === 'hand' || region.kind === 'hug' || region.kind === 'tail' || region.kind === 'thigh' || region.kind === 'feet') {
@@ -1146,6 +1166,7 @@ window.addEventListener('pointerdown', (e) => {
         const combo = touched('tailgrab');
         p.talkTimer = setTimeout(() => { if (p.hold === 'tail') maybeSay('tailgrab'); }, 2000);
         Body.tailGrab(true);
+        Moods.begin('press', 'tailgrab', p.holdAt, { x: e.clientX, y: e.clientY });
         document.body.style.cursor = Body.cursorFor('tailgrab');
         if (!combo) actionLabel('Tail grab', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => Body.tailGrabTick(Date.now() - p.holdAt), 260);
@@ -1157,6 +1178,7 @@ window.addEventListener('pointerdown', (e) => {
         const combo = touched('thighsquish');
         p.talkTimer = setTimeout(() => { if (p.hold === 'thigh') maybeSay('thighsquish'); }, 1800);
         Body.thighSquish(true, region.side, closeness());
+        Moods.begin('press', 'thighsquish', p.holdAt, { x: e.clientX, y: e.clientY });
         document.body.style.cursor = Body.cursorFor('squishing');
         if (!combo) actionLabel('Thigh squish', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => {
@@ -1166,6 +1188,8 @@ window.addEventListener('pointerdown', (e) => {
           clearTimeout(p.talkTimer);
           Body.thighSquish(false);
           TouchLog.end('hold');
+          Moods.end(p.pinned ? 'pin' : 'press');
+          Moods.burst('notready', 0.85, { x: e.clientX, y: e.clientY });
           p.hold = 'freed';
           document.body.style.cursor = '';
           actionLabel('She wriggled free', e.clientX, e.clientY - 22);
@@ -1179,6 +1203,7 @@ window.addEventListener('pointerdown', (e) => {
         p.talkTimer = setTimeout(() => { if (p.hold === 'feet') maybeSay('feetrub'); }, 2200);
         document.body.style.cursor = Body.cursorFor('feet');
         if (!combo) actionLabel('Foot rub', e.clientX, e.clientY);
+        Moods.begin('press', 'footrub', p.holdAt, { x: e.clientX, y: e.clientY });
         p.hugTimer = setInterval(() => {
           Body.feetRub(Date.now() - p.holdAt);
           if (!Body.feetPulledAway()) return;
@@ -1186,6 +1211,8 @@ window.addEventListener('pointerdown', (e) => {
           clearInterval(p.hugTimer);
           clearTimeout(p.talkTimer);
           TouchLog.end('hold');
+          Moods.end(p.pinned ? 'pin' : 'press');
+          Moods.burst('notready', 0.85, { x: e.clientX, y: e.clientY });
           p.hold = 'freed';
           document.body.style.cursor = '';
           actionLabel('She pulled her foot away', e.clientX, e.clientY - 22);
@@ -1196,6 +1223,7 @@ window.addEventListener('pointerdown', (e) => {
         p.hold = 'hand';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hand') maybeSay('hand'); }, 2200);
         Body.handhold(region.side, true);
+        Moods.begin('press', 'hand', Date.now(), { x: e.clientX, y: e.clientY });
         document.body.style.cursor = Body.cursorFor('holding');
         if (!combo) actionLabel('Holding hands', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { if (Math.random() < 0.3) floatHearts(1); }, 700);
@@ -1205,6 +1233,7 @@ window.addEventListener('pointerdown', (e) => {
         p.hold = 'hug';
         p.talkTimer = setTimeout(() => { if (p.hold === 'hug') maybeSay('hug'); }, 1800);
         Body.hug(true);
+        Moods.begin('press', 'hug', Date.now(), { x: e.clientX, y: e.clientY });
         document.body.style.cursor = Body.cursorFor('hugging');
         if (!combo) actionLabel('Hug', e.clientX, e.clientY);
         p.hugTimer = setInterval(() => { Body.hugTick(); floatHearts(1); }, 260);
@@ -1226,6 +1255,7 @@ function startPat(p, x, y) {
   p.hold = 'pat';
   TouchLog.begin('hold', 'headpat');
   Body.patHoldStart(x, y);
+  Moods.begin('press', 'head', Date.now(), { x, y });
   document.body.style.cursor = Body.cursorFor('head');
   if (!touched('head')) rubLabel('head', p.region);
   else rubLabel(null);
@@ -1235,7 +1265,7 @@ function endHold(p) {
   clearTimeout(p.holdTimer);
   clearTimeout(p.patTimer);
   if (p.hold === 'pat') Body.patHoldEnd();
-  if (!p.pinned) TouchLog.end('hold');
+  if (!p.pinned) { TouchLog.end('hold'); Moods.end('press'); }
   clearTimeout(p.talkTimer);
   holdRing(false);
   hoverKind = undefined; // the cursor goes back to the spot's icon on the next move
@@ -1258,6 +1288,7 @@ window.addEventListener('pointermove', (e) => {
   if (press.hold === 'pat') {
     // the hand follows the mouse, her head goes with it
     Body.patHoldMove(e.clientX, e.clientY);
+    Moods.at('press', e.clientX, e.clientY);
     rubTrail(e.clientX, e.clientY);
     rubLabel('head', press.region);
     return;
@@ -1310,8 +1341,8 @@ const endPress = (e) => {
     if (dozing) wake(true);
     D?.stopWalk();
     actionLabel(POKE_LABEL[p.region.kind] || 'Poke', e.clientX, e.clientY);
-    if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); }
-    else maybeSay(POKE_TALK[p.region.kind]);
+    if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); Moods.burst('notready', 0.95); }
+    else { maybeSay(POKE_TALK[p.region.kind]); Moods.poke(p.region.kind, { x: e.clientX, y: e.clientY }); }
     touched(p.region.kind);
     TouchLog.tap(POKE_KIND[p.region.kind]);
     return;

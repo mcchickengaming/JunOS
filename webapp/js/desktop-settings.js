@@ -8,7 +8,8 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=37';
-import * as Fx from './desktop/fx.js?v=3';
+import * as Fx from './desktop/fx.js?v=4';
+import * as Moods from './desktop/moods.js?v=3';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -243,6 +244,11 @@ function previewTheme() {
   for (const [k, v] of Object.entries(t)) if (/^--[a-z-]+$/.test(k)) box.style.setProperty(k, String(v));
   // the ripple goes on the page itself, not in the box
   document.body.style.setProperty('--ripple', t['--ripple'] || t['--accent'] || '#ec0054');
+  // and so do her feelings
+  for (const [k] of Moods.FEELINGS) {
+    const v = t['--mood-' + k];
+    if (v) document.body.style.setProperty('--mood-' + k, v); else document.body.style.removeProperty('--mood-' + k);
+  }
 }
 window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) previewTheme(); });
 
@@ -302,6 +308,72 @@ document.getElementById('pvHerBtn').addEventListener('click', () => {
   pvShowLabel(text);
 });
 
+// how she feels: the same effects as on the desktop, around the little
+// head in the preview
+Moods.installCss();
+Moods.setAnchor(() => {
+  const head = preview.querySelector('.pv-head');
+  if (!head || preview.closest('section').hidden) return null;
+  const r = head.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height * 0.45, headW: r.width, modelW: r.width * 2.4, modelH: r.width * 1.6 };
+}, preview);
+const FEEL_SAMPLES = {
+  notready: 'Not ready: a tail grab too early', flustered: 'Flustered: a thigh squish as friends', likes: 'Likes it: a headpat as friends',
+  loves: 'Loves it: a hug once you\'re close', giggly: 'Giggly: a boop, or a tickle',
+};
+const STAGE_NAMES = ['Stranger', 'Familiar', 'Friend', 'Close', 'Partner', 'Devoted'];
+const FEEL_NAME = Object.fromEntries(Moods.FEELINGS.map(([k, n]) => [k, n.toLowerCase()]));
+let pvMoodTimers = [];
+// her feelings' captions are long: centered over the little head
+function pvMoodLabel(text) {
+  if (Fx.readFx().mAmount === 'off') text = 'Turned off: pick Some or Lots under How much';
+  pvShowLabel(text, preview.getBoundingClientRect().width / 2, 44);
+}
+function pvMoodStop() { pvMoodTimers.forEach(clearTimeout); pvMoodTimers = []; Moods.endAll(); }
+function pvFeel(f) {
+  pvMoodStop();
+  Moods.preview(f, 2200, 0.75);
+  pvMoodLabel(FEEL_SAMPLES[f]);
+}
+function buildMoodBtns() {
+  const box = document.getElementById('moodBtns');
+  box.innerHTML = '';
+  const add = (text, fn, color) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn';
+    b.textContent = text;
+    if (color) b.style.borderColor = color;
+    b.addEventListener('click', fn);
+    box.appendChild(b);
+  };
+  const theme = readTheme();
+  for (const [k, name, def] of Moods.FEELINGS) add(name, () => pvFeel(k), theme['--mood-' + k] || def);
+  // a long hug: it grows the longer it goes on
+  add('A long hug (builds up)', () => {
+    pvMoodStop();
+    Moods.preview('loves', 7000, 0.15, 1);
+    pvMoodLabel('A long hug, building up');
+  });
+  // a friend's foot tickle: giggly, then "enough!" (the real rules)
+  add('A foot tickle as friends', () => {
+    pvMoodStop();
+    Moods.setContext({ stage: 3, mood: 'neutral' });
+    Moods.begin('pv', 'feettickle');
+    pvMoodLabel('Foot tickle as friends: giggly, then enough!');
+    pvMoodTimers.push(setTimeout(() => Moods.end('pv'), 4200));
+  });
+  // the same headpat at every bond
+  add('A headpat at every bond', () => {
+    pvMoodStop();
+    STAGE_NAMES.forEach((name, i) => pvMoodTimers.push(setTimeout(() => {
+      const f = Moods.feelingFor('head', 'hold', 1200, { stage: i + 1, mood: 'neutral' });
+      Moods.preview(f.feeling, 1500, f.power);
+      pvMoodLabel('A headpat. ' + name + ': ' + FEEL_NAME[f.feeling]);
+    }, i * 1700)));
+  });
+}
+
 // a change shows itself in the preview, once the slider stops moving
 let pvSoon = null;
 function changed(what) {
@@ -310,6 +382,7 @@ function changed(what) {
     if (what === 'ripple') { const c = pvCenter(); Fx.ripple(c.x, c.y); }
     if (what === 'label') pvShowLabel();
     if (what === 'icon') pvShowIcon();
+    if (what === 'mood') { buildMoodBtns(); const f = Moods.FEELINGS[Math.floor(Math.random() * Moods.FEELINGS.length)][0]; pvFeel(f); }
   }, 160);
 }
 function setFx(key, value, what) {
@@ -383,6 +456,15 @@ function buildFeedback() {
     row('Color', 'Right-click to go back to her accent color.', colorsOf('Ripple', [['Ripple', '--ripple']], 'ripple')),
     row('Let her pick', 'Now and then she changes the ripple to show how she takes a touch: shaky when it\'s one she isn\'t ready for, a burst of hearts for a hug once you\'re close.', checkOf('rHerPick', 'ripple')),
   );
+  const mood = document.getElementById('moodRows');
+  mood.innerHTML = '';
+  mood.append(
+    row('How much', 'Off, some, or lots of little effects.', selectOf(Moods.AMOUNTS, 'mAmount', 'mood')),
+    row('Glow around her', 'A soft glow in the feeling\'s color while a touch goes on.', checkOf('mGlow', 'mood')),
+    row('Colors', 'One for each feeling. Right-click a color to go back to the default.',
+      colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood')),
+  );
+  buildMoodBtns();
   const lab = document.getElementById('labelRows');
   lab.innerHTML = '';
   lab.append(
@@ -426,7 +508,7 @@ document.getElementById('resetFx').addEventListener('click', () => {
   Fx.writeFx({});
   Fx.applyFx({});
   const t = readTheme();
-  for (const k of ['--ripple', '--label', '--label-edge', '--label-ink']) delete t[k];
+  for (const k of ['--ripple', '--label', '--label-edge', '--label-ink', ...Moods.FEELINGS.map(([f]) => '--mood-' + f)]) delete t[k];
   writeTheme(t);
   previewTheme();
   buildFeedback();

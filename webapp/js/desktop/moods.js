@@ -1,0 +1,441 @@
+// how she feels about a touch, shown around her: five feelings
+// (not ready, flustered, likes it, loves it, giggly), each with its own
+// little effects (sweat drops and "!" marks, blush lines and steam,
+// sparkles and notes, hearts, "hehe" and bubbles) and a soft glow.
+//
+// the feeling comes from the touch, the bond, her mood and how long the
+// touch has gone on, following the reactions body.js already has (a
+// friend's foot tickle starts giggly and turns "not ready" right before
+// she pulls her foot away). the effects build up the longer a touch
+// lasts and come out bigger at higher bonds.
+//
+// shared by desktop.html (js/desktop.js) and the settings window's
+// Touch feedback tab, which previews with this same code. the owner's
+// picks (mAmount off/some/lots, mGlow) live in desktop.fx (fx.js), the
+// colors in the theme: --mood-notready, --mood-flustered, --mood-likes,
+// --mood-loves, --mood-giggly.
+
+import * as Fx from './fx.js?v=4';
+
+export const FEELINGS = [
+  ['notready', 'Not ready', '#7cc4ff'],
+  ['flustered', 'Flustered', '#ff6fae'],
+  ['likes', 'Likes it', '#ffd76a'],
+  ['loves', 'Loves it', '#ff3d78'],
+  ['giggly', 'Giggly', '#ffa64d'],
+];
+const COLOR = Object.fromEntries(FEELINGS.map(([k, , c]) => [k, `var(--mood-${k}, ${c})`]));
+export const AMOUNTS = [['off', 'Off'], ['some', 'Some'], ['lots', 'Lots']];
+
+// ---------------------------------------------------------------
+// what she feels. per touch, per closeness (Stranger/Familiar, Friend,
+// Close and up): [from ms, feeling] steps over the length of the touch
+
+const HOLDS = {
+  head: [[[0, 'flustered'], [2500, 'likes']], [[0, 'likes'], [6000, 'loves']], [[0, 'loves']]],
+  ear: [[[0, 'flustered'], [4000, 'likes']], [[0, 'likes'], [7000, 'loves']], [[0, 'likes'], [2500, 'loves']]],
+  side: [[[0, 'giggly'], [2000, 'notready']], [[0, 'giggly'], [4500, 'flustered']], [[0, 'giggly']]],
+  feettickle: [[[0, 'notready']], [[0, 'giggly'], [2600, 'notready']], [[0, 'giggly'], [5500, 'flustered']]],
+  footrub: [[[0, 'notready']], [[0, 'flustered'], [1200, 'likes']], [[0, 'likes'], [2000, 'loves']]],
+  thigh: [[[0, 'notready']], [[0, 'flustered']], [[0, 'flustered'], [3000, 'likes']]],
+  thighsquish: [[[0, 'notready']], [[0, 'flustered'], [3200, 'notready']], [[0, 'flustered'], [3500, 'loves']]],
+  tail: [[[0, 'flustered']], [[0, 'likes']], [[0, 'likes'], [3000, 'loves']]],
+  tailgrab: [[[0, 'notready']], [[0, 'flustered']], [[0, 'flustered'], [2000, 'likes']]],
+  hand: [[[0, 'flustered'], [3000, 'likes']], [[0, 'likes'], [5000, 'loves']], [[0, 'loves']]],
+  hug: [[[0, 'notready'], [2500, 'flustered']], [[0, 'flustered'], [1500, 'likes'], [8000, 'loves']], [[0, 'likes'], [800, 'loves']]],
+};
+HOLDS.tailrub = HOLDS.tail;
+HOLDS.feet = HOLDS.footrub;
+// a quick poke: the same three
+const POKES = {
+  head: ['flustered', 'likes', 'likes'], cheek: ['flustered', 'flustered', 'giggly'], nose: ['giggly', 'giggly', 'giggly'],
+  ear: ['notready', 'flustered', 'giggly'], shoulder: ['flustered', 'likes', 'likes'], tail: ['notready', 'flustered', 'flustered'],
+  hand: ['flustered', 'likes', 'loves'], side: ['giggly', 'giggly', 'giggly'], thigh: ['notready', 'flustered', 'flustered'],
+  feet: ['notready', 'giggly', 'giggly'],
+};
+
+// her bond stage (1 Stranger ... 6 Devoted) and mood (core/mood-tier.js)
+let ctx = { stage: 3, mood: 'neutral' };
+export function setContext(c) { ctx = { ...ctx, ...c }; }
+const closeOf = (stage) => (stage <= 2 ? 1 : stage === 3 ? 2 : 3);
+const STAGE_POWER = [0.2, 0.3, 0.42, 0.55, 0.68, 0.8];
+
+// a bad mood takes the edge off: loves -> likes -> flustered
+function byMood(f, close, mood) {
+  if (mood === 'upset' || mood === 'scared') return { loves: 'likes', likes: 'flustered', giggly: 'flustered' }[f] || f;
+  if (mood === 'nervous' && close <= 1 && f === 'likes') return 'flustered';
+  return f;
+}
+
+// { feeling, power 0..1 } for a touch, or null if it's not one she has
+// a feeling about. how: 'poke' or 'hold' (rubs are holds too)
+export function feelingFor(kind, how = 'hold', ms = 0, c = ctx) {
+  const stage = Math.max(1, Math.min(6, Math.round(c.stage || 3)));
+  const close = closeOf(stage);
+  let f = null;
+  if (how === 'poke') f = POKES[kind] ? POKES[kind][close - 1] : null;
+  else if (HOLDS[kind]) for (const [from, ff] of HOLDS[kind][close - 1]) if (ms >= from) f = ff;
+  if (!f) return null;
+  f = byMood(f, close, c.mood);
+  let power = STAGE_POWER[stage - 1] + Math.min(0.4, (ms / 10000) * 0.4) + (how === 'poke' ? 0.1 : 0);
+  if (c.mood === 'happy') power += 0.08;
+  return { feeling: f, power: Math.max(0.1, Math.min(1, power)) };
+}
+
+// her pick of ripple for a feeling, now and then (fx.js "let her pick")
+export function rippleFor(kind, c = ctx) {
+  if (!Fx.currentFx().rHerPick || amount() === 'off') return null;
+  const f = feelingFor(kind, 'poke', 0, c);
+  if (!f || Math.random() > 0.25) return null;
+  return { notready: { motion: 'shaky' }, flustered: { motion: 'wavy' }, loves: { shape: 'heart' },
+    giggly: { shape: 'star', motion: 'burst' }, likes: null }[f.feeling];
+}
+
+// ---------------------------------------------------------------
+// where to draw: her face anchor (live2d geometry, or the settings
+// preview's little head) and the element the pieces go in
+
+let anchorFn = () => null;
+let host = null;
+export function setAnchor(fn, el) { anchorFn = fn || (() => null); host = el || null; }
+const amount = () => (Fx.currentFx().mAmount || 'some');
+
+// ---------------------------------------------------------------
+// the effects. each piece: what it is, where it goes, how it moves
+
+const SVG = {
+  drop: '<path d="M0-11C4-4 7 0 7 4A7 7 0 0 1-7 4C-7 0-4-4 0-11Z"/>',
+  blush: '<path d="M-9 4L-5-4M-2 4L2-4M5 4L9-4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
+  steam: '<path d="M-8 4A5 5 0 0 1-6-5A6 6 0 0 1 5-7A5 5 0 0 1 9 3Z"/>',
+  swirl: '<path d="M0 0A2 2 0 0 1 3 1A4 4 0 0 1-2 5A6 6 0 0 1-7-2A8 8 0 0 1 4-9A10 10 0 0 1 11 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  shiver: '<path d="M-3-10Q1-7-3-4Q-7-1-3 2Q1 5-3 8M4-8Q8-5 4-2Q0 1 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  bubble: '<circle r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="-3" cy="-3" r="1.8"/>',
+  glowdot: '<circle r="5"/>',
+};
+// [piece, weight]; 'ascii' pieces follow the "Robot faces" setting
+const PIECES = {
+  notready: [['drop', 3], ['bang', 2], ['shiver', 2], ['ascii', 1]],
+  flustered: [['blush', 3], ['steam', 2], ['swirl', 2], ['ascii', 1.5]],
+  likes: [['sparkle', 3], ['note', 3], ['glowdot', 1], ['ascii', 1]],
+  loves: [['heart', 4], ['heartring', 1], ['ascii', 1]],
+  giggly: [['hehe', 3], ['bubble', 2], ['star', 2], ['ascii', 1]],
+};
+const ASCII = {
+  notready: ['o_O', '[WARN]', '!?', 'D:'],
+  flustered: ['>_<', '>///<', '[ERR]', '@_@'],
+  likes: ['^_^', ':3', '[OK]', 'c:'],
+  loves: ['<3', 'love.exe', '♥‿♥', '[♥♥♥]'],
+  giggly: [':P', 'xD', '^o^', 'hehe.wav'],
+};
+const HEHE = ['hehe', 'ha!', 'haha', 'ehe~', 'hihi', 'pfft', 'kya!'];
+const NOTES = ['♪', '♫'];
+
+const CSS = `
+.mood-p { position: fixed; z-index: 6; pointer-events: none; left: 0; top: 0; line-height: 1; white-space: nowrap;
+  transform: translate(-50%, -50%); opacity: 0; animation-fill-mode: forwards; animation-timing-function: ease-out;
+  font: 800 var(--mp-size, 16px) Arial, Helvetica, sans-serif; text-shadow: 0 0 calc(1px * var(--fx-k, 1)) #000a, 0 0 calc(3px * var(--fx-k, 1)) #0007; }
+.mood-p svg { display: block; width: var(--mp-size, 16px); height: var(--mp-size, 16px); overflow: visible; fill: currentColor;
+  filter: drop-shadow(0 0 calc(1px * var(--fx-k, 1)) #0009) drop-shadow(0 0 calc(2px * var(--fx-k, 1)) #0005); }
+.mood-p.ascii { font-family: "Consolas", "Courier New", monospace; font-size: calc(var(--mp-size, 16px) * .8); letter-spacing: -.02em; }
+.mood-p.hehe { font-family: var(--label-font, "Comic Sans MS", cursive); font-style: italic; }
+@keyframes mp-rise { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: .9; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.9) rotate(var(--rot, 0deg)); } }
+@keyframes mp-fall { 0% { opacity: 0; transform: translate(-50%, -80%) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% + var(--dy))) scale(.85, 1.1); } }
+@keyframes mp-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.2) rotate(var(--rot, 0deg)); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(var(--rot, 0deg)); }
+  30% { transform: translate(-50%, -50%) scale(1) rotate(var(--rot, 0deg)); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, calc(-50% + var(--dy))) scale(.95) rotate(var(--rot, 0deg)); } }
+@keyframes mp-shiver { 0% { opacity: 0; transform: translate(-50%, -50%); } 10% { opacity: 1; } 20% { transform: translate(-62%, -50%); } 30% { transform: translate(-38%, -50%); }
+  40% { transform: translate(-60%, -50%); } 50% { transform: translate(-40%, -50%); } 60% { transform: translate(-56%, -50%); } 70% { opacity: 1; transform: translate(-44%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -50%); } }
+@keyframes mp-spin { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(160deg); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.8) rotate(620deg); } }
+@keyframes mp-twinkle { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0) rotate(0); } 35% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(45deg); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% + var(--dy))) scale(0) rotate(90deg); } }
+@keyframes mp-bounce { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 12% { opacity: 1; transform: translate(-50%, -110%) scale(1.1); }
+  24% { transform: translate(-50%, -40%) scale(1.1, .85); } 36% { transform: translate(-50%, -85%) scale(1); } 48% { transform: translate(-50%, -50%); }
+  80% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))); } }
+@keyframes mp-puff { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } 20% { opacity: .95; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.7); } }
+@keyframes mp-blush { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  40% { transform: translate(-50%, -50%) scale(.95); } 55% { transform: translate(-50%, -50%) scale(1.03); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+
+/* the glow around her: soft, in the feeling's color */
+/* behind her: first in its box, so she's drawn over it and it glows around her */
+.mood-aura { position: fixed; z-index: 0; pointer-events: none; left: 0; top: 0; width: 10px; height: 10px; border-radius: 50%;
+  transform: translate(-50%, -50%); opacity: 0; transition: opacity .5s ease, width .4s ease, height .4s ease;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ma-c, #fff) 70%, transparent) 0%, color-mix(in srgb, var(--ma-c, #fff) 25%, transparent) 40%, transparent 68%);
+}
+.mood-aura.on { opacity: var(--ma-o, .3); }
+.mood-aura.ma-notready.on { animation: ma-shudder .22s linear infinite; }
+.mood-aura.ma-flustered.on { animation: ma-flutter .7s ease-in-out infinite; }
+.mood-aura.ma-likes.on { animation: ma-breathe 2.6s ease-in-out infinite; }
+.mood-aura.ma-loves.on { animation: ma-breathe 1.9s ease-in-out infinite; }
+.mood-aura.ma-giggly.on { animation: ma-hop .5s ease-in-out infinite; }
+@keyframes ma-shudder { 0%, 100% { transform: translate(-50%, -50%); } 25% { transform: translate(-53%, -50%); } 75% { transform: translate(-47%, -50%); } }
+@keyframes ma-flutter { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 30% { transform: translate(-50%, -50%) scale(1.08); } 45% { transform: translate(-50%, -50%) scale(.97); } 60% { transform: translate(-50%, -50%) scale(1.06); } }
+@keyframes ma-breathe { 0%, 100% { transform: translate(-50%, -50%) scale(.94); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
+@keyframes ma-hop { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -54%) scale(1.04, .97); } }
+`;
+export function installCss() {
+  Fx.installCss();
+  if (document.getElementById('mood-css')) return;
+  const st = document.createElement('style');
+  st.id = 'mood-css';
+  st.textContent = CSS;
+  (document.head || document.documentElement).appendChild(st);
+}
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pickW = (list) => {
+  let r = Math.random() * list.reduce((s, x) => s + x[1], 0);
+  for (const x of list) { r -= x[1]; if (r <= 0) return x[0]; }
+  return list[list.length - 1][0];
+};
+const lastPiece = {};
+const lastText = {};
+function pickText(list, key) {
+  const fresh = list.filter(t => t !== lastText[key]);
+  const t = fresh[Math.floor(Math.random() * fresh.length)] || list[0];
+  lastText[key] = t;
+  return t;
+}
+function choosePiece(feeling, power) {
+  const asciiW = { off: 0, sometimes: 1, often: 2.2 }[Fx.currentFx().eAscii] ?? 1;
+  let list = PIECES[feeling].map(([p, w]) => [p, p === 'ascii' ? w * asciiW * 0.5 : w]).filter(x => x[1] > 0);
+  // the big heart ring is for a strong moment
+  if (power < 0.6) list = list.filter(x => x[0] !== 'heartring');
+  // never the same piece twice in a row
+  const fresh = list.filter(x => x[0] !== lastPiece[feeling]);
+  const p = pickW(fresh.length ? fresh : list);
+  lastPiece[feeling] = p;
+  return p;
+}
+
+// one piece on the page
+function put({ text, svg, cls = '', x, y, size, anim, ms, dx = 0, dy = 0, rot = 0, color, delay = 0 }) {
+  const el = document.createElement('span');
+  el.className = 'mood-p ' + cls;
+  if (svg) el.innerHTML = `<svg viewBox="-12 -12 24 24" aria-hidden="true">${svg}</svg>`;
+  else el.textContent = text;
+  el.style.left = x.toFixed(1) + 'px';
+  el.style.top = y.toFixed(1) + 'px';
+  el.style.color = color;
+  el.style.setProperty('--mp-size', size.toFixed(1) + 'px');
+  el.style.setProperty('--dx', dx.toFixed(1) + 'px');
+  el.style.setProperty('--dy', dy.toFixed(1) + 'px');
+  el.style.setProperty('--rot', rot.toFixed(0) + 'deg');
+  el.style.animationName = anim;
+  el.style.animationDuration = ms + 'ms';
+  el.style.animationDelay = delay + 'ms';
+  (host || document.body).appendChild(el);
+  setTimeout(() => el.remove(), ms + delay + 80);
+}
+
+// one puff of a feeling: a piece (or a pair, like the blush on both
+// cheeks) around her head, or near the touch for the ones that can be
+// anywhere. s = size factor from the power
+function puff(feeling, power, at) {
+  const a = anchorFn();
+  if (!a) return;
+  const k = Fx.scale();
+  const s = 0.85 + power * 0.45;
+  const size = 16 * k * s;
+  const hw = a.headW;
+  const side = Math.random() < 0.5 ? -1 : 1;
+  const color = COLOR[feeling];
+  const headTop = a.y - a.modelH * 0.07;
+  // near the touch if there is one away from her face, else round her head
+  const near = at && Math.hypot(at.x - a.x, at.y - a.y) > hw * 0.9 && Math.random() < 0.55
+    ? { x: at.x + rnd(-14, 14) * k, y: at.y - rnd(4, 18) * k }
+    : { x: a.x + side * hw * rnd(0.35, 0.75), y: a.y - hw * rnd(0.1, 0.55) };
+  const p = choosePiece(feeling, power);
+  switch (p) {
+    case 'drop':
+      put({ svg: SVG.drop, x: a.x + side * hw * rnd(0.42, 0.6), y: headTop + hw * rnd(0.05, 0.3), size: size * 0.9, anim: 'mp-fall', ms: 1100, dy: 26 * k, color });
+      break;
+    case 'bang':
+      put({ text: Math.random() < 0.3 ? '!!' : '!', x: a.x + side * hw * rnd(0.2, 0.45), y: headTop - hw * 0.1, size: size * 1.3, anim: 'mp-pop', ms: 900, dy: -8 * k, rot: side * rnd(5, 15), color });
+      break;
+    case 'shiver':
+      put({ svg: SVG.shiver, x: a.x - a.modelW * 0.28, y: a.y + a.modelH * rnd(0.08, 0.2), size: size * 1.1, anim: 'mp-shiver', ms: 800, color });
+      put({ svg: SVG.shiver, x: a.x + a.modelW * 0.28, y: a.y + a.modelH * rnd(0.08, 0.2), size: size * 1.1, anim: 'mp-shiver', ms: 800, color, delay: 60 });
+      break;
+    case 'blush':
+      for (const sd of [-1, 1]) put({ svg: SVG.blush, x: a.x + sd * hw * 0.27, y: a.y + hw * 0.14, size: size * (0.8 + power * 0.3), anim: 'mp-blush', ms: 1300, color });
+      break;
+    case 'steam':
+      for (let i = 0; i < 2; i++) {
+        put({ svg: SVG.steam, x: a.x + side * hw * rnd(0.15, 0.4), y: headTop, size: size * rnd(0.8, 1.1), anim: 'mp-puff', ms: 1200, dx: side * rnd(8, 20) * k, dy: -rnd(26, 40) * k, color, delay: i * 180 });
+      }
+      break;
+    case 'swirl':
+      put({ svg: SVG.swirl, x: a.x + side * hw * rnd(0.3, 0.55), y: headTop - hw * rnd(0.05, 0.2), size: size * 1.1, anim: 'mp-spin', ms: 1200, dx: side * 6 * k, dy: -12 * k, color });
+      break;
+    case 'sparkle':
+      put({ text: Math.random() < 0.5 ? '✦' : '✧', ...near, size: size * rnd(0.7, 1.1), anim: 'mp-twinkle', ms: 900, dy: -10 * k, color });
+      break;
+    case 'note':
+      put({ text: pickText(NOTES, 'note'), ...near, size, anim: 'mp-rise', ms: 1500, dx: side * rnd(10, 26) * k, dy: -rnd(36, 56) * k, rot: side * 15, color });
+      break;
+    case 'glowdot':
+      for (let i = 0; i < 3; i++) put({ svg: SVG.glowdot, x: near.x + rnd(-12, 12) * k, y: near.y + rnd(-8, 8) * k, size: size * rnd(0.4, 0.7), anim: 'mp-rise', ms: 1300, dx: rnd(-8, 8) * k, dy: -rnd(20, 34) * k, color, delay: i * 120 });
+      break;
+    case 'heart':
+      put({ text: '♥', x: a.x + rnd(-0.7, 0.7) * hw, y: a.y + a.modelH * rnd(0.04, 0.12), size: size * rnd(0.9, 1.25), anim: 'mp-rise', ms: 1700, dx: rnd(-22, 22) * k, dy: -rnd(60, 95) * k, rot: rnd(-20, 20), color });
+      break;
+    case 'heartring': {
+      // a ring of hearts bursting out from her face
+      const n = 7;
+      const turn = Math.random() * Math.PI;
+      for (let i = 0; i < n; i++) {
+        const t = turn + i * 2 * Math.PI / n;
+        put({ text: '♥', x: a.x, y: a.y + hw * 0.1, size: size * 0.8, anim: 'mp-rise', ms: 1100, dx: Math.cos(t) * hw * 1.1, dy: Math.sin(t) * hw * 1.1, color, delay: 30 });
+      }
+      break;
+    }
+    case 'hehe':
+      put({ text: pickText(HEHE, 'hehe'), cls: 'hehe', x: a.x + side * hw * rnd(0.55, 0.9), y: a.y - hw * rnd(0, 0.35), size: size * 0.9, anim: 'mp-bounce', ms: 1200, dx: side * 8 * k, dy: -14 * k, rot: side * rnd(5, 14), color });
+      break;
+    case 'bubble':
+      for (let i = 0; i < 2; i++) put({ svg: SVG.bubble, x: near.x + rnd(-14, 14) * k, y: near.y, size: size * rnd(0.6, 1), anim: 'mp-rise', ms: 1500, dx: rnd(-10, 10) * k, dy: -rnd(40, 60) * k, color, delay: i * 160 });
+      break;
+    case 'star':
+      put({ text: '★', ...near, size: size * 0.9, anim: 'mp-bounce', ms: 1000, dx: side * rnd(10, 22) * k, dy: -rnd(6, 16) * k, rot: rnd(-30, 30), color });
+      break;
+    case 'ascii':
+      put({ text: pickText(ASCII[feeling], 'a-' + feeling), cls: 'ascii', x: a.x + side * hw * rnd(0.6, 0.85), y: headTop - hw * rnd(0, 0.15), size, anim: 'mp-pop', ms: 1400, dy: -10 * k, color });
+      break;
+  }
+}
+
+// ---------------------------------------------------------------
+// the glow around her
+
+let auraEl = null;
+function aura(feeling, power) {
+  const on = !!feeling && amount() !== 'off' && Fx.currentFx().mGlow !== false;
+  if (!auraEl && !on) return;
+  if (!auraEl) {
+    auraEl = document.createElement('div');
+    auraEl.className = 'mood-aura';
+    const box = host || document.body;
+    box.insertBefore(auraEl, box.firstChild);
+  }
+  const a = on && anchorFn();
+  if (!a) { auraEl.classList.remove('on'); return; }
+  for (const c of [...auraEl.classList]) if (c.startsWith('ma-')) auraEl.classList.remove(c);
+  auraEl.classList.add('ma-' + feeling, 'on');
+  const d = a.headW * (2.2 + power * 0.9);
+  auraEl.style.left = a.x + 'px';
+  auraEl.style.top = (a.y + a.headW * 0.15) + 'px';
+  auraEl.style.width = auraEl.style.height = d + 'px';
+  auraEl.style.setProperty('--ma-c', COLOR[feeling]);
+  auraEl.style.setProperty('--ma-o', ((0.18 + power * 0.32) * (amount() === 'lots' ? 1.3 : 1)).toFixed(2));
+}
+
+// ---------------------------------------------------------------
+// touches going on: one slot per hand ('press', 'rub', 'pin'), each
+// with its touch, start time and the point it's at. while any is on,
+// a little loop puffs the strongest feeling now and then: faster and
+// more at once the stronger it is
+
+const active = new Map();
+let loop = null, lastPuff = 0, shown = null, demo = null;
+function strongest() {
+  if (demo) {
+    const t = Date.now() - demo.t0;
+    if (t > demo.ms) { demo = null; return null; }
+    return { feeling: demo.feeling, power: demo.from + (demo.to - demo.from) * Math.min(1, t / demo.ms), at: null };
+  }
+  let best = null;
+  const now = Date.now();
+  for (const [slot, s] of active) {
+    // a rub is only going on while the mouse keeps moving (it may have
+    // left her window, where no more moves arrive)
+    if (s.stale && now - s.seen > s.stale) { active.delete(slot); continue; }
+    const f = feelingFor(s.kind, 'hold', Date.now() - s.t0);
+    if (f && (!best || f.power > best.power)) best = { ...f, at: s.at };
+  }
+  return best;
+}
+function tick() {
+  const f = amount() === 'off' ? null : strongest();
+  if (!f) {
+    aura(null);
+    shown = null;
+    if (!active.size && !demo) { clearInterval(loop); loop = null; }
+    return;
+  }
+  aura(f.feeling, f.power);
+  const now = Date.now();
+  const lots = amount() === 'lots';
+  const every = (1150 - f.power * 750) * (lots ? 0.65 : 1);
+  // a change of heart shows right away (a giggle turning into "enough!")
+  const changed = shown && shown !== f.feeling;
+  if (now - lastPuff < every && !changed) return;
+  lastPuff = now;
+  shown = f.feeling;
+  const n = 1 + (f.power > 0.55 ? 1 : 0) + (lots && f.power > 0.8 ? 1 : 0) + (changed ? 1 : 0);
+  for (let i = 0; i < n; i++) setTimeout(() => puff(f.feeling, f.power, f.at), i * 140);
+}
+function run() { if (!loop) loop = setInterval(tick, 120); tick(); }
+
+// stale: ms without news after which the touch is over (hover rubs)
+export function begin(slot, kind, t0 = Date.now(), at = null, stale = 0) {
+  if (!HOLDS[kind]) { end(slot); return; }
+  const s = active.get(slot);
+  // the same hand going on (a rub crossing from her head to an ear):
+  // the same touch, it keeps its length
+  if (s) { s.kind = kind; s.seen = Date.now(); if (at) s.at = at; return; }
+  active.set(slot, { kind, t0, at, stale, seen: Date.now() });
+  run();
+}
+// a hand left in place (desktop.js "two hands") takes its touch along
+export function move(from, to) {
+  const s = active.get(from);
+  if (!s) return;
+  active.delete(from);
+  s.stale = 0; // the hand left in place keeps going on its own
+  active.set(to, s);
+}
+export function at(slot, x, y) { const s = active.get(slot); if (s) { s.at = { x, y }; s.seen = Date.now(); } }
+export function end(slot) { active.delete(slot); }
+export function endAll() { active.clear(); demo = null; tick(); }
+
+// a single moment: a poke, a combo, "she wriggled free"
+export function burst(feeling, power = 0.7, where = null) {
+  if (amount() === 'off' || !COLOR[feeling]) return;
+  const lots = amount() === 'lots';
+  const n = 1 + (power > 0.5 ? 1 : 0) + (lots ? 1 : 0);
+  for (let i = 0; i < n; i++) setTimeout(() => puff(feeling, power, where), i * 150);
+  // a short glow when nothing longer is going on
+  if (!active.size && !demo) {
+    demo = { feeling, from: power, to: power, t0: Date.now(), ms: 900 };
+    run();
+  }
+}
+export function poke(kind, where = null) {
+  const f = feelingFor(kind, 'poke');
+  if (f) burst(f.feeling, f.power, where);
+  return f;
+}
+// a combo is a big moment: the feeling it fits, strong
+export function combo(id) {
+  const close = closeOf(ctx.stage);
+  let f = id === 'tickleattack' ? 'giggly' : id === 'tailtease' ? (close <= 1 ? 'notready' : 'flustered')
+    : close >= 3 ? 'loves' : close === 2 ? 'likes' : 'flustered';
+  f = byMood(f, close, ctx.mood);
+  burst(f, 0.95);
+  return f;
+}
+
+// the settings window's preview: a feeling for a while, its power going
+// from -> to (a build-up shows a long touch growing)
+export function preview(feeling, ms = 1800, from = 0.7, to = from) {
+  demo = { feeling, from, to, t0: Date.now(), ms };
+  lastPuff = 0;
+  shown = null;
+  run();
+}
+export function current() { const f = strongest(); return f ? f.feeling : null; }
+// which hands are on her right now (for tests)
+export function slots() { return [...active.entries()].map(([k, s]) => [k, s.kind]); }

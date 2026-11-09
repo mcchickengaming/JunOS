@@ -15,6 +15,8 @@ export const FX_DEFAULTS = {
   rShape: 'circle', rMotion: 'expand', rSize: 1, rSpeed: 1, rRings: 1, rWidth: 2, rHerPick: true,
   lBox: 'rounded', lFont: 'arial', lSize: 12, lAnim: 'pop', lBorder: 1, lAlpha: 1,
   eAscii: 'sometimes', eAnim: 'mix',
+  // how she feels about a touch (desktop/moods.js): off / some / lots, and the glow around her
+  mAmount: 'some', mGlow: true,
 };
 
 // [value, plain name] lists for the settings window

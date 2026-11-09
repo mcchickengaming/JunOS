@@ -134,6 +134,10 @@
   <div class="row"><div class="gesture">✨</div><div class="what"><b>Tickle, tickle, then her feet</b><span>A full tickle attack.</span></div></div>
   <div class="row"><div class="gesture">✨</div><div class="what"><b>Tail rub, then grab it</b><span>She'll pout at you.</span></div></div>
   <p class="hint">There may be more combos to find.</p>
+  <h2>How she feels about it</h2>
+  <div class="row"><div class="gesture">💗</div><div class="what"><b>Watch around her</b><span>Sweat drops and "!" when she isn't ready yet,
+    blush lines and steam when she's flustered, sparkles and notes when she likes it, hearts when she loves it, "hehe" and bubbles when it tickles.
+    A long touch builds up, and as you grow closer the same touch can turn from flustered into loved. Touch feedback tab: how much, and the colors.</span></div></div>
   <h2>Pokes (one click)</h2>
   <div class="row"><div class="gesture">👆</div><div class="what"><b>Head, cheek, nose, ear, shoulder, tail, hand, thigh, foot</b><span>Each one gets its own little reaction. Too many pokes and she gets annoyed.</span></div></div>
   <h2>Moving her</h2>
@@ -170,7 +174,7 @@
 </section>
 
 <section id="tab-feedback" hidden>
-  <p class="hint">How a touch looks: the ripple where you click, the little labels, and her thought icons. Click the preview to try it.
+  <p class="hint">How a touch looks: the ripple where you click, how she feels about it, the little labels, and her thought icons. Click the preview to try it.
     Changes reach her right away.</p>
   <div class="preview" id="preview"><div class="pv-head"></div><div class="emote" id="pvEmote"></div>
     <div class="action-label" id="pvLabel"></div><span class="pv-hint">Click anywhere in here</span></div>
@@ -179,6 +183,11 @@
     <button type="button" class="btn" id="pvHerBtn">Show one of her picks</button></div>
   <h2>Ripple</h2>
   <div id="rippleRows"></div>
+  <h2>How she feels</h2>
+  <p class="hint">Little effects around her that show how she takes a touch: not ready yet, flustered, likes it, loves it, or giggly.
+    It depends on the touch, how close you are, her mood, and how long it goes on. A long touch builds up, and they come out bigger as you grow closer.</p>
+  <div class="preview-btns" id="moodBtns"></div>
+  <div id="moodRows"></div>
   <h2>Labels</h2>
   <p class="hint">The quick ones ("Boop!", "Hug") and the steady one over a rub.</p>
   <div id="labelRows"></div>
@@ -251,6 +260,6 @@
   <p class="hint" id="saveNote"></p>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=15"></script>
+<script type="module" src="js/desktop-settings.js?v=18"></script>
 </body>
 </html>
