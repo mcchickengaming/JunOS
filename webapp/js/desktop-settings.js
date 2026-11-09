@@ -32,22 +32,32 @@ function writeTheme(t) {
 }
 
 // ---------------------------------------------------------------
-// tabs
+// the settings home: one section at a time, picked in the sidebar.
+// old tab names (openSettings('spots'), #feedback...) still land in the right place
 
+const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'help'];
+const OLD_TABS = { colors: ['visuals'], feedback: ['touch'], spots: ['desktop', 'at-spots'], size: ['desktop', 'at-size'] };
 const tabs = [...document.querySelectorAll('nav button')];
-function show(tab) {
-  if (!document.getElementById('tab-' + tab)) tab = 'help';
+let current = 'help';
+function show(tab, anchor) {
+  tab = String(tab || '');
+  if (OLD_TABS[tab]) [tab, anchor = anchor] = OLD_TABS[tab];
+  if (!SECTIONS.includes(tab)) tab = 'help';
+  current = tab;
   for (const b of tabs) b.classList.toggle('on', b.dataset.tab === tab);
-  for (const s of document.querySelectorAll('section')) s.hidden = s.id !== 'tab-' + tab;
-  if (tab === 'spots') loadSpots();
-  if (tab === 'feedback') { previewTheme(); setTimeout(pvAskSnap); }
-  if (tab === 'size') setTimeout(loadSize); // after this module has set itself up
+  for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== 'tab-' + tab;
+  if (tab === 'desktop') { loadSpots(); setTimeout(loadSize); loadDesk(); } // size after this module has set itself up
+  if (tab === 'touch') { previewTheme(); setTimeout(pvAskSnap); loadDesk(); }
+  if (tab === 'talk') loadDesk();
   if (tab === 'saves') setTimeout(loadSaves);
+  const el = anchor && document.getElementById(anchor);
+  if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 60);
+  else window.scrollTo(0, 0);
 }
-tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
-show(decodeURIComponent(location.hash.slice(1)) || 'help');
-D?.onSettingsTab?.((tab) => show(tab));
-window.addEventListener('hashchange', () => show(decodeURIComponent(location.hash.slice(1))));
+tabs.forEach(b => b.addEventListener('click', () => { clearSearch(); show(b.dataset.tab); }));
+D?.onSettingsTab?.((tab) => { clearSearch(); show(tab); });
+window.addEventListener('hashchange', () => { clearSearch(); show(decodeURIComponent(location.hash.slice(1))); });
+
 
 // ---------------------------------------------------------------
 // colors
@@ -539,11 +549,14 @@ function buildFeedback() {
       colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood')),
     row('Tsundere moments', 'As friends she won\'t admit she loves a touch: the hearts leak out while she hides them. '
       + 'Once you\'re close she sometimes gives up hiding. From partners on, nothing to hide.', checkOf('mTsun', 'mood')),
-    row('Anime tsundere talk', 'A "b-baka" now and then when she\'s secretly pleased. Not her at first: '
-      + 'she picks it up after enough anime together (watching it, talking about it), or if you ask her to be a tsundere.',
-      animeRow()),
     row('Comforted when she\'s down', 'A warm touch while she\'s upset or scared comforts her (friends and up).', checkOf('mComfort', 'mood')),
   );
+  // a habit she picks up, so it lives with the others in Her > Habits she's picked up
+  const habits = document.getElementById('habitRows');
+  habits.innerHTML = '';
+  habits.append(row('Anime tsundere talk', 'A "b-baka" now and then when she\'s secretly pleased. Not her at first: '
+    + 'she picks it up after enough anime together (watching it, talking about it), or if you ask her to be a tsundere.',
+    animeRow()));
   // her body showing it: on her on the desktop (the picture here can't move)
   const bodyHead = document.createElement('h3');
   bodyHead.className = 'sub';
@@ -859,3 +872,182 @@ $('saveOpen').addEventListener('click', () => D?.saves && savesCall('openDir'));
 $('saveKeep').addEventListener('change', () => D?.saves && savesCall('keep', $('saveKeep').value));
 $('updateNow').addEventListener('click', () => D?.saves && savesCall('update'));
 D?.onSavesChanged?.(() => { if (!$('tab-saves').hidden) loadSaves(); });
+
+// ---------------------------------------------------------------
+// "On the desktop" switches (they used to live only in the tray and Jun menu; the menus still have
+// the quick ones). kept in desktop.json by the app, through junDesktop.desk()
+
+let deskState = null;
+const DESK_ROWS = {
+  talkRows: [
+    ['quiet', 'Quiet mode on the desktop', 'Out on the desktop she doesn\'t wander or talk on her own. She still answers you.'],
+    ['talk', 'Talks about your touches', 'How often she says something about a touch on the desktop.'],
+  ],
+  touchRows: [
+    ['patFollow', 'Headpat: her head follows your hand', 'When you press and hold on her head and move the mouse.'],
+    ['hints', 'Touch hints', 'What shows where a click will do something.'],
+    ['showSpots', 'Show touch spots', 'A faint outline on every spot on her.'],
+    ['calibrate', 'Adjust touch spots', 'Drag the spots onto her, scroll to resize, untick one to switch it off, Ctrl+Z to undo. She holds still while you work.'],
+  ],
+  actRows: [
+    ['walk', 'Walks around', 'How often she wanders along the taskbar by herself.'],
+    ['doze', 'Dozes off when you\'re away', 'After how long without your mouse or keyboard.'],
+    ['watch', 'Looks at your mouse', 'How often she follows your cursor with her eyes.'],
+    ['sounds', 'Little sounds', 'Steps, landing, squeaks.'],
+  ],
+  windowRows: [
+    ['onTop', 'Keep her window on top', 'Her window stays above your other windows.'],
+    ['openAtStart', 'Open her window when Jun starts', 'Off: Jun starts in the tray by the clock.'],
+    ['startWithWindows', 'Start Jun with Windows', 'Jun wakes up when you turn on your PC.'],
+  ],
+};
+async function deskCall(action, key, value) {
+  if (!D?.desk) return;
+  deskState = await D.desk(action, key, value);
+  drawDesk();
+}
+function deskControl(key) {
+  const st = deskState;
+  const off = !st;
+  if (key === 'calibrate') {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.textContent = 'Adjust…'; b.disabled = off;
+    b.addEventListener('click', () => deskCall('calibrate'));
+    return b;
+  }
+  const top = ['onTop', 'openAtStart', 'startWithWindows'].includes(key);
+  const choices = st?.choices?.[key];
+  if (choices) {
+    const sel = document.createElement('select');
+    sel.className = 'btn';
+    for (const [v, name] of choices) {
+      const o = document.createElement('option');
+      o.value = String(v); o.textContent = name;
+      sel.appendChild(o);
+    }
+    sel.value = String(st.desk[key]);
+    sel.addEventListener('change', () => deskCall('set', key, sel.value));
+    return sel;
+  }
+  const c = document.createElement('input');
+  c.type = 'checkbox';
+  c.disabled = off || (key === 'startWithWindows' && !st.canStartWithWindows);
+  c.checked = !!(st && (top ? st[key] : st.desk[key]));
+  c.addEventListener('change', () => (top ? deskCall(key, null, c.checked) : deskCall('set', key, c.checked)));
+  return c;
+}
+function drawDesk() {
+  for (const [host, rows] of Object.entries(DESK_ROWS)) {
+    const el = document.getElementById(host);
+    if (!el) continue;
+    el.innerHTML = '';
+    for (const [key, title, hint] of rows) {
+      const r = row(title, hint, deskControl(key));
+      r.dataset.key = key;
+      if (!deskState) r.classList.add('off');
+      el.appendChild(r);
+    }
+  }
+  const note = document.getElementById('deskNote');
+  if (note) note.hidden = !!deskState;
+  if (searchBox.value.trim()) runSearch();
+}
+async function loadDesk() {
+  deskState = D?.desk ? await D.desk('get').catch(() => null) : null;
+  drawDesk();
+}
+D?.onDeskChanged?.((st) => { deskState = st; drawDesk(); });
+
+// ---------------------------------------------------------------
+// search over every setting: rows and headings in every section. a hit opens its section and
+// scrolls to it, so nothing has to move around to be found
+
+const searchBox = document.getElementById('setSearch');
+const NAMES = { her: 'Her', talk: 'Talking & voice', touch: 'Touch & feelings', desktop: 'On the desktop', visuals: 'Visuals', saves: 'Saves & updates', help: 'How to play' };
+const norm = (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
+function runSearch() {
+  const q = norm(searchBox.value);
+  const box = document.getElementById('resultRows');
+  box.innerHTML = '';
+  if (!q) return;
+  const words = q.split(' ');
+  const hits = [];
+  for (const sec of document.querySelectorAll('main > section')) {
+    const id = sec.id.replace('tab-', '');
+    if (!NAMES[id]) continue;
+    // in page order, so each row knows the (sub)heading above it
+    let h2 = '', h3 = '';
+    for (const el of sec.querySelectorAll('.row, h2, h3')) {
+      if (el.tagName === 'H2') { h2 = el.textContent.trim(); h3 = ''; }
+      else if (el.tagName === 'H3') h3 = el.textContent.trim();
+      if (el.closest('#gallery')) continue;
+      const isRow = el.matches('.row');
+      const title = (isRow ? el.querySelector('.what b')?.textContent : el.textContent || '').trim();
+      if (!title) continue;
+      const under = isRow ? [h2, h3].filter(Boolean).join(' › ') : (el.tagName === 'H3' ? h2 : '');
+      const text = norm(title + ' ' + (isRow ? el.querySelector('.what span')?.textContent || '' : '') + ' ' + under);
+      if (!words.every(w => text.includes(w))) continue;
+      const t = norm(title);
+      // a title that says it ranks first, then whole sections/headings, then the rest
+      const rank = words.every(w => t.includes(w)) ? (isRow ? 0 : 1) : 2;
+      hits.push({ id, el, title, where: NAMES[id] + (under ? ' › ' + under : ''), rank, n: hits.length });
+    }
+  }
+  hits.sort((a, b) => a.rank - b.rank || a.n - b.n);
+  for (const h of hits.slice(0, 40)) {
+    const r = document.createElement('div');
+    r.className = 'row res';
+    r.tabIndex = 0;
+    const what = document.createElement('div');
+    what.className = 'what';
+    const where = document.createElement('span');
+    where.className = 'where';
+    where.textContent = h.where;
+    const b = document.createElement('b');
+    b.textContent = h.title;
+    what.append(where, b);
+    r.appendChild(what);
+    const go = () => {
+      clearSearch();
+      show(h.id);
+      // some sections redraw their rows when they open, so find it again by its title
+      setTimeout(() => {
+        let el = h.el;
+        if (!el.isConnected) el = [...document.querySelectorAll('#tab-' + h.id + ' .row')].find(x => x.querySelector('.what b')?.textContent.trim() === h.title) || null;
+        if (!el) return;
+        el.scrollIntoView({ block: 'center' });
+        if (el.matches('.row')) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+      }, 150);
+    };
+    r.addEventListener('click', go);
+    r.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    box.appendChild(r);
+  }
+  document.getElementById('noResults').hidden = hits.length > 0;
+  document.getElementById('resultsHead').textContent = hits.length ? 'Found ' + hits.length + (hits.length === 1 ? ' setting' : ' settings') : 'Results';
+}
+function setSearching(on) {
+  for (const s of document.querySelectorAll('main > section')) s.hidden = on ? s.id !== 'tab-results' : s.id !== 'tab-' + current;
+  for (const b of tabs) b.classList.toggle('on', !on && b.dataset.tab === current);
+}
+function clearSearch() {
+  if (!searchBox.value) return;
+  searchBox.value = '';
+  setSearching(false);
+}
+searchBox.addEventListener('input', () => {
+  const on = !!searchBox.value.trim();
+  setSearching(on);
+  if (on) { loadDesk(); window.scrollTo(0, 0); }
+  runSearch();
+});
+searchBox.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { clearSearch(); searchBox.blur(); }
+  if (e.key === 'Enter') document.querySelector('#resultRows .res')?.click();
+});
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); searchBox.focus(); searchBox.select(); }
+});
+
+loadDesk();
+show(decodeURIComponent(location.hash.slice(1)) || 'help');

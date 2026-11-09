@@ -863,9 +863,11 @@ ipcMain.on('jun:menu', (e) => {
   Menu.buildFromTemplate(modeItems(true)).popup({ window: win });
 });
 // her main window's Settings > Memory has a button for the saves tab
+// old tab names keep working (the page maps them onto the new sections)
+const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'colors', 'feedback', 'spots', 'size'];
 ipcMain.on('jun:open-settings', (e, tab) => {
   if (!fromWin(e)) return;
-  openSettings(['saves', 'help', 'colors', 'feedback', 'spots', 'size'].includes(tab) ? tab : 'help');
+  openSettings(SETTINGS_TABS.includes(tab) ? tab : 'help');
 });
 ipcMain.on('jun:focus', (e, on) => {
   if (!fromWin(e)) return;
@@ -885,7 +887,7 @@ function openSettings(tab) {
     return;
   }
   settingsWin = new BrowserWindow({
-    width: 480, height: 700, minWidth: 380, minHeight: 420, title: 'Jun on the desktop', icon: ICON_PNG,
+    width: 480, height: 700, minWidth: 380, minHeight: 420, title: 'Jun settings', icon: ICON_PNG,
     backgroundColor: '#100d17', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
@@ -905,6 +907,36 @@ ipcMain.handle('jun:spots', (e, action, a, b, c) => {
   else if (action === 'stay') Props.stay(a || null);
   if (action !== 'list') rebuildMenus();
   return { spots: Props.list(), types: Props.types(), stay: cfg.stay || null };
+});
+
+// "On the desktop" switches, from the settings home (the same ones the tray and Jun menu have)
+const DESK_KEYS = {
+  quiet: 'bool', sounds: 'bool', showSpots: 'bool',
+  walk: WALK_CHOICES, doze: DOZE_CHOICES, watch: WATCH_CHOICES, talk: TALK_CHOICES, patFollow: PATFOLLOW_CHOICES,
+  hints: [['glow', 'Cursor icon and a soft glow'], ['cursor', 'Cursor icon only']],
+};
+function deskInfo() {
+  const choices = {};
+  for (const [k, t] of Object.entries(DESK_KEYS)) if (Array.isArray(t)) choices[k] = t;
+  return { desk: { ...cfg.desk }, choices, onTop: !!cfg.onTop, openAtStart: envDesktopOn(),
+    startWithWindows: process.platform === 'win32' && fs.existsSync(startupLink()), canStartWithWindows: process.platform === 'win32',
+    outside: winMode === 'stepout' };
+}
+ipcMain.handle('jun:desk', (e, action, key, value) => {
+  if (!fromSettings(e)) return null;
+  if (action === 'set' && DESK_KEYS[key]) {
+    const t = DESK_KEYS[key];
+    if (t === 'bool') cfg.desk[key] = !!value;
+    else { const hit = t.find(([v]) => String(v) === String(value)); if (hit) cfg.desk[key] = hit[0]; }
+    saveCfg(); sendSettings(); rebuildMenus();
+  } else if (action === 'onTop') setOnTop(!!value);
+  else if (action === 'openAtStart') setEnvDesktop(!!value);
+  else if (action === 'startWithWindows' && process.platform === 'win32') {
+    if (value) writeShortcut(startupLink());
+    else try { fs.unlinkSync(startupLink()); } catch (err) {}
+    rebuildTrayMenu();
+  } else if (action === 'calibrate') calibrate();
+  return deskInfo();
 });
 
 // her size, from the settings window's "Her size" tab
@@ -1048,6 +1080,8 @@ function spotsMenu() {
 function rebuildMenus() {
   rebuildTrayMenu();
   if (win && !win.isDestroyed() && winMode === 'window') win.setMenu(windowMenu());
+  // the settings window shows the same switches, keep it in step with the menus
+  if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('jun:desk-changed', deskInfo());
 }
 
 function sizeMenu() {

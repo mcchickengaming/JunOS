@@ -44,6 +44,11 @@ contextBridge.exposeInMainWorld('junDesktop', {
   onSettingsTab: on('jun:settings-tab'),
   // her size: action 'get' | 'set' (slider moving) | 'done' | 'growFx'
   size: (action, value) => ipcRenderer.invoke('jun:size', action, value),
+  // "On the desktop" switches for the settings home: action 'get' | 'set' (key, value) |
+  // 'onTop' | 'openAtStart' | 'startWithWindows' (value) | 'calibrate'
+  desk: (action, key, value) => ipcRenderer.invoke('jun:desk', String(action), key == null ? null : String(key),
+    typeof value === 'boolean' || typeof value === 'number' ? value : value == null ? null : String(value)),
+  onDeskChanged: on('jun:desk-changed'),
   onCommand: on('jun:command'),
   // save points + the update (settings window "Saves & updates" tab):
   // action 'get' | 'save' (name) | 'restore' (file) | 'delete' (file) |

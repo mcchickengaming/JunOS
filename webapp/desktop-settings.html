@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jun on the desktop</title>
+<title>Jun settings</title>
 <link rel="icon" type="image/png" href="jun_os.png">
 <!-- the desktop app's settings window (desktop/main.js openSettings):
      how to play with her, her colors, her spots. the color picker is
@@ -11,15 +11,38 @@
 <link rel="stylesheet" href="css/pages/wardrobe.css?v=3">
 <style>
   body { overflow: auto; padding: 0 0 24px; }
-  header { padding: 18px 20px 8px; }
-  h1 { margin: 0; font: 600 20px/1.2 var(--serif); }
+  /* the settings home: a sidebar when there's room, a row of icons along the top in the small window */
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 16px 8px; }
+  h1 { margin: 0; font: 600 20px/1.2 var(--serif); flex: 0 0 auto; }
+  #setSearch { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 18px; border: 1px solid var(--border-2); background: var(--bg-2); color: var(--fg); font: inherit; }
+  #setSearch:focus { outline: none; border-color: var(--accent); }
   .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
   h3.sub { margin: 16px 0 6px; color: var(--fg); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-  nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 2; }
-  nav button { border: 0; background: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; }
-  nav button.on { color: var(--fg); background: var(--bg-3); }
+  .home { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: start; }
+  nav { --nav-h: 0px; position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px; max-height: 100vh; overflow: auto; z-index: 4; }
+  nav button { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: var(--muted); padding: 9px 10px; border-radius: 8px; text-align: left; cursor: pointer; font: inherit; }
+  nav button i { font-style: normal; width: 22px; text-align: center; font-size: 17px; }
+  nav button:hover { color: var(--fg); background: var(--bg-2); }
+  nav button.on { color: var(--fg); background: var(--bg-3); box-shadow: inset 3px 0 0 var(--accent); }
+  nav .nav-help { margin-top: 10px; border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; padding-top: 12px; }
+  main { min-width: 0; --top: 0px; }
+  @media (max-width: 620px) {
+    .home { display: block; }
+    nav { flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; padding: 6px 8px; gap: 2px; background: var(--bg); border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+    nav button { flex-direction: column; gap: 2px; padding: 6px 8px; min-width: 62px; font-size: 11px; line-height: 1.15; text-align: center; }
+    nav button i { width: auto; font-size: 18px; }
+    nav button.on { box-shadow: inset 0 -3px 0 var(--accent); }
+    nav .nav-help { margin: 0 0 0 auto; border: 0; border-radius: 8px; padding-top: 6px; }
+    main { --top: 72px; }
+  }
   section { padding: 12px 20px; }
   section[hidden] { display: none; }
+  .row.flash { animation: row-flash 1.6s ease-out; }
+  @keyframes row-flash { 0%, 30% { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); } }
+  .row.off { opacity: .55; }
+  .res { cursor: pointer; }
+  .res:hover { border-color: var(--accent); }
+  .res .where { display: block; font-size: 11.5px; color: var(--accent); margin-bottom: 2px; }
   h2 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
   .row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin: 6px 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; }
   .row .what { flex: 1; min-width: 0; }
@@ -45,7 +68,7 @@
   /* touch feedback preview: a little piece of desktop. the same variables as desktop.html's :root,
      so the theme's colors (set inline by js) mix the same way here */
   /* clip-path also clips the fixed-position effects inside it (overflow doesn't), so nothing floats out over the tabs */
-  .preview { position: sticky; top: 0; z-index: 3; height: 170px; margin: 4px 0 10px; border-radius: 12px; overflow: hidden; cursor: crosshair; clip-path: inset(0 round 12px);
+  .preview { position: sticky; top: var(--top, 0px); z-index: 3; height: 170px; margin: 4px 0 10px; border-radius: 12px; overflow: hidden; cursor: crosshair; clip-path: inset(0 round 12px);
     border: 1px solid var(--border-2); background: linear-gradient(135deg, #2b3a55, #1c2238 55%, #3a2a48);
     --panel: #191233; --accent: #ec0054; --ink: #ffffff; --bubble: #191233; --bubble-edge: #ec0054; --bubble-a: 1; --edge-a: 1; --outline: none;
     --bubble-bg: color-mix(in srgb, var(--bubble) calc(var(--bubble-a) * 100%), transparent);
@@ -102,67 +125,48 @@
 </head>
 <body>
 <header>
-  <h1>Jun on the desktop</h1>
-  <p class="sub">How to play with her, her colors, how her touches look, her spots, her size, her saves and updates.</p>
+  <h1>Settings</h1>
+  <input type="search" id="setSearch" placeholder="Search all settings" aria-label="Search all settings" autocomplete="off">
 </header>
-<nav>
-  <button type="button" data-tab="help">How to play</button>
-  <button type="button" data-tab="colors">Colors</button>
-  <button type="button" data-tab="feedback">Touch feedback</button>
-  <button type="button" data-tab="spots">Her spots</button>
-  <button type="button" data-tab="size">Her size</button>
-  <button type="button" data-tab="saves">Saves &amp; updates</button>
+<div class="home">
+<nav aria-label="Settings sections">
+  <button type="button" data-tab="her"><i>💗</i><span>Her</span></button>
+  <button type="button" data-tab="talk"><i>💬</i><span>Talking &amp; voice</span></button>
+  <button type="button" data-tab="touch"><i>✋</i><span>Touch &amp; feelings</span></button>
+  <button type="button" data-tab="desktop"><i>🖥️</i><span>On the desktop</span></button>
+  <button type="button" data-tab="visuals"><i>🎨</i><span>Visuals</span></button>
+  <button type="button" data-tab="saves"><i>💾</i><span>Saves &amp; updates</span></button>
+  <button type="button" data-tab="help" class="nav-help"><i>❓</i><span>How to play</span></button>
 </nav>
-
-<section id="tab-help" hidden>
-  <p class="hint">Move your mouse over her: the cursor and a soft glow show what a click will do there.</p>
-  <h2>Touch</h2>
-  <div class="row"><div class="gesture">✋</div><div class="what"><b>Headpat</b><span>Press and hold on the top of her head, then move the mouse left and right: the hand follows and her head goes with it. Or just rub back and forth over her head without clicking. Jun menu &gt; On the desktop &gt; Headpat sets how much her head follows.</span></div></div>
-  <div class="row"><div class="gesture">✋</div><div class="what"><b>Ear rub</b><span>Rub back and forth over one of her ears.</span></div></div>
-  <div class="row"><div class="gesture">✋</div><div class="what"><b>Foot rub</b><span>Press and hold on one of her feet.</span></div></div>
-  <div class="row"><div class="gesture">🪶</div><div class="what"><b>Foot tickle</b><span>Without clicking, wiggle the mouse quickly in small back-and-forths over her foot. Until you two are close she may pull her foot away.</span></div></div>
-  <div class="row"><div class="gesture">👆</div><div class="what"><b>Thigh rub</b><span>Rub back and forth over her thigh.</span></div></div>
-  <div class="row"><div class="gesture">🤏</div><div class="what"><b>Tickle</b><span>Wiggle quickly over her side, or click it.</span></div></div>
-  <div class="row"><div class="gesture">🤝</div><div class="what"><b>Hold her hand</b><span>Press and hold on her hand. Let go to let go.</span></div></div>
-  <div class="row"><div class="gesture">💬</div><div class="what"><b>Hug</b><span>Press and hold on her middle (her torso).</span></div></div>
-  <div class="row"><div class="gesture">✋</div><div class="what"><b>Tail rub</b><span>Rub back and forth over her tail.</span></div></div>
-  <div class="row"><div class="gesture">✊</div><div class="what"><b>Tail grab</b><span>Press and hold on her tail.</span></div></div>
-  <div class="row"><div class="gesture">🤏</div><div class="what"><b>Thigh squish</b><span>Press and hold on her thigh. How she takes it depends on how close you two are. Move quickly instead and you pick her up.</span></div></div>
-  <h2>Two hands</h2>
-  <div class="row"><div class="gesture">🖐️</div><div class="what"><b>Leave a hand there</b><span>While holding or rubbing, tap Shift
-    (or right-click). That hand stays and keeps going, your mouse is free for a second touch. Click the little hand,
-    or Shift / Esc, to lift it.</span></div></div>
-  <div class="row"><div class="gesture">✨</div><div class="what"><b>Two-hand combos</b><span>Hold both her hands. A hug with a
-    headpat. Both ears at once. Her tail and her head.</span></div></div>
-  <h2>Combos (one after the other, quickly)</h2>
-  <div class="row"><div class="gesture">✨</div><div class="what"><b>Tail grab, then a headpat</b><span>She melts.</span></div></div>
-  <div class="row"><div class="gesture">✨</div><div class="what"><b>Hold her hand, then a hug</b><span>Hearts everywhere.</span></div></div>
-  <div class="row"><div class="gesture">✨</div><div class="what"><b>Ear rub, then a headpat</b><span>Drowsy and content.</span></div></div>
-  <div class="row"><div class="gesture">✨</div><div class="what"><b>Headpat, then a nose boop</b><span>A giggle.</span></div></div>
-  <div class="row"><div class="gesture">✨</div><div class="what"><b>Tickle, tickle, then her feet</b><span>A full tickle attack.</span></div></div>
-  <div class="row"><div class="gesture">✨</div><div class="what"><b>Tail rub, then grab it</b><span>She'll pout at you.</span></div></div>
-  <p class="hint">There may be more combos to find.</p>
-  <h2>How she feels about it</h2>
-  <div class="row"><div class="gesture">💗</div><div class="what"><b>Watch around her</b><span>Sweat drops and "!" when she isn't ready yet,
-    blush lines and steam when she's flustered, sparkles and notes when she likes it, hearts when she loves it, "hehe" and bubbles when it tickles.
-    A long touch builds up, and as you grow closer the same touch can turn from flustered into loved. Touch feedback tab: how much, and the colors.</span></div></div>
-  <h2>Pokes (one click)</h2>
-  <div class="row"><div class="gesture">👆</div><div class="what"><b>Head, cheek, nose, ear, shoulder, tail, hand, thigh, foot</b><span>Each one gets its own little reaction. Too many pokes and she gets annoyed.</span></div></div>
-  <h2>Moving her</h2>
-  <div class="row"><div class="gesture">✊</div><div class="what"><b>Pick her up</b><span>Click and drag her body (pressing on her head is a headpat). Let go to drop her on the taskbar, or onto one of her spots.</span></div></div>
-  <div class="row"><div class="gesture">🤾</div><div class="what"><b>Throw her</b><span>Let go while the mouse is still moving.</span></div></div>
-  <div class="row"><div class="gesture">📏</div><div class="what"><b>Make her bigger or smaller</b><span>The Her size tab here, or Jun menu &gt; Her size on the desktop. She grows or shrinks right where she stands.</span></div></div>
-  <div class="row"><div class="gesture">👋</div><div class="what"><b>Wave back</b><span>When she waves, wiggle your mouse near her.</span></div></div>
-  <h2>Talking</h2>
-  <div class="row"><div class="gesture">💬</div><div class="what"><b>Chat</b><span>Click her torso, legs or anywhere without its own reaction. Double-click to send her back inside.</span></div></div>
-  <div class="row"><div class="gesture">🖱️</div><div class="what"><b>Her menu</b><span>Right-click her: talk, spots, go back inside, hide.</span></div></div>
-  <h2>Touch spots</h2>
-  <div class="row"><div class="gesture">⭕</div><div class="what"><b>See them</b><span>Jun menu &gt; On the desktop &gt; Show touch spots puts a faint outline on every spot.</span></div></div>
-  <div class="row"><div class="gesture">🎯</div><div class="what"><b>Move them</b><span>Jun menu &gt; On the desktop &gt; Adjust touch spots. Drag, scroll to resize, untick a spot to switch it off, Ctrl+Z to undo. She holds still while you work.</span></div></div>
-  <div class="row"><div class="gesture">✋</div><div class="what"><b>Her tail</b><span>Its spot is the tail itself, wherever it swings. It holds still while your hand is on it.</span></div></div>
+<main>
+<section id="tab-results" hidden>
+  <h2 id="resultsHead">Results</h2>
+  <div id="resultRows"></div>
+  <p class="hint" id="noResults" hidden>Nothing found. Try another word, like "tail", "color" or "size".</p>
 </section>
 
-<section id="tab-colors" hidden>
+<section id="tab-her" hidden>
+  <p class="hint">Who she is with you: what she's picked up from you so far, your bond, her memories.</p>
+  <h2>Habits she's picked up</h2>
+  <p class="hint">Little things she catches from you over time, from what you watch, talk about and do together. They come in slowly, now and then.</p>
+  <div id="habitRows"></div>
+  <h2>Bond, touches and memories</h2>
+  <p class="hint">Still in her window for now (Settings &gt; Memory). They move here in the next update.</p>
+</section>
+
+<section id="tab-talk" hidden>
+  <p class="hint">How she talks with you.</p>
+  <h2>She speaks up on her own</h2>
+  <p class="hint">Separate switches, so you can have her chatty in one place and quiet in another.</p>
+  <div id="talkRows"></div>
+  <p class="hint">"Silence idle nudges" (her window &gt; Settings &gt; Developer) moves here in the next update, next to these.</p>
+  <h2>Voice and microphone</h2>
+  <p class="hint">Still in her window for now (Settings &gt; Voice). They move here in the next update.</p>
+</section>
+
+
+<section id="tab-visuals" hidden>
+  <h2>Colors</h2>
   <p class="hint">Click a color wheel to pick. Right-click it to go back to the default.</p>
   <div id="colorRows"></div>
   <h2>See-through</h2>
@@ -181,17 +185,19 @@
   <p><button type="button" class="btn danger" id="resetColors">Reset all colors</button></p>
 </section>
 
-<section id="tab-feedback" hidden>
-  <p class="hint">How a touch looks: the ripple where you click, how she feels about it, the little labels, and her thought icons. Click the preview to try it.
+<section id="tab-touch" hidden>
+  <p class="hint">How touching her works and looks: the ripple where you click, how she feels about it, the little labels, and her thought icons. Click the preview to try it.
     Changes reach her right away.</p>
   <div class="preview" id="preview"><div class="pv-head"></div><img class="pv-her" id="pvHer" alt="" hidden><div class="emote" id="pvEmote"></div>
     <div class="action-label" id="pvLabel"></div><span class="pv-hint">Click anywhere in here</span></div>
   <div class="preview-btns"><button type="button" class="btn" id="pvLabelBtn">Show a label</button>
     <button type="button" class="btn" id="pvIconBtn">Show an icon</button>
     <button type="button" class="btn" id="pvHerBtn">Show one of her picks</button></div>
-  <h2>Ripple</h2>
+  <h2 id="at-touch">Touch</h2>
+  <div id="touchRows"></div>
+  <h2 id="at-ripple">Ripple</h2>
   <div id="rippleRows"></div>
-  <h2>How she feels</h2>
+  <h2 id="at-feel">How she feels</h2>
   <p class="hint">Little effects around her that show how she takes a touch: not ready yet, flustered, likes it, loves it, or giggly.
     It depends on the touch, how close you are, her mood, and how long it goes on. A long touch builds up, and they come out bigger as you grow closer.</p>
   <div class="preview-btns" id="moodBtns"></div>
@@ -206,18 +212,10 @@
   <p><button type="button" class="btn danger" id="resetFx">Reset touch feedback</button></p>
 </section>
 
-<section id="tab-spots" hidden>
-  <p class="hint">A spot gives her a place to stay out of your way. Drag a spot to move it, right-click it for more. Drop her onto a spot and she'll stay there.</p>
-  <h2>Add a spot</h2>
-  <div class="adds" id="spotAdds"></div>
-  <h2>Her spots</h2>
-  <div id="spotRows"></div>
-  <p class="hint" id="noSpots">No spots yet.</p>
-  <h2>Where she stays</h2>
-  <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
-</section>
-
-<section id="tab-size" hidden>
+<section id="tab-desktop" hidden>
+  <p class="hint">Jun out on your desktop: how big she is, how she acts out there, her spots, and her window.</p>
+  <p class="hint" id="deskNote" hidden>Open this from the Jun desktop app to change these.</p>
+  <h2 id="at-size">Her size</h2>
   <p class="hint">How tall she stands on your desktop, as a share of your screen's height, so she looks the same size on any monitor.</p>
   <div class="size-box">
     <div class="size-pic"><div class="size-screen"><div class="size-jun" id="sizeJun"></div></div></div>
@@ -229,9 +227,22 @@
   </div>
   <div class="adds" id="sizeQuick"></div>
   <p class="hint" id="sizeNote"></p>
-  <h2>What grows with her</h2>
+  <h3 class="sub">What grows with her</h3>
   <div class="row"><div class="what"><b>Touch feedback grows with her</b><span>Ripples, labels, thought bubbles, the hold ring and the cursor icons get bigger and smaller with her. Off: they stay one size.</span></div><input type="checkbox" id="growFx"></div>
   <p class="hint">Her walk, her hop, throwing her and her spots always follow her size.</p>
+  <h2 id="at-acts">How she acts</h2>
+  <div id="actRows"></div>
+  <h2 id="at-spots">Her spots</h2>
+  <p class="hint">A spot gives her a place to stay out of your way. Drag a spot to move it, right-click it for more. Drop her onto a spot and she'll stay there.</p>
+  <h3 class="sub">Add a spot</h3>
+  <div class="adds" id="spotAdds"></div>
+  <h3 class="sub">Spots you've placed</h3>
+  <div id="spotRows"></div>
+  <p class="hint" id="noSpots">No spots yet.</p>
+  <h3 class="sub">Where she stays</h3>
+  <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
+  <h2 id="at-window">Her window</h2>
+  <div id="windowRows"></div>
 </section>
 
 <section id="tab-saves" hidden>
@@ -268,6 +279,56 @@
   <p class="hint" id="saveNote"></p>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=29"></script>
+<section id="tab-help" hidden>
+  <p class="hint">Move your mouse over her: the cursor and a soft glow show what a click will do there.</p>
+  <h2>Touch</h2>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>Headpat</b><span>Press and hold on the top of her head, then move the mouse left and right: the hand follows and her head goes with it. Or just rub back and forth over her head without clicking. Settings &gt; Touch &amp; feelings &gt; Touch sets how much her head follows.</span></div></div>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>Ear rub</b><span>Rub back and forth over one of her ears.</span></div></div>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>Foot rub</b><span>Press and hold on one of her feet.</span></div></div>
+  <div class="row"><div class="gesture">🪶</div><div class="what"><b>Foot tickle</b><span>Without clicking, wiggle the mouse quickly in small back-and-forths over her foot. Until you two are close she may pull her foot away.</span></div></div>
+  <div class="row"><div class="gesture">👆</div><div class="what"><b>Thigh rub</b><span>Rub back and forth over her thigh.</span></div></div>
+  <div class="row"><div class="gesture">🤏</div><div class="what"><b>Tickle</b><span>Wiggle quickly over her side, or click it.</span></div></div>
+  <div class="row"><div class="gesture">🤝</div><div class="what"><b>Hold her hand</b><span>Press and hold on her hand. Let go to let go.</span></div></div>
+  <div class="row"><div class="gesture">💬</div><div class="what"><b>Hug</b><span>Press and hold on her middle (her torso).</span></div></div>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>Tail rub</b><span>Rub back and forth over her tail.</span></div></div>
+  <div class="row"><div class="gesture">✊</div><div class="what"><b>Tail grab</b><span>Press and hold on her tail.</span></div></div>
+  <div class="row"><div class="gesture">🤏</div><div class="what"><b>Thigh squish</b><span>Press and hold on her thigh. How she takes it depends on how close you two are. Move quickly instead and you pick her up.</span></div></div>
+  <h2>Two hands</h2>
+  <div class="row"><div class="gesture">🖐️</div><div class="what"><b>Leave a hand there</b><span>While holding or rubbing, tap Shift
+    (or right-click). That hand stays and keeps going, your mouse is free for a second touch. Click the little hand,
+    or Shift / Esc, to lift it.</span></div></div>
+  <div class="row"><div class="gesture">✨</div><div class="what"><b>Two-hand combos</b><span>Hold both her hands. A hug with a
+    headpat. Both ears at once. Her tail and her head.</span></div></div>
+  <h2>Combos (one after the other, quickly)</h2>
+  <div class="row"><div class="gesture">✨</div><div class="what"><b>Tail grab, then a headpat</b><span>She melts.</span></div></div>
+  <div class="row"><div class="gesture">✨</div><div class="what"><b>Hold her hand, then a hug</b><span>Hearts everywhere.</span></div></div>
+  <div class="row"><div class="gesture">✨</div><div class="what"><b>Ear rub, then a headpat</b><span>Drowsy and content.</span></div></div>
+  <div class="row"><div class="gesture">✨</div><div class="what"><b>Headpat, then a nose boop</b><span>A giggle.</span></div></div>
+  <div class="row"><div class="gesture">✨</div><div class="what"><b>Tickle, tickle, then her feet</b><span>A full tickle attack.</span></div></div>
+  <div class="row"><div class="gesture">✨</div><div class="what"><b>Tail rub, then grab it</b><span>She'll pout at you.</span></div></div>
+  <p class="hint">There may be more combos to find.</p>
+  <h2>How she feels about it</h2>
+  <div class="row"><div class="gesture">💗</div><div class="what"><b>Watch around her</b><span>Sweat drops and "!" when she isn't ready yet,
+    blush lines and steam when she's flustered, sparkles and notes when she likes it, hearts when she loves it, "hehe" and bubbles when it tickles.
+    A long touch builds up, and as you grow closer the same touch can turn from flustered into loved. Touch &amp; feelings: how much, and the colors.</span></div></div>
+  <h2>Pokes (one click)</h2>
+  <div class="row"><div class="gesture">👆</div><div class="what"><b>Head, cheek, nose, ear, shoulder, tail, hand, thigh, foot</b><span>Each one gets its own little reaction. Too many pokes and she gets annoyed.</span></div></div>
+  <h2>Moving her</h2>
+  <div class="row"><div class="gesture">✊</div><div class="what"><b>Pick her up</b><span>Click and drag her body (pressing on her head is a headpat). Let go to drop her on the taskbar, or onto one of her spots.</span></div></div>
+  <div class="row"><div class="gesture">🤾</div><div class="what"><b>Throw her</b><span>Let go while the mouse is still moving.</span></div></div>
+  <div class="row"><div class="gesture">📏</div><div class="what"><b>Make her bigger or smaller</b><span>Settings &gt; On the desktop &gt; Her size, or the quick picks in the Jun menu. She grows or shrinks right where she stands.</span></div></div>
+  <div class="row"><div class="gesture">👋</div><div class="what"><b>Wave back</b><span>When she waves, wiggle your mouse near her.</span></div></div>
+  <h2>Talking</h2>
+  <div class="row"><div class="gesture">💬</div><div class="what"><b>Chat</b><span>Click her torso, legs or anywhere without its own reaction. Double-click to send her back inside.</span></div></div>
+  <div class="row"><div class="gesture">🖱️</div><div class="what"><b>Her menu</b><span>Right-click her: talk, spots, go back inside, hide.</span></div></div>
+  <h2>Touch spots</h2>
+  <div class="row"><div class="gesture">⭕</div><div class="what"><b>See them</b><span>Settings &gt; Touch &amp; feelings &gt; Touch &gt; Show touch spots puts a faint outline on every spot.</span></div></div>
+  <div class="row"><div class="gesture">🎯</div><div class="what"><b>Move them</b><span>Settings &gt; Touch &amp; feelings &gt; Touch &gt; Adjust touch spots. Drag, scroll to resize, untick a spot to switch it off, Ctrl+Z to undo. She holds still while you work.</span></div></div>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>Her tail</b><span>Its spot is the tail itself, wherever it swings. It holds still while your hand is on it.</span></div></div>
+</section>
+</main>
+</div>
+
+<script type="module" src="js/desktop-settings.js?v=31"></script>
 </body>
 </html>

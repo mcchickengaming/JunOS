@@ -231,6 +231,18 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   4 min the dialog shows the log's last lines (`wakeTail`) and the app closes. Logs:
   `runtime\logs\desktop-saves.log`, `desktop-relaunch.log`. Tests: `.github/scripts/js/saves.test.mjs` (needs php).
 
+- **Settings home** (tidy part A, in progress; map in the claude.ai project doc `claude/next-tidy-settings-and-habits.md`):
+  `webapp/desktop-settings.html` is now ONE settings home with a sidebar (an icon row under 620 px) and a search box
+  (Ctrl+F; every `.row` and h2/h3 in every section is searchable, a hit opens its section and flashes the row).
+  Sections: her, talk, touch, desktop, visuals, saves, help (`SECTIONS`); old tab names map in `OLD_TABS`
+  (colors → visuals, feedback → touch, spots/size → desktop + anchor), and main.js `SETTINGS_TABS` accepts both.
+  The "On the desktop" switches that used to be menu-only (quiet, talk, patFollow, hints, showSpots, calibrate, walk,
+  doze, watch, sounds, keep on top, open at start, start with Windows) are rows via `junDesktop.desk()` → main.js
+  `jun:desk` (`DESK_KEYS` validates; `rebuildMenus` pushes `jun:desk-changed` so window and menus stay in step).
+  Settings stay stored where they were (localStorage, desktop.json, .env, server). Anime tsundere talk moved to
+  Her > Habits she's picked up (`#habitRows`, part B's page). Next steps: her main window's settings move in, the
+  tray/Jun menu get trimmed to quick actions, "Dates" becomes a "Do something together" button in her window.
+
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings
 page using the closet's picker (`makeItemColorButton` from `js/wardrobe/color-picker.js`), like
