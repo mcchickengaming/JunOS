@@ -7,7 +7,7 @@ $userId = (int)$user['id'];
 
 if (require_method('GET', 'PUT') === 'GET') {
     json_out(($_GET['action'] ?? '') === 'history' ? relationship_history($userId)
-        : relationship_get($userId) + ['bond' => bond_get($userId)]);
+        : relationship_get($userId) + ['bond' => bond_get($userId), 'quirks' => quirks_client($userId)]);
 }
 
 require_admin();

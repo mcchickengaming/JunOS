@@ -17,8 +17,8 @@ import * as ChatAPI from './core/chat-api.js?v=8';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
-import * as Gauges from './core/speech-card.js?v=24';
-import { configureTts, say } from './core/speech-card.js?v=24';
+import * as Gauges from './core/speech-card.js?v=25';
+import { configureTts, say } from './core/speech-card.js?v=25';
 import { localTimeString } from './core/util.js?v=1';
 import * as Actions from './live2d/actions.js?v=104';
 import { fitModel } from './live2d/camera.js?v=78';
@@ -27,8 +27,8 @@ import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
 import * as Body from './desktop/body.js?v=42';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=7';
-import * as Moods from './desktop/moods.js?v=9';
+import * as Fx from './desktop/fx.js?v=8';
+import * as Moods from './desktop/moods.js?v=10';
 import * as FeelBody from './desktop/feelbody.js?v=5';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 
@@ -661,7 +661,7 @@ async function refreshMood() {
   const m = moodTier({ affection: Gauges.affection, trust: Gauges.trust, tension: Gauges.tension });
   const part = daypart();
   Body.setMood(m, part);
-  Moods.setContext({ stage: Gauges.bondStage, mood: m });
+  Moods.setContext({ stage: Gauges.bondStage, mood: m, animeTsun: !!Gauges.quirks?.anime_tsundere?.active });
   pace = {
     happy: { speed: 1.2, hop: 6 }, neutral: { speed: 1, hop: 4 }, nervous: { speed: 1.05, hop: 3 },
     upset: { speed: 0.8, hop: 2 }, scared: { speed: 0.85, hop: 2 },

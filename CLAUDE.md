@@ -55,6 +55,7 @@ php .github/scripts/lib.test.php
 php .github/scripts/migrations.test.php
 php .github/scripts/bond.test.php
 php .github/scripts/touch.test.php
+php .github/scripts/quirks.test.php
 ```
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
 temp sqlite, real migrations, stubbed app functions) and a step in `.github/workflows/ci.yml`.
@@ -151,6 +152,18 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   glance back, ears twitch, and her tail wags anyway) and **comforted** (`byMood`: upset/scared + a WARM touch, Friend+;
   a tear that turns into a heart, "sniff…"/"thanks…", `[RESTORED]`; body: soft low ears, half-happy eyes, slow calm
   tail). Switches `mTsun`, `mComfort` (desktop.fx). Colors `--mood-secret`, `--mood-comforted`.
+- **Things she picks up (quirks)** (`webapp/api/lib/quirks.php`, migration 031 `quirks`, `JUN_QUIRKS`): habits she
+  catches from him over time, not part of her from the start. `QUIRKS` defines each: a `mention` regex on his messages
+  (+1) and on watch-together titles (+`watch_points`), a daily cap, `need_points` over `need_days` days at `min_stage`
+  or more → state `picked` (memory note + a one-time "this is new" line in her prompt, then a short standing line);
+  `ask_on` / `ask_off` regexes → `asked` / `stopped` (stopped stays until he asks again). Hooked in chat.php after the
+  bond award (his own turns and watch turns, never ephemeral ones), `quirks_context` after the touch block (a replay
+  doesn't use up the one-time line), `relationship.php` GET carries `quirks` → speech-card.js `Gauges.quirks` →
+  desktop `Moods.setContext({ animeTsun })`. The first quirk, `anime_tsundere` (owner, Nov 8: "baka" is out of
+  character for Jun unless she caught it from anime with him or he asked): 12 points, 3 days, Friend+, 4 a day. On
+  the desktop her "secretly loves it" lines are her own dry ones (`HMPH`); `HMPH_ANIME` ("b-baka") and `[BAKA.exe]`
+  only once she has it, or per the owner's pick `mAnime` auto/on/off (Touch feedback > How she feels > Anime
+  tsundere talk, which also shows where she is with it). In the factory-reset list. Tests: `quirks.test.php`.
 - **Her body shows the feeling** (`webapp/js/desktop/feelbody.js`, desktop only, wired in js/desktop.js via
   `Moods.setBody(FeelBody)`): moods.js `tick` calls `show(feeling, power)` every 120 ms while a feeling is on (even with
   the effects amount off; the body has its own switch) and `after(feeling, power, side)` once when it ends (side = where

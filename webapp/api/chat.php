@@ -60,6 +60,11 @@ $rel = relationship_get((int)$user['id']);
 // turns or replays, not time he spent with her.
 $bondEligible = !$req['idle'] && !$req['regenerate'] && !$req['ephemeral'] && $req['watch'] === null;
 if ($bondEligible) bond_award((int)$user['id'], bond_xp_for_message($lastUserMsg), 'message');
+// little habits she picks up from him (lib/quirks.php): his own turns and
+// what they watch together, never her replays or the desktop's asides
+if (($bondEligible || $req['watch'] !== null) && !$req['ephemeral']) {
+    quirks_on_turn((int)$user['id'], $bondEligible ? $lastUserMsg : '', (string)($req['watch']['title'] ?? ''), touch_local((int)($req['tz'] ?? 0))['day']);
+}
 $liveContext = chat_live_context($req, $user, $lastUserMsg, $convSummary, $rel, $toolsOffered, $approvedWebSearchQuery);
 $systemContent = chat_system_content($toolsOffered, (int)$user['id']);
 $messages = chat_build_messages($req, $systemContent, $liveContext, $summaryCoveredCount);

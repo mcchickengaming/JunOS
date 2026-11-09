@@ -1,4 +1,4 @@
-import { affection, buildCard, configureTts, fetchGauges, openMood, present, refreshGauges, speakLine, trust, tension } from '../core/speech-card.js?v=24';
+import { affection, buildCard, configureTts, fetchGauges, openMood, present, refreshGauges, speakLine, trust, tension } from '../core/speech-card.js?v=25';
 import { gaugeTier } from '../core/mood-tier.js?v=2';
 import { hooks } from '../outfit/hooks.js?v=1';
 import { OPEN_LINES } from './open-lines.js?v=1';

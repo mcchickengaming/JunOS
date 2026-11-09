@@ -16,6 +16,7 @@ require_once __DIR__ . '/trips.php';
 require_once __DIR__ . '/relationship.php';
 require_once __DIR__ . '/bond.php';
 require_once __DIR__ . '/touch.php';
+require_once __DIR__ . '/quirks.php';
 require_once __DIR__ . '/achievements.php';
 require_once __DIR__ . '/providers/config.php';
 require_once __DIR__ . '/providers/ollama.php';

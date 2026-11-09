@@ -15,7 +15,7 @@
 // colors in the theme: --mood-notready, --mood-flustered, --mood-likes,
 // --mood-loves, --mood-giggly.
 
-import * as Fx from './fx.js?v=7';
+import * as Fx from './fx.js?v=8';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],
@@ -159,7 +159,16 @@ const ASCII = {
   secret: ['[DENIED]', '[NOT FOUND]', '<3 [deleted]', 'love.exe [hidden]', 'ERR: not cute'],
   comforted: ['[RESTORED]', 'T_T -> ^_^', '[SYS OK]', ':)'],
 };
-const HMPH = ['hmph!', 'b-baka', 'not like I…', '…', 'whatever~', 'n-no!', 'don\'t look'];
+// her own, dry and shy. the anime ones ("b-baka") only once she's picked
+// that habit up from him (lib/quirks.php anime_tsundere), or the owner
+// says so (mAnime: auto / on / off)
+const HMPH = ['hmph.', 'not like I…', '…', 'whatever.', 'n-no', 'don\'t look', 'it\'s fine.', 'shh.'];
+const HMPH_ANIME = ['b-baka', 'baka!', 'it\'s not like I like it!', 'hmph!'];
+const ASCII_ANIME = ['[BAKA.exe]', 'tsun_mode.dll'];
+function animeTsun() {
+  const m = Fx.currentFx().mAnime || 'auto';
+  return m === 'on' || (m === 'auto' && !!ctx.animeTsun);
+}
 const SIGH = ['sniff…', 'thanks…', 'mm…', 'better…', '*sigh*'];
 const HEHE = ['hehe', 'ha!', 'haha', 'ehe~', 'hihi', 'pfft', 'kya!'];
 const NOTES = ['♪', '♫'];
@@ -368,7 +377,7 @@ function puff(feeling, power, at) {
       put({ svg: SVG.censor, x: a.x + side * hw * rnd(0.45, 0.75), y: headTop - hw * rnd(-0.05, 0.15), size: size * 1.15, anim: 'mp-pop', ms: 1200, dy: -8 * k, rot: side * rnd(4, 12), color });
       break;
     case 'hmph':
-      put({ text: pickText(HMPH, 'hmph'), cls: 'hehe', x: a.x - side * hw * rnd(0.6, 0.9), y: a.y - hw * rnd(0, 0.3), size: size * 0.85, anim: 'mp-pop', ms: 1300, dy: -8 * k, rot: -side * rnd(3, 10), color });
+      put({ text: pickText(animeTsun() && Math.random() < 0.45 ? HMPH_ANIME : HMPH, 'hmph'), cls: 'hehe', x: a.x - side * hw * rnd(0.6, 0.9), y: a.y - hw * rnd(0, 0.3), size: size * 0.85, anim: 'mp-pop', ms: 1300, dy: -8 * k, rot: -side * rnd(3, 10), color });
       break;
     case 'tear': {
       // a tear rolls down... and turns into a little heart
@@ -381,7 +390,7 @@ function puff(feeling, power, at) {
       put({ text: pickText(SIGH, 'sigh'), cls: 'hehe', x: a.x + side * hw * rnd(0.6, 0.85), y: a.y - hw * rnd(-0.05, 0.25), size: size * 0.8, anim: 'mp-rise', ms: 1700, dx: side * 10 * k, dy: -18 * k, color });
       break;
     case 'ascii':
-      put({ text: pickText(ASCII[feeling], 'a-' + feeling), cls: 'ascii', x: a.x + side * hw * rnd(0.6, 0.85), y: headTop - hw * rnd(0, 0.15), size, anim: 'mp-pop', ms: 1400, dy: -10 * k, color });
+      put({ text: pickText(feeling === 'secret' && animeTsun() ? [...ASCII.secret, ...ASCII_ANIME] : ASCII[feeling], 'a-' + feeling), cls: 'ascii', x: a.x + side * hw * rnd(0.6, 0.85), y: headTop - hw * rnd(0, 0.15), size, anim: 'mp-pop', ms: 1400, dy: -10 * k, color });
       break;
   }
 }

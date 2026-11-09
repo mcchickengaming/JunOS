@@ -7,9 +7,9 @@
 // get colors later (her rooms, furniture, the chat window) should add
 // a row to GROUPS the same way.
 
-import { makeItemColorButton } from './wardrobe/color-picker.js?v=39';
-import * as Fx from './desktop/fx.js?v=7';
-import * as Moods from './desktop/moods.js?v=9';
+import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
+import * as Fx from './desktop/fx.js?v=8';
+import * as Moods from './desktop/moods.js?v=10';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -386,6 +386,29 @@ function pvGlow() {
   Moods.preview(f, 3500, 0.8);
   pvMoodLabel('The glow: ' + (fx.mGlowColor === 'feeling' ? name.toLowerCase() : 'your pick'));
 }
+// "Anime tsundere talk": the owner's pick, and where she is with the habit
+// (lib/quirks.php through relationship.php)
+const ANIME_PICKS = [['auto', 'When she picks it up'], ['on', 'Always'], ['off', 'Never']];
+const ANIME_STATE = {
+  learning: 'Not yet: after enough anime together, from friends up.',
+  picked: 'She picked it up from your anime time together.',
+  asked: 'You asked her to be a tsundere.',
+  stopped: 'You asked her to stop.',
+};
+function animeRow() {
+  const box = document.createElement('div');
+  box.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:4px;max-width:190px';
+  const sel = selectOf(ANIME_PICKS, 'mAnime', 'mood');
+  const state = document.createElement('span');
+  state.className = 'stay';
+  state.style.textAlign = 'right';
+  box.append(sel, state);
+  fetch('api/relationship.php', { credentials: 'same-origin' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(j => { const q = j && j.quirks && j.quirks.anime_tsundere; if (q) state.textContent = ANIME_STATE[q.state] || ''; })
+    .catch(() => {});
+  return box;
+}
 function buildMoodBtns() {
   const box = document.getElementById('moodBtns');
   box.innerHTML = '';
@@ -516,6 +539,9 @@ function buildFeedback() {
       colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood')),
     row('Tsundere moments', 'As friends she won\'t admit she loves a touch: the hearts leak out while she hides them. '
       + 'Once you\'re close she sometimes gives up hiding. From partners on, nothing to hide.', checkOf('mTsun', 'mood')),
+    row('Anime tsundere talk', 'A "b-baka" now and then when she\'s secretly pleased. Not her at first: '
+      + 'she picks it up after enough anime together (watching it, talking about it), or if you ask her to be a tsundere.',
+      animeRow()),
     row('Comforted when she\'s down', 'A warm touch while she\'s upset or scared comforts her (friends and up).', checkOf('mComfort', 'mood')),
   );
   // her body showing it: on her on the desktop (the picture here can't move)
