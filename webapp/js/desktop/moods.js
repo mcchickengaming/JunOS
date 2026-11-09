@@ -15,7 +15,7 @@
 // colors in the theme: --mood-notready, --mood-flustered, --mood-likes,
 // --mood-loves, --mood-giggly.
 
-import * as Fx from './fx.js?v=6';
+import * as Fx from './fx.js?v=7';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],
@@ -23,6 +23,10 @@ export const FEELINGS = [
   ['likes', 'Likes it', '#ffd76a'],
   ['loves', 'Loves it', '#ff3d78'],
   ['giggly', 'Giggly', '#ffa64d'],
+  // she loves it but won't admit it (Friend, sometimes Close): hearts leak out while she hides them
+  ['secret', 'Secretly loves it', '#ff7aa2'],
+  // a warm touch while she's upset or scared
+  ['comforted', 'Comforted', '#b79cff'],
 ];
 const COLOR = Object.fromEntries(FEELINGS.map(([k, , c]) => [k, `var(--mood-${k}, ${c})`]));
 export const AMOUNTS = [['off', 'Off'], ['some', 'Some'], ['lots', 'Lots']];
@@ -60,23 +64,44 @@ export function setContext(c) { ctx = { ...ctx, ...c }; }
 const closeOf = (stage) => (stage <= 2 ? 1 : stage === 3 ? 2 : 3);
 const STAGE_POWER = [0.2, 0.3, 0.42, 0.55, 0.68, 0.8];
 
-// a bad mood takes the edge off: loves -> likes -> flustered
-function byMood(f, close, mood) {
-  if (mood === 'upset' || mood === 'scared') return { loves: 'likes', likes: 'flustered', giggly: 'flustered' }[f] || f;
+// the touches that can comfort her when she's down
+const WARM = new Set(['head', 'hug', 'hand', 'ear', 'tail', 'tailrub']);
+// a bad mood takes the edge off: loves -> likes -> flustered. but once
+// she's a friend, a warm touch while she's upset or scared comforts her
+function byMood(f, close, mood, kind, c = ctx) {
+  const down = mood === 'upset' || mood === 'scared';
+  if (down && close >= 2 && WARM.has(kind) && (f === 'likes' || f === 'loves') && wants(c, 'mComfort')) return 'comforted';
+  if (down) return { loves: 'likes', likes: 'flustered', giggly: 'flustered' }[f] || f;
   if (mood === 'nervous' && close <= 1 && f === 'likes') return 'flustered';
+  return f;
+}
+// the owner's switches (desktop.fx), or the context's own for tests/previews
+function wants(c, key) { return c[key] ?? (Fx.currentFx()[key] !== false); }
+
+// her tsundere side. seed: one random number per touch, so a touch keeps
+// its mind. at Friend she never openly loves a touch: she hides it (and
+// a third of the touches she likes, too). at Close some long touches
+// start hidden and she gives up hiding after a few seconds. from
+// Partner on, nothing to hide.
+const TSUN = { friendLikes: 0.35, closeLoves: 0.4, closeGiveUpMs: 3000 };
+function tsundere(f, stage, ms, seed, c) {
+  if (!wants(c, 'mTsun')) return f;
+  if (stage === 3 && (f === 'loves' || (f === 'likes' && seed < TSUN.friendLikes))) return 'secret';
+  if (stage === 4 && f === 'loves' && seed < TSUN.closeLoves && ms < TSUN.closeGiveUpMs) return 'secret';
   return f;
 }
 
 // { feeling, power 0..1 } for a touch, or null if it's not one she has
 // a feeling about. how: 'poke' or 'hold' (rubs are holds too)
-export function feelingFor(kind, how = 'hold', ms = 0, c = ctx) {
+export function feelingFor(kind, how = 'hold', ms = 0, c = ctx, seed = 0.5) {
   const stage = Math.max(1, Math.min(6, Math.round(c.stage || 3)));
   const close = closeOf(stage);
   let f = null;
   if (how === 'poke') f = POKES[kind] ? POKES[kind][close - 1] : null;
   else if (HOLDS[kind]) for (const [from, ff] of HOLDS[kind][close - 1]) if (ms >= from) f = ff;
   if (!f) return null;
-  f = byMood(f, close, c.mood);
+  f = byMood(f, close, c.mood, kind, c);
+  f = tsundere(f, stage, ms, seed, c);
   let power = STAGE_POWER[stage - 1] + Math.min(0.4, (ms / 10000) * 0.4) + (how === 'poke' ? 0.1 : 0);
   if (c.mood === 'happy') power += 0.08;
   return { feeling: f, power: Math.max(0.1, Math.min(1, power)) };
@@ -88,7 +113,7 @@ export function rippleFor(kind, c = ctx) {
   const f = feelingFor(kind, 'poke', 0, c);
   if (!f || Math.random() > 0.25) return null;
   return { notready: { motion: 'shaky' }, flustered: { motion: 'wavy' }, loves: { shape: 'heart' },
-    giggly: { shape: 'star', motion: 'burst' }, likes: null }[f.feeling];
+    giggly: { shape: 'star', motion: 'burst' }, secret: { shape: 'heart', motion: 'wavy' }, likes: null, comforted: null }[f.feeling];
 }
 
 // ---------------------------------------------------------------
@@ -110,6 +135,9 @@ const SVG = {
   swirl: '<path d="M0 0A2 2 0 0 1 3 1A4 4 0 0 1-2 5A6 6 0 0 1-7-2A8 8 0 0 1 4-9A10 10 0 0 1 11 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
   shiver: '<path d="M-3-10Q1-7-3-4Q-7-1-3 2Q1 5-3 8M4-8Q8-5 4-2Q0 1 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   bubble: '<circle r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="-3" cy="-3" r="1.8"/>',
+  // a heart with a black bar over it: censored, nothing to see here
+  censor: '<path d="M0 9C-6 4.5-9 1.4-9-2.2A4.6 4.6 0 0 1 0-4.3a4.6 4.6 0 0 1 9 2.1C9 1.4 6 4.5 0 9Z"/><rect x="-11" y="-3.2" width="22" height="5" rx="1" fill="#141018"/>',
+  heart: '<path d="M0 9C-6 4.5-9 1.4-9-2.2A4.6 4.6 0 0 1 0-4.3a4.6 4.6 0 0 1 9 2.1C9 1.4 6 4.5 0 9Z"/>',
   glowdot: '<circle r="5"/>',
 };
 // [piece, weight]; 'ascii' pieces follow the "Robot faces" setting
@@ -119,6 +147,8 @@ const PIECES = {
   likes: [['sparkle', 3], ['note', 3], ['glowdot', 1], ['ascii', 1]],
   loves: [['heart', 4], ['heartring', 1], ['ascii', 1]],
   giggly: [['hehe', 3], ['bubble', 2], ['star', 2], ['ascii', 1]],
+  secret: [['leakheart', 4], ['censor', 2], ['hmph', 2], ['blush', 2], ['ascii', 1.5]],
+  comforted: [['tear', 4], ['sigh', 2], ['glowdot', 2], ['ascii', 1]],
 };
 const ASCII = {
   notready: ['o_O', '[WARN]', '!?', 'D:'],
@@ -126,7 +156,11 @@ const ASCII = {
   likes: ['^_^', ':3', '[OK]', 'c:'],
   loves: ['<3', 'love.exe', '♥‿♥', '[♥♥♥]'],
   giggly: [':P', 'xD', '^o^', 'hehe.wav'],
+  secret: ['[DENIED]', '[NOT FOUND]', '<3 [deleted]', 'love.exe [hidden]', 'ERR: not cute'],
+  comforted: ['[RESTORED]', 'T_T -> ^_^', '[SYS OK]', ':)'],
 };
+const HMPH = ['hmph!', 'b-baka', 'not like I…', '…', 'whatever~', 'n-no!', 'don\'t look'];
+const SIGH = ['sniff…', 'thanks…', 'mm…', 'better…', '*sigh*'];
 const HEHE = ['hehe', 'ha!', 'haha', 'ehe~', 'hihi', 'pfft', 'kya!'];
 const NOTES = ['♪', '♫'];
 
@@ -155,6 +189,10 @@ const CSS = `
   24% { transform: translate(-50%, -40%) scale(1.1, .85); } 36% { transform: translate(-50%, -85%) scale(1); } 48% { transform: translate(-50%, -50%); }
   80% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))); } }
 @keyframes mp-puff { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } 20% { opacity: .95; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.7); } }
+@keyframes mp-leak { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  55% { opacity: 1; transform: translate(calc(-50% + var(--dx) * .5), calc(-50% + var(--dy) * .5)) scale(1); }
+  70% { opacity: .9; transform: translate(calc(-50% + var(--dx) * .6), calc(-50% + var(--dy) * .6)) scale(1.15, .8); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); } }
 @keyframes mp-blush { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
   40% { transform: translate(-50%, -50%) scale(.95); } 55% { transform: translate(-50%, -50%) scale(1.03); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
 
@@ -183,6 +221,8 @@ const CSS = `
 .mood-aura.on.m-likes .ma-shape { animation: ma-breathe calc(2.6s / var(--ma-speed, 1)) ease-in-out infinite; }
 .mood-aura.on.m-loves .ma-shape { animation: ma-breathe calc(1.9s / var(--ma-speed, 1)) ease-in-out infinite; }
 .mood-aura.on.m-giggly .ma-shape { animation: ma-hop calc(.5s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-secret .ma-shape { animation: ma-flutter calc(1.1s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-comforted .ma-shape { animation: ma-breathe calc(3.4s / var(--ma-speed, 1)) ease-in-out infinite; }
 .mood-aura.on.m-breathe .ma-shape { animation: ma-breathe calc(2.6s / var(--ma-speed, 1)) ease-in-out infinite; }
 .mood-aura.on.m-beat .ma-shape { animation: ma-beat calc(1.1s / var(--ma-speed, 1)) ease-in-out infinite; }
 .mood-aura.on.m-spin .ma-shape { animation: ma-spin calc(6s / var(--ma-speed, 1)) linear infinite; }
@@ -319,6 +359,27 @@ function puff(feeling, power, at) {
     case 'star':
       put({ text: '★', ...near, size: size * 0.9, anim: 'mp-bounce', ms: 1000, dx: side * rnd(10, 22) * k, dy: -rnd(6, 16) * k, rot: rnd(-30, 30), color });
       break;
+    case 'leakheart':
+      // a little heart slips out, then she shoos it: it shrinks away fast
+      put({ text: '♥', x: a.x + side * hw * rnd(0.3, 0.7), y: a.y + hw * rnd(-0.1, 0.3), size: size * rnd(0.7, 0.95), anim: 'mp-leak', ms: 1100,
+        dx: side * rnd(6, 14) * k, dy: -rnd(16, 28) * k, color });
+      break;
+    case 'censor':
+      put({ svg: SVG.censor, x: a.x + side * hw * rnd(0.45, 0.75), y: headTop - hw * rnd(-0.05, 0.15), size: size * 1.15, anim: 'mp-pop', ms: 1200, dy: -8 * k, rot: side * rnd(4, 12), color });
+      break;
+    case 'hmph':
+      put({ text: pickText(HMPH, 'hmph'), cls: 'hehe', x: a.x - side * hw * rnd(0.6, 0.9), y: a.y - hw * rnd(0, 0.3), size: size * 0.85, anim: 'mp-pop', ms: 1300, dy: -8 * k, rot: -side * rnd(3, 10), color });
+      break;
+    case 'tear': {
+      // a tear rolls down... and turns into a little heart
+      const tx = a.x + side * hw * rnd(0.22, 0.32), ty = a.y + hw * 0.05;
+      put({ svg: SVG.drop, x: tx, y: ty, size: size * 0.75, anim: 'mp-fall', ms: 700, dy: 14 * k, color: 'var(--mood-notready, #7cc4ff)' });
+      put({ svg: SVG.heart, x: tx, y: ty + 14 * k, size: size * 0.9, anim: 'mp-rise', ms: 1500, dx: side * rnd(4, 12) * k, dy: -rnd(30, 46) * k, color, delay: 560 });
+      break;
+    }
+    case 'sigh':
+      put({ text: pickText(SIGH, 'sigh'), cls: 'hehe', x: a.x + side * hw * rnd(0.6, 0.85), y: a.y - hw * rnd(-0.05, 0.25), size: size * 0.8, anim: 'mp-rise', ms: 1700, dx: side * 10 * k, dy: -18 * k, color });
+      break;
     case 'ascii':
       put({ text: pickText(ASCII[feeling], 'a-' + feeling), cls: 'ascii', x: a.x + side * hw * rnd(0.6, 0.85), y: headTop - hw * rnd(0, 0.15), size, anim: 'mp-pop', ms: 1400, dy: -10 * k, color });
       break;
@@ -406,7 +467,7 @@ function strongest() {
     // a rub is only going on while the mouse keeps moving (it may have
     // left her window, where no more moves arrive)
     if (s.stale && now - s.seen > s.stale) { active.delete(slot); continue; }
-    const f = feelingFor(s.kind, 'hold', Date.now() - s.t0);
+    const f = feelingFor(s.kind, 'hold', Date.now() - s.t0, ctx, s.seed);
     if (f && (!best || f.power > best.power)) best = { ...f, at: s.at };
   }
   return best;
@@ -462,7 +523,7 @@ export function begin(slot, kind, t0 = Date.now(), at = null, stale = 0) {
   // the same hand going on (a rub crossing from her head to an ear):
   // the same touch, it keeps its length
   if (s) { s.kind = kind; s.seen = Date.now(); if (at) s.at = at; return; }
-  active.set(slot, { kind, t0, at, stale, seen: Date.now() });
+  active.set(slot, { kind, t0, at, stale, seen: Date.now(), seed: Math.random() });
   run();
 }
 // a hand left in place (desktop.js "two hands") takes its touch along
@@ -492,7 +553,7 @@ export function burst(feeling, power = 0.7, where = null) {
   }
 }
 export function poke(kind, where = null) {
-  const f = feelingFor(kind, 'poke');
+  const f = feelingFor(kind, 'poke', 0, ctx, Math.random());
   if (f) burst(f.feeling, f.power, where);
   return f;
 }
@@ -501,7 +562,8 @@ export function combo(id) {
   const close = closeOf(ctx.stage);
   let f = id === 'tickleattack' ? 'giggly' : id === 'tailtease' ? (close <= 1 ? 'notready' : 'flustered')
     : close >= 3 ? 'loves' : close === 2 ? 'likes' : 'flustered';
-  f = byMood(f, close, ctx.mood);
+  f = byMood(f, close, ctx.mood, 'hug');
+  f = tsundere(f, ctx.stage, 0, Math.random(), ctx);
   burst(f, 0.95);
   return f;
 }

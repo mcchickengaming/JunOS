@@ -144,6 +144,13 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   her)/heart/star (masked `.ma-shape` inside a blurred `.mood-aura`), `mGlowMove` feel (per feeling)/breathe/beat/spin/
   still, `mGlowSpeed` ×, `mGlowColor` feeling/one (`--mood-glow` in the theme)/rainbow, `mGlowLayer` behind/front,
   `mGlowFade` seconds; "Show the glow" previews it.
+  Two more feelings: **secret** ("Secretly loves it", her tsundere side: `tsundere()` with a per-touch `seed` from
+  `begin`; at Friend a touch she'd love is always hidden and 35% of the ones she likes; at Close 40% of loved touches
+  start hidden and she gives up hiding after 3 s; Partner+ never; pieces: hearts that slip out and get shooed, a
+  censored heart, "hmph"/"b-baka"/"whatever~", blush, `[DENIED]`/`[NOT FOUND]`; body: blush, looks away with a stolen
+  glance back, ears twitch, and her tail wags anyway) and **comforted** (`byMood`: upset/scared + a WARM touch, Friend+;
+  a tear that turns into a heart, "sniff…"/"thanks…", `[RESTORED]`; body: soft low ears, half-happy eyes, slow calm
+  tail). Switches `mTsun`, `mComfort` (desktop.fx). Colors `--mood-secret`, `--mood-comforted`.
 - **Her body shows the feeling** (`webapp/js/desktop/feelbody.js`, desktop only, wired in js/desktop.js via
   `Moods.setBody(FeelBody)`): moods.js `tick` calls `show(feeling, power)` every 120 ms while a feeling is on (even with
   the effects amount off; the body has its own switch) and `after(feeling, power, side)` once when it ends (side = where

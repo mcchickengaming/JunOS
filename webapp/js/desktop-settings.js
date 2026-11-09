@@ -8,8 +8,8 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=39';
-import * as Fx from './desktop/fx.js?v=6';
-import * as Moods from './desktop/moods.js?v=8';
+import * as Fx from './desktop/fx.js?v=7';
+import * as Moods from './desktop/moods.js?v=9';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -360,6 +360,7 @@ Moods.setAnchor(() => {
 const FEEL_SAMPLES = {
   notready: 'Not ready: a tail grab too early', flustered: 'Flustered: a thigh squish as friends', likes: 'Likes it: a headpat as friends',
   loves: 'Loves it: a hug once you\'re close', giggly: 'Giggly: a boop, or a tickle',
+  secret: 'Secretly loves it: a long headpat as friends', comforted: 'Comforted: a hug when she\'s upset',
 };
 const STAGE_NAMES = ['Stranger', 'Familiar', 'Friend', 'Close', 'Partner', 'Devoted'];
 const FEEL_NAME = Object.fromEntries(Moods.FEELINGS.map(([k, n]) => [k, n.toLowerCase()]));
@@ -513,6 +514,9 @@ function buildFeedback() {
     row('How much', 'Off, some, or lots of little effects.', selectOf(Moods.AMOUNTS, 'mAmount', 'mood')),
     row('Colors', 'One for each feeling. Right-click a color to go back to the default.',
       colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood')),
+    row('Tsundere moments', 'As friends she won\'t admit she loves a touch: the hearts leak out while she hides them. '
+      + 'Once you\'re close she sometimes gives up hiding. From partners on, nothing to hide.', checkOf('mTsun', 'mood')),
+    row('Comforted when she\'s down', 'A warm touch while she\'s upset or scared comforts her (friends and up).', checkOf('mComfort', 'mood')),
   );
   // her body showing it: on her on the desktop (the picture here can't move)
   const bodyHead = document.createElement('h3');

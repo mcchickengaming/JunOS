@@ -27,9 +27,9 @@ import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
 import * as Body from './desktop/body.js?v=42';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=6';
-import * as Moods from './desktop/moods.js?v=8';
-import * as FeelBody from './desktop/feelbody.js?v=4';
+import * as Fx from './desktop/fx.js?v=7';
+import * as Moods from './desktop/moods.js?v=9';
+import * as FeelBody from './desktop/feelbody.js?v=5';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 
 const D = window.junDesktop || null;

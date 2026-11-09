@@ -10,6 +10,11 @@
 //   loves it   ears up, a fast happy wag, happy eyes, full blush, heart
 //              eyes now and then on a strong one
 //   giggly     bouncing ears, a very fast wiggle, squinty eyes
+//   secretly   she won't admit it: looks away, blushing, ears twitching,
+//   loves it   but her tail gives her away (a happy wag she can't stop),
+//              and a stolen glance back now and then
+//   comforted  ears soft and low, eyes half closed, a slow calm sway,
+//              the blush of someone being looked after
 //
 // every number is in TUNE. show() runs every tick of moods.js while a
 // feeling is on; after() once when the touch ends; pulse() for a poke.
@@ -35,6 +40,11 @@ export const TUNE = {
   lvHeartAt: 0.65, lvHeartEvery: [5500, 3500], lvHeartMs: 1700,
   // giggly
   ggEars: [0.5, 0.4], ggEarMs: 90, ggHappy: 1, ggBlush: 0.3, ggTail: { amp: 1.8, period: 0.11, rest: 0.9 },
+  // secretly loves it
+  scBlush: [0.6, 1], scTail: { amp: 1.3, period: 0.28, rest: 1 }, scLookAway: 0.7, scEarEvery: [1600, 800],
+  scGlanceEvery: [3200, 2000], scGlanceMs: 450,
+  // comforted
+  cfEars: -0.25, cfHappy: [0.35, 0.6], cfBlush: [0.2, 0.4], cfTail: { amp: 0.45, period: 2.6, rest: 1.25 },
 };
 
 // while she leans away, her "look at the cursor" must not turn her
@@ -67,7 +77,7 @@ function tail(m, ms = TUNE.hold + 200, extra = {}) {
 
 // the moment-to-moment state: when the feeling started, the next ear
 // twitch / tail flick / heart eyes, where her eyes look away to
-let cur = null, since = 0, nextEar = 0, nextFlick = 0, nextHeart = 0, lookSide = 1, nextLook = 0;
+let cur = null, since = 0, nextEar = 0, nextFlick = 0, nextHeart = 0, lookSide = 1, nextLook = 0, glanceUntil = 0;
 
 function earTwitch(power) {
   // one ear (now and then both) snaps back and springs up: a flicker
@@ -150,6 +160,29 @@ export function show(feeling, power, now = performance.now()) {
       tail(TUNE.ggTail);
       if (prefs.eyes) { raise('ParamEyesHappy', k(TUNE.ggHappy)); raise('ParamBlush', k(TUNE.ggBlush)); }
       break;
+    case 'secret':
+      if (prefs.eyes) {
+        raise('ParamBlush', k(range(TUNE.scBlush, power)));
+        // looking away... with a stolen glance back now and then
+        if (now > nextLook) { glanceUntil = now + TUNE.scGlanceMs; nextLook = now + range(TUNE.scGlanceEvery, power) * (0.8 + Math.random() * 0.5); }
+        const look = now < glanceUntil ? 0 : TUNE.scLookAway * lookSide;
+        set('ParamEyeballLX', k(look));
+        set('ParamEyeballRX', k(look));
+        set('ParamEyeballLY', k(-0.15));
+        set('ParamEyeballRY', k(-0.15));
+      }
+      if (prefs.ears && now > nextEar) {
+        earTwitch(power * 0.6);
+        nextEar = now + range(TUNE.scEarEvery, power) * (0.7 + Math.random() * 0.6);
+      }
+      // the tail gives her away
+      tail(TUNE.scTail);
+      break;
+    case 'comforted':
+      if (prefs.ears) { set('ParamEarL', k(TUNE.cfEars)); set('ParamEarR', k(TUNE.cfEars)); }
+      tail(TUNE.cfTail);
+      if (prefs.eyes) { raise('ParamEyesHappy', k(range(TUNE.cfHappy, power))); raise('ParamBlush', k(range(TUNE.cfBlush, power))); }
+      break;
   }
 }
 
@@ -195,6 +228,23 @@ export function after(feeling, power, side = 0) {
       break;
     case 'giggly':
       tail(TUNE.ggTail, 900);
+      break;
+    case 'secret':
+      // caught: one quick look back, then away again, blushing; the tail
+      // still going
+      if (prefs.eyes) {
+        raise('ParamBlush', k(0.7), 2200);
+        Live2D.playSequence([
+          { dt_ms: 0, params: { ParamEyeballLX: 0, ParamEyeballRX: 0 } },
+          { dt_ms: 500, params: { ParamEyeballLX: k(TUNE.scLookAway * lookSide), ParamEyeballRX: k(TUNE.scLookAway * lookSide) } },
+          { dt_ms: 1500, params: { ParamEyeballLX: 0, ParamEyeballRX: 0 } },
+        ]);
+      }
+      tail(TUNE.scTail, 2000);
+      break;
+    case 'comforted':
+      if (prefs.eyes) raise('ParamEyesHappy', k(0.45), 2500);
+      tail(TUNE.cfTail, 3000);
       break;
   }
 }
