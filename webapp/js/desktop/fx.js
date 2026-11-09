@@ -17,6 +17,9 @@ export const FX_DEFAULTS = {
   eAscii: 'sometimes', eAnim: 'mix',
   // how she feels about a touch (desktop/moods.js): off / some / lots, and the glow around her
   mAmount: 'some', mGlow: true,
+  // the glow (moods.js aura): strength and size ×, softness 0..1, shape, movement, speed ×, layer, color, fade s
+  mGlowStr: 1, mGlowSize: 1, mGlowSoft: 0.5, mGlowShape: 'round', mGlowMove: 'feel', mGlowSpeed: 1,
+  mGlowLayer: 'behind', mGlowColor: 'feeling', mGlowFade: 0.5,
 };
 
 // [value, plain name] lists for the settings window

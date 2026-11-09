@@ -15,7 +15,7 @@
 // colors in the theme: --mood-notready, --mood-flustered, --mood-likes,
 // --mood-loves, --mood-giggly.
 
-import * as Fx from './fx.js?v=4';
+import * as Fx from './fx.js?v=5';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],
@@ -158,22 +158,40 @@ const CSS = `
 @keyframes mp-blush { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
   40% { transform: translate(-50%, -50%) scale(.95); } 55% { transform: translate(-50%, -50%) scale(1.03); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
 
-/* the glow around her: soft, in the feeling's color */
-/* behind her: first in its box, so she's drawn over it and it glows around her */
-.mood-aura { position: fixed; z-index: 0; pointer-events: none; left: 0; top: 0; width: 10px; height: 10px; border-radius: 50%;
-  transform: translate(-50%, -50%); opacity: 0; transition: opacity .5s ease, width .4s ease, height .4s ease;
-  background: radial-gradient(circle, color-mix(in srgb, var(--ma-c, #fff) 70%, transparent) 0%, color-mix(in srgb, var(--ma-c, #fff) 25%, transparent) 40%, transparent 68%);
-}
+/* the glow around her, in the feeling's color (or one color, or a rainbow). the owner shapes it in the
+   Touch feedback tab: strength, size, softness, shape, movement, speed, in front or behind, how slowly it fades.
+   .mood-aura is the box (place, blur, fade), .ma-shape inside it the shape and its movement */
+.mood-aura { position: fixed; z-index: 0; pointer-events: none; left: 0; top: 0; width: 10px; height: 10px;
+  transform: translate(-50%, -50%); opacity: 0; transition: opacity var(--ma-fade, .5s) ease, width .4s ease, height .4s ease; }
+.mood-aura.front { z-index: 5; }
 .mood-aura.on { opacity: var(--ma-o, .3); }
-.mood-aura.ma-notready.on { animation: ma-shudder .22s linear infinite; }
-.mood-aura.ma-flustered.on { animation: ma-flutter .7s ease-in-out infinite; }
-.mood-aura.ma-likes.on { animation: ma-breathe 2.6s ease-in-out infinite; }
-.mood-aura.ma-loves.on { animation: ma-breathe 1.9s ease-in-out infinite; }
-.mood-aura.ma-giggly.on { animation: ma-hop .5s ease-in-out infinite; }
-@keyframes ma-shudder { 0%, 100% { transform: translate(-50%, -50%); } 25% { transform: translate(-53%, -50%); } 75% { transform: translate(-47%, -50%); } }
-@keyframes ma-flutter { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 30% { transform: translate(-50%, -50%) scale(1.08); } 45% { transform: translate(-50%, -50%) scale(.97); } 60% { transform: translate(-50%, -50%) scale(1.06); } }
-@keyframes ma-breathe { 0%, 100% { transform: translate(-50%, -50%) scale(.94); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
-@keyframes ma-hop { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -54%) scale(1.04, .97); } }
+.mood-aura .ma-shape { position: absolute; inset: 0; border-radius: 50%; --c: var(--ma-c, #fff);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 75%, transparent) 0%,
+    color-mix(in srgb, var(--c) 42%, transparent) var(--ma-mid, 40%), transparent var(--ma-end, 85%)); }
+.mood-aura.s-ring .ma-shape { background: radial-gradient(closest-side, transparent var(--ma-in, 45%),
+    color-mix(in srgb, var(--c) 80%, transparent) var(--ma-ring, 70%), transparent var(--ma-end, 92%)); }
+.mood-aura.s-heart .ma-shape, .mood-aura.s-star .ma-shape { border-radius: 0; background: color-mix(in srgb, var(--c) 70%, transparent);
+  -webkit-mask: var(--ma-mask) center / contain no-repeat; mask: var(--ma-mask) center / contain no-repeat; }
+.mood-aura.s-heart { filter: blur(var(--ma-blur, 6px)); --ma-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.5C5 16.5 1.5 12.8 1.5 8.6A5.4 5.4 0 0 1 12 6.2a5.4 5.4 0 0 1 10.5 2.4c0 4.2-3.5 7.9-10.5 12.9Z'/%3E%3C/svg%3E"); }
+.mood-aura.s-star { filter: blur(var(--ma-blur, 6px)); --ma-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5l3 7.2 7.8.6-6 5 1.9 7.7L12 17.9 5.3 22l1.9-7.7-6-5 7.8-.6Z'/%3E%3C/svg%3E"); }
+.mood-aura.rainbow .ma-shape { --c: #ff4d6d; }
+.mood-aura.rainbow.on { animation: ma-hue calc(4s / var(--ma-speed, 1)) linear infinite; }
+@keyframes ma-hue { from { filter: hue-rotate(0deg) blur(var(--ma-blur, 0px)); } to { filter: hue-rotate(360deg) blur(var(--ma-blur, 0px)); } }
+/* how it moves: her feeling's own way, or the same for all */
+.mood-aura.on.m-notready .ma-shape { animation: ma-shudder calc(.22s / var(--ma-speed, 1)) linear infinite; }
+.mood-aura.on.m-flustered .ma-shape { animation: ma-flutter calc(.7s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-likes .ma-shape { animation: ma-breathe calc(2.6s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-loves .ma-shape { animation: ma-breathe calc(1.9s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-giggly .ma-shape { animation: ma-hop calc(.5s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-breathe .ma-shape { animation: ma-breathe calc(2.6s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-beat .ma-shape { animation: ma-beat calc(1.1s / var(--ma-speed, 1)) ease-in-out infinite; }
+.mood-aura.on.m-spin .ma-shape { animation: ma-spin calc(6s / var(--ma-speed, 1)) linear infinite; }
+@keyframes ma-shudder { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3%); } 75% { transform: translateX(3%); } }
+@keyframes ma-flutter { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.08); } 45% { transform: scale(.97); } 60% { transform: scale(1.06); } }
+@keyframes ma-breathe { 0%, 100% { transform: scale(.94); } 50% { transform: scale(1.1); } }
+@keyframes ma-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4%) scale(1.04, .97); } }
+@keyframes ma-beat { 0%, 40%, 100% { transform: scale(.95); } 12% { transform: scale(1.12); } 24% { transform: scale(1); } 32% { transform: scale(1.08); } }
+@keyframes ma-spin { from { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.06); } to { transform: rotate(360deg) scale(1); } }
 `;
 export function installCss() {
   Fx.installCss();
@@ -310,26 +328,62 @@ function puff(feeling, power, at) {
 // ---------------------------------------------------------------
 // the glow around her
 
+// the owner's glow picks (desktop.fx, defaults in fx.js FX_DEFAULTS)
+export const GLOW_SHAPES = [['round', 'Soft circle'], ['ring', 'Ring'], ['body', 'All around her'], ['heart', 'Heart'], ['star', 'Star']];
+export const GLOW_MOVES = [['feel', 'Her feeling\'s own way'], ['breathe', 'Slow breathing'], ['beat', 'Heartbeat'], ['spin', 'Slow spin'], ['still', 'Still']];
+export const GLOW_LAYERS = [['behind', 'Behind her'], ['front', 'In front of her']];
+export const GLOW_COLORS = [['feeling', 'The feeling\'s color'], ['one', 'One color'], ['rainbow', 'Rainbow']];
+
 let auraEl = null;
 function aura(feeling, power) {
-  const on = !!feeling && amount() !== 'off' && Fx.currentFx().mGlow !== false;
+  const fx = Fx.currentFx();
+  const on = !!feeling && amount() !== 'off' && fx.mGlow !== false;
   if (!auraEl && !on) return;
+  const box = host || document.body;
   if (!auraEl) {
     auraEl = document.createElement('div');
-    auraEl.className = 'mood-aura';
-    const box = host || document.body;
-    box.insertBefore(auraEl, box.firstChild);
+    auraEl.innerHTML = '<div class="ma-shape"></div>';
   }
+  // behind her: first in its box, so she's drawn over it; in front: last
+  const front = fx.mGlowLayer === 'front';
+  if (auraEl.parentNode !== box || (front ? box.lastChild !== auraEl : box.firstChild !== auraEl)) {
+    if (front) box.appendChild(auraEl); else box.insertBefore(auraEl, box.firstChild);
+  }
+  auraEl.style.setProperty('--ma-fade', Math.max(0.1, Number(fx.mGlowFade ?? 0.5)) + 's');
   const a = on && anchorFn();
   if (!a) { auraEl.classList.remove('on'); return; }
-  for (const c of [...auraEl.classList]) if (c.startsWith('ma-')) auraEl.classList.remove(c);
-  auraEl.classList.add('ma-' + feeling, 'on');
-  const d = a.headW * (2.2 + power * 0.9);
+  const shape = fx.mGlowShape || 'round';
+  const move = fx.mGlowMove || 'feel';
+  const colors = fx.mGlowColor || 'feeling';
+  auraEl.className = ['mood-aura', 'on', 's-' + shape, 'm-' + (move === 'feel' ? feeling : move),
+    front ? 'front' : '', colors === 'rainbow' ? 'rainbow' : ''].filter(Boolean).join(' ');
+  const size = Math.max(0.2, Number(fx.mGlowSize ?? 1));
+  const soft = Math.max(0, Math.min(1, Number(fx.mGlowSoft ?? 0.5)));
+  let w, h, cy = a.y + a.headW * 0.15;
+  if (shape === 'body') {
+    // a tall glow round all of her
+    w = a.modelW * 1.15 * size * (0.9 + power * 0.2);
+    h = a.modelH * 1.05 * size * (0.9 + power * 0.2);
+    cy = a.y - a.modelH * 0.09 + a.modelH * 0.5;
+  } else {
+    // a ring or a shape needs to reach past her head to be seen at all
+    const reach = { ring: 1.4, heart: 1.3, star: 1.35 }[shape] || 1.1;
+    w = h = a.headW * (2.3 + power * 0.9) * size * reach;
+  }
   auraEl.style.left = a.x + 'px';
-  auraEl.style.top = (a.y + a.headW * 0.15) + 'px';
-  auraEl.style.width = auraEl.style.height = d + 'px';
-  auraEl.style.setProperty('--ma-c', COLOR[feeling]);
-  auraEl.style.setProperty('--ma-o', ((0.18 + power * 0.32) * (amount() === 'lots' ? 1.3 : 1)).toFixed(2));
+  auraEl.style.top = cy + 'px';
+  auraEl.style.width = w + 'px';
+  auraEl.style.height = h + 'px';
+  // softness: how far the color reaches before it fades (and the blur of a heart/star)
+  auraEl.style.setProperty('--ma-mid', (55 - soft * 40).toFixed(0) + '%');
+  auraEl.style.setProperty('--ma-end', (72 + soft * 28).toFixed(0) + '%');
+  auraEl.style.setProperty('--ma-in', (55 - soft * 25).toFixed(0) + '%');
+  auraEl.style.setProperty('--ma-ring', (72 - soft * 6).toFixed(0) + '%');
+  auraEl.style.setProperty('--ma-blur', (shape === 'heart' || shape === 'star' ? (2 + soft * 14) * Fx.scale() : 0).toFixed(1) + 'px');
+  auraEl.style.setProperty('--ma-speed', String(Math.max(0.25, Number(fx.mGlowSpeed ?? 1))));
+  auraEl.style.setProperty('--ma-c', colors === 'one' ? 'var(--mood-glow, #ffffff)' : COLOR[feeling]);
+  const strength = Math.max(0, Number(fx.mGlowStr ?? 1));
+  auraEl.style.setProperty('--ma-o', Math.min(1, (0.24 + power * 0.4) * (amount() === 'lots' ? 1.3 : 1) * strength).toFixed(2));
 }
 
 // ---------------------------------------------------------------

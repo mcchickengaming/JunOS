@@ -23,12 +23,12 @@ import { localTimeString } from './core/util.js?v=1';
 import * as Actions from './live2d/actions.js?v=102';
 import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
-import { S } from './live2d/state.js?v=75';
+import { S, app as l2app, model as l2model } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
 import * as Body from './desktop/body.js?v=39';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=4';
-import * as Moods from './desktop/moods.js?v=3';
+import * as Fx from './desktop/fx.js?v=5';
+import * as Moods from './desktop/moods.js?v=6';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -1577,6 +1577,51 @@ D?.onCommand((cmd) => {
 });
 
 // ---------------------------------------------------------------
+// her picture for the settings window: the Touch feedback preview shows
+// her (head to waist) instead of a stand-in head, with where her face is
+// so the effects land on it. the settings window asks with
+// SNAP_WANT when it opens the tab; she also refreshes it now and then
+// (her outfit may have changed). same origin, so localStorage is shared.
+
+const SNAP_KEY = 'desktop.snapshot';
+const SNAP_WANT = 'desktop.snapshot.want';
+const SNAP_CROP = 0.5; // the top half of her: head, shoulders, chest
+const SNAP_H = 360;
+let snapTimer = null;
+function shareSnapshot(delay = 300) {
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(takeSnapshot, delay);
+}
+function takeSnapshot() {
+  if (!ready || !l2app || !l2model) return;
+  try {
+    const full = l2app.renderer.extract.canvas(l2model);
+    if (!full.width || !full.height) return;
+    const cropH = full.height * SNAP_CROP;
+    const k = SNAP_H / cropH;
+    const out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(full.width * k));
+    out.height = SNAP_H;
+    out.getContext('2d').drawImage(full, 0, 0, full.width, cropH, 0, 0, out.width, out.height);
+    // the same face anchor as live2d/geometry.js faceAnchor(), as shares of the picture's height
+    const W = full.width, H = full.height;
+    const snap = {
+      img: out.toDataURL('image/webp', 0.9),
+      at: Date.now(),
+      fx: 0.5,
+      fy: 0.09 / SNAP_CROP,
+      headW: Math.max(W * 0.30, H * 0.12) / cropH,
+      modelW: W / cropH,
+      modelH: H / cropH,
+    };
+    localStorage.setItem(SNAP_KEY, JSON.stringify(snap));
+  } catch (e) {
+    console.warn('snapshot failed', e);
+  }
+}
+window.addEventListener('storage', (e) => { if (e.key === SNAP_WANT) shareSnapshot(); });
+
+// ---------------------------------------------------------------
 // boot
 
 function showNote(text, button, onClick) {
@@ -1619,6 +1664,9 @@ async function main() {
   Body.init({ stageEl, faceAnchor: () => Live2D.faceAnchor(), onHeadpat, onEmote: showEmote });
   refreshMood();
   setInterval(refreshMood, 5 * 60 * 1000);
+  // her picture for the settings preview, once she's settled in her outfit
+  shareSnapshot(2500);
+  setInterval(() => shareSnapshot(), 15 * 60 * 1000);
   // popping out of her window
   if (MODE === 'stepout' && REASON === 'stepout') {
     stageEl.classList.add('enter');

@@ -139,6 +139,18 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   off/some/lots, `mGlow`; colors `--mood-notready/-flustered/-likes/-loves/-giggly` in the theme. Context from
   refreshMood (`setContext({ stage: Gauges.bondStage, mood })`). The tab previews each feeling, a build-up, a
   friend's foot tickle (the real rules) and a headpat at every bond. Tests: `.github/scripts/js/moods.test.mjs`.
+  The glow is fully the owner's (Touch feedback > How she feels > The glow, all in desktop.fx): `mGlow` on/off,
+  `mGlowStr`/`mGlowSize` ×, `mGlowSoft` 0..1 (gradient stops, blur for shapes), `mGlowShape` round/ring/body (all round
+  her)/heart/star (masked `.ma-shape` inside a blurred `.mood-aura`), `mGlowMove` feel (per feeling)/breathe/beat/spin/
+  still, `mGlowSpeed` ×, `mGlowColor` feeling/one (`--mood-glow` in the theme)/rainbow, `mGlowLayer` behind/front,
+  `mGlowFade` seconds; "Show the glow" previews it.
+- **Her picture in the settings preview**: desktop.js `takeSnapshot` renders the live2d model with
+  `app.renderer.extract.canvas(model)`, crops the top half (head to waist), scales it to 360 px tall and stores
+  `localStorage['desktop.snapshot']` = `{ img (webp data url), fx, fy, headW, modelW, modelH }` (the faceAnchor shape
+  as shares of the picture's height). Taken 2.5 s after she's ready, every 15 min, and when the settings window writes
+  `desktop.snapshot.want` (on opening the Touch feedback tab). The settings page shows it as `#pvHer` (breathing a
+  little) instead of the stand-in head; `pvFace()` gives the anchor for ripples, icons and moods. The preview box has
+  `clip-path` so the fixed-position effects don't float out over the tabs. No rig (placeholder) = stand-in head.
 
 - **Her size on the desktop** (`desktop/main.js` `setSize`, settings window "Her size" tab): `cfg.size` is a share of
   the screen's height (0.05–0.9, widened on the owner's request; at the big end the room over her head shrinks so her

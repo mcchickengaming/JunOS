@@ -8,8 +8,8 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=37';
-import * as Fx from './desktop/fx.js?v=4';
-import * as Moods from './desktop/moods.js?v=3';
+import * as Fx from './desktop/fx.js?v=5';
+import * as Moods from './desktop/moods.js?v=6';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -40,7 +40,7 @@ function show(tab) {
   for (const b of tabs) b.classList.toggle('on', b.dataset.tab === tab);
   for (const s of document.querySelectorAll('section')) s.hidden = s.id !== 'tab-' + tab;
   if (tab === 'spots') loadSpots();
-  if (tab === 'feedback') previewTheme();
+  if (tab === 'feedback') { previewTheme(); setTimeout(pvAskSnap); }
   if (tab === 'size') setTimeout(loadSize); // after this module has set itself up
   if (tab === 'saves') setTimeout(loadSaves);
 }
@@ -245,12 +245,43 @@ function previewTheme() {
   // the ripple goes on the page itself, not in the box
   document.body.style.setProperty('--ripple', t['--ripple'] || t['--accent'] || '#ec0054');
   // and so do her feelings
-  for (const [k] of Moods.FEELINGS) {
+  for (const k of [...Moods.FEELINGS.map(([f]) => f), 'glow']) {
     const v = t['--mood-' + k];
     if (v) document.body.style.setProperty('--mood-' + k, v); else document.body.style.removeProperty('--mood-' + k);
   }
 }
 window.addEventListener('storage', (e) => { if (e.key === THEME_KEY) previewTheme(); });
+
+// her picture (from the desktop page, desktop.js takeSnapshot) instead of
+// the little stand-in head, when there is one
+const SNAP_KEY = 'desktop.snapshot';
+const pvHer = document.getElementById('pvHer');
+let snap = null;
+function pvLoadSnap() {
+  let next = null;
+  try { next = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null'); } catch { next = null; }
+  if (!next || !next.img) { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); return; }
+  pvHer.onload = () => { snap = next; pvHer.hidden = false; preview.classList.add('has-her'); };
+  pvHer.onerror = () => { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); };
+  pvHer.src = next.img;
+}
+// ask her for a fresh one (her outfit may have changed)
+function pvAskSnap() { try { localStorage.setItem('desktop.snapshot.want', String(Date.now())); } catch { /* ignore */ } }
+window.addEventListener('storage', (e) => { if (e.key === SNAP_KEY) pvLoadSnap(); });
+pvLoadSnap();
+pvAskSnap();
+// where her face is in the preview, the same shape as live2d faceAnchor()
+function pvFace() {
+  if (snap && !pvHer.hidden) {
+    const r = pvHer.getBoundingClientRect();
+    const h = r.height;
+    return { x: r.left + r.width * snap.fx, y: r.top + h * snap.fy, headW: h * snap.headW, modelW: h * snap.modelW,
+      modelH: h * snap.modelH, top: r.top };
+  }
+  const head = preview.querySelector('.pv-head');
+  const r = head.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height * 0.45, headW: r.width, modelW: r.width * 2.4, modelH: r.width * 1.6, top: r.top };
+}
 
 let pvLabelTimer = null;
 function pvShowLabel(text, x, y) {
@@ -271,10 +302,11 @@ let pvEmoteTimer = null;
 function pvShowIcon(kind) {
   kind = kind || Fx.pickFromPool(Object.keys(Fx.EMOTES));
   Fx.fillEmote(pvEmote, kind);
-  // just above the little head, wherever it sits in the box
-  const head = preview.querySelector('.pv-head');
-  pvEmote.style.left = '50%';
-  pvEmote.style.top = (head.offsetTop - 14) + 'px';
+  // just above her head, wherever it sits in the box
+  const a = pvFace();
+  const box = preview.getBoundingClientRect();
+  pvEmote.style.left = (a.x - box.left) + 'px';
+  pvEmote.style.top = Math.max(34, a.top - box.top - (snap ? 0 : 14)) + 'px';
   pvEmote.classList.remove('show');
   void pvEmote.offsetWidth;
   pvEmote.classList.add('show');
@@ -282,8 +314,8 @@ function pvShowIcon(kind) {
   pvEmoteTimer = setTimeout(() => pvEmote.classList.remove('show'), 2000);
 }
 function pvCenter() {
-  const r = preview.getBoundingClientRect();
-  return { x: r.left + r.width / 2, y: r.top + r.height * 0.45 };
+  const a = pvFace();
+  return { x: a.x, y: a.y };
 }
 preview.addEventListener('pointerdown', (e) => {
   Fx.ripple(e.clientX, e.clientY);
@@ -312,10 +344,8 @@ document.getElementById('pvHerBtn').addEventListener('click', () => {
 // head in the preview
 Moods.installCss();
 Moods.setAnchor(() => {
-  const head = preview.querySelector('.pv-head');
-  if (!head || preview.closest('section').hidden) return null;
-  const r = head.getBoundingClientRect();
-  return { x: r.left + r.width / 2, y: r.top + r.height * 0.45, headW: r.width, modelW: r.width * 2.4, modelH: r.width * 1.6 };
+  if (preview.closest('section').hidden) return null;
+  return pvFace();
 }, preview);
 const FEEL_SAMPLES = {
   notready: 'Not ready: a tail grab too early', flustered: 'Flustered: a thigh squish as friends', likes: 'Likes it: a headpat as friends',
@@ -334,6 +364,16 @@ function pvFeel(f) {
   pvMoodStop();
   Moods.preview(f, 2200, 0.75);
   pvMoodLabel(FEEL_SAMPLES[f]);
+}
+// the glow on its own for a few seconds, a different feeling each time
+let pvGlowNext = 0;
+function pvGlow() {
+  pvMoodStop();
+  const fx = Fx.readFx();
+  const [f, name] = Moods.FEELINGS[pvGlowNext++ % Moods.FEELINGS.length];
+  if (fx.mGlow === false) { pvMoodLabel('The glow is switched off (Glow around her)'); return; }
+  Moods.preview(f, 3500, 0.8);
+  pvMoodLabel('The glow: ' + (fx.mGlowColor === 'feeling' ? name.toLowerCase() : 'your pick'));
 }
 function buildMoodBtns() {
   const box = document.getElementById('moodBtns');
@@ -382,6 +422,7 @@ function changed(what) {
     if (what === 'ripple') { const c = pvCenter(); Fx.ripple(c.x, c.y); }
     if (what === 'label') pvShowLabel();
     if (what === 'icon') pvShowIcon();
+    if (what === 'glow') pvGlow();
     if (what === 'mood') { buildMoodBtns(); const f = Moods.FEELINGS[Math.floor(Math.random() * Moods.FEELINGS.length)][0]; pvFeel(f); }
   }, 160);
 }
@@ -460,9 +501,37 @@ function buildFeedback() {
   mood.innerHTML = '';
   mood.append(
     row('How much', 'Off, some, or lots of little effects.', selectOf(Moods.AMOUNTS, 'mAmount', 'mood')),
-    row('Glow around her', 'A soft glow in the feeling\'s color while a touch goes on.', checkOf('mGlow', 'mood')),
     row('Colors', 'One for each feeling. Right-click a color to go back to the default.',
       colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood')),
+  );
+  // the glow: every part of it is his to shape
+  const glowHead = document.createElement('h3');
+  glowHead.className = 'sub';
+  glowHead.textContent = 'The glow';
+  const glowBtns = document.createElement('div');
+  glowBtns.className = 'preview-btns';
+  const gb = document.createElement('button');
+  gb.type = 'button';
+  gb.className = 'btn';
+  gb.textContent = 'Show the glow';
+  gb.addEventListener('click', () => pvGlow());
+  glowBtns.appendChild(gb);
+  const pctOf = (v) => Math.round(v * 100) + '%';
+  mood.append(
+    glowHead,
+    row('Glow around her', 'A soft glow while a touch goes on.', checkOf('mGlow', 'glow')),
+    row('Strength', 'How bright it is.', rangeOf('mGlowStr', 0.2, 2.5, 0.1, 'glow', times)),
+    row('Size', 'How far round her it reaches.', rangeOf('mGlowSize', 0.4, 2.5, 0.1, 'glow', times)),
+    row('Softness', 'Low: a clear shape. High: a soft haze.', rangeOf('mGlowSoft', 0, 1, 0.05, 'glow', pctOf)),
+    row('Shape', 'Round her head, or all round her.', selectOf(Moods.GLOW_SHAPES, 'mGlowShape', 'glow')),
+    row('Movement', 'Her feeling\'s own way: a shiver when she isn\'t ready, a flutter when flustered, a hop when giggly.',
+      selectOf(Moods.GLOW_MOVES, 'mGlowMove', 'glow')),
+    row('Speed', 'How fast it moves.', rangeOf('mGlowSpeed', 0.25, 3, 0.05, 'glow', times)),
+    row('Color', 'Each feeling\'s color (above), one color of your own, or a rainbow.', selectOf(Moods.GLOW_COLORS, 'mGlowColor', 'glow')),
+    row('Your color', 'Used when Color is "One color".', colorsOf('Glow', [['Glow', '--mood-glow']], 'glow')),
+    row('In front or behind', 'Behind her it glows round her; in front it tints her too.', selectOf(Moods.GLOW_LAYERS, 'mGlowLayer', 'glow')),
+    row('Fade out', 'How slowly it fades after a touch.', rangeOf('mGlowFade', 0.1, 3, 0.1, 'glow', (v) => v.toFixed(1) + ' s')),
+    glowBtns,
   );
   buildMoodBtns();
   const lab = document.getElementById('labelRows');
@@ -508,7 +577,7 @@ document.getElementById('resetFx').addEventListener('click', () => {
   Fx.writeFx({});
   Fx.applyFx({});
   const t = readTheme();
-  for (const k of ['--ripple', '--label', '--label-edge', '--label-ink', ...Moods.FEELINGS.map(([f]) => '--mood-' + f)]) delete t[k];
+  for (const k of ['--ripple', '--label', '--label-edge', '--label-ink', '--mood-glow', ...Moods.FEELINGS.map(([f]) => '--mood-' + f)]) delete t[k];
   writeTheme(t);
   previewTheme();
   buildFeedback();

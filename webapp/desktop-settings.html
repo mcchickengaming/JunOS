@@ -14,6 +14,7 @@
   header { padding: 18px 20px 8px; }
   h1 { margin: 0; font: 600 20px/1.2 var(--serif); }
   .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  h3.sub { margin: 16px 0 6px; color: var(--fg); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
   nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 2; }
   nav button { border: 0; background: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; }
   nav button.on { color: var(--fg); background: var(--bg-3); }
@@ -43,7 +44,8 @@
   .pct { width: 38px; text-align: right; color: var(--muted); font-size: 12px; }
   /* touch feedback preview: a little piece of desktop. the same variables as desktop.html's :root,
      so the theme's colors (set inline by js) mix the same way here */
-  .preview { position: sticky; top: 0; z-index: 3; height: 170px; margin: 4px 0 10px; border-radius: 12px; overflow: hidden; cursor: crosshair;
+  /* clip-path also clips the fixed-position effects inside it (overflow doesn't), so nothing floats out over the tabs */
+  .preview { position: sticky; top: 0; z-index: 3; height: 170px; margin: 4px 0 10px; border-radius: 12px; overflow: hidden; cursor: crosshair; clip-path: inset(0 round 12px);
     border: 1px solid var(--border-2); background: linear-gradient(135deg, #2b3a55, #1c2238 55%, #3a2a48);
     --panel: #191233; --accent: #ec0054; --ink: #ffffff; --bubble: #191233; --bubble-edge: #ec0054; --bubble-a: 1; --edge-a: 1; --outline: none;
     --bubble-bg: color-mix(in srgb, var(--bubble) calc(var(--bubble-a) * 100%), transparent);
@@ -54,6 +56,11 @@
   .preview .pv-head::before, .preview .pv-head::after { content: ''; position: absolute; top: -12px; width: 18px; height: 22px; background: #3b2b2b;
     clip-path: polygon(50% 0, 100% 100%, 0 100%); }
   .preview .pv-head::before { left: 2px; } .preview .pv-head::after { right: 2px; }
+  /* her real picture (taken by the desktop page), head to waist, breathing a little */
+  .preview .pv-her { position: absolute; left: 50%; top: 34px; height: 100%; transform: translateX(-50%); transform-origin: 50% 100%;
+    pointer-events: none; animation: pv-breathe 4.2s ease-in-out infinite; }
+  .preview.has-her .pv-head { display: none; }
+  @keyframes pv-breathe { 0%, 100% { transform: translateX(-50%) scale(1, 1); } 50% { transform: translateX(-50%) scale(1.006, 1.012); } }
   /* a short settings window: a smaller preview, so the controls under it still have room */
   @media (max-height: 640px) { .preview { height: 125px; } }
   .preview-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
@@ -176,7 +183,7 @@
 <section id="tab-feedback" hidden>
   <p class="hint">How a touch looks: the ripple where you click, how she feels about it, the little labels, and her thought icons. Click the preview to try it.
     Changes reach her right away.</p>
-  <div class="preview" id="preview"><div class="pv-head"></div><div class="emote" id="pvEmote"></div>
+  <div class="preview" id="preview"><div class="pv-head"></div><img class="pv-her" id="pvHer" alt="" hidden><div class="emote" id="pvEmote"></div>
     <div class="action-label" id="pvLabel"></div><span class="pv-hint">Click anywhere in here</span></div>
   <div class="preview-btns"><button type="button" class="btn" id="pvLabelBtn">Show a label</button>
     <button type="button" class="btn" id="pvIconBtn">Show an icon</button>
@@ -260,6 +267,6 @@
   <p class="hint" id="saveNote"></p>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=18"></script>
+<script type="module" src="js/desktop-settings.js?v=21"></script>
 </body>
 </html>
