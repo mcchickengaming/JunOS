@@ -20,6 +20,8 @@ export const FX_DEFAULTS = {
   // the glow (moods.js aura): strength and size ×, softness 0..1, shape, movement, speed ×, layer, color, fade s
   mGlowStr: 1, mGlowSize: 1, mGlowSoft: 0.5, mGlowShape: 'round', mGlowMove: 'feel', mGlowSpeed: 1,
   mGlowLayer: 'behind', mGlowColor: 'feeling', mGlowFade: 0.5,
+  // her body showing the feeling (feelbody.js): on/off, strength ×, and each part
+  mBody: true, mBodyStr: 1, mBodyEars: true, mBodyTail: true, mBodyEyes: true, mBodyLean: true,
 };
 
 // [value, plain name] lists for the settings window

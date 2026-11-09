@@ -464,6 +464,25 @@ export function holdTail(ms = 700) {
 }
 const tailIsHeld = () => performance.now() < tailStillUntil;
 
+// how she feels, in her tail (desktop/feelbody.js): a mood the tail
+// eases into and out of. amp/period multiply the sway, rest bends the
+// resting curve (low: >1 swings it out and down, 0.3 = stiff and up),
+// tremble is a fast shiver, flick() snaps the tip once (flustered).
+// eased so it never jumps; with no mood it's the normal tail.
+const TAIL_MOOD_REST = { amp: 1, period: 1, rest: 1, tremble: 0 };
+let tailMoodGoal = { ...TAIL_MOOD_REST };
+const tailMood = { ...TAIL_MOOD_REST };
+let tailMoodUntil = 0;
+let tailFlick = 0, tailFlickDir = 1;
+export function setTailMood(m, ms = 400) {
+  tailMoodGoal = { ...TAIL_MOOD_REST, ...(m || {}) };
+  tailMoodUntil = performance.now() + ms;
+}
+export function tailFlickOnce(strength = 1) {
+  tailFlick = Math.max(tailFlick, Math.min(1.5, strength));
+  tailFlickDir = Math.random() < 0.5 ? -1 : 1;
+}
+
 function driveTail(ps, now) {
   // cap the step or a backgrounded tab comes back and skips half a
   // sway
@@ -472,8 +491,13 @@ function driveTail(ps, now) {
   const wiggle = wiggleIdx === undefined ? 0 : Math.min(1, Math.abs(ps.values[wiggleIdx]));
   wagLevel += (wiggle - wagLevel) * (1 - Math.exp(-step / (wiggle > wagLevel ? 80 : 900)));
   tailStill += ((tailIsHeld() ? 1 : 0) - tailStill) * (1 - Math.exp(-step / 180));
-  const amp = (TAIL_IDLE_AMP + wagLevel * TAIL_WAG_AMP) * (1 - 0.85 * tailStill);
-  const period = TAIL_PERIOD_MS * (1 - 0.55 * wagLevel);
+  // her feeling's tail: back to normal by itself once nobody renews it
+  const goal = now < tailMoodUntil ? tailMoodGoal : TAIL_MOOD_REST;
+  const ease = 1 - Math.exp(-step / 260);
+  for (const k of Object.keys(TAIL_MOOD_REST)) tailMood[k] += (goal[k] - tailMood[k]) * ease;
+  tailFlick *= Math.exp(-step / 170);
+  const amp = (TAIL_IDLE_AMP + wagLevel * TAIL_WAG_AMP) * (1 - 0.85 * tailStill) * tailMood.amp;
+  const period = TAIL_PERIOD_MS * (1 - 0.55 * wagLevel) * Math.max(0.05, tailMood.period);
   tailPhase += step / period;
   tailSide += (tailSideGoal - tailSide) * (1 - Math.exp(-step / TAIL_SIDE_MS));
   tailLastMs = now;
@@ -484,7 +508,11 @@ function driveTail(ps, now) {
     const span = Math.min(Math.abs(paramMax.get(id) ?? 1), Math.abs(paramMin.get(id) ?? 1)) || 1;
     const reach = (i + 1) / TAIL_SEGMENTS.length;
     const phase = tailPhase - i * TAIL_LAG;
-    ps.values[idx] = clampParam(id, TAIL_REST[i] * tailSide + Math.sin(2 * Math.PI * phase) * amp * reach * span);
+    // a shiver all along it, and a flick that snaps mostly the tip
+    const shiver = tailMood.tremble * Math.sin(now / 38 + i * 0.9) * reach * span * 0.35;
+    const flick = tailFlick * tailFlickDir * reach * reach * span * 0.55 * (1 - tailStill * 0.7);
+    ps.values[idx] = clampParam(id, TAIL_REST[i] * tailSide * tailMood.rest
+      + Math.sin(2 * Math.PI * phase) * amp * reach * span + shiver + flick);
   }
 }
 

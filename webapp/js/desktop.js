@@ -17,18 +17,19 @@ import * as ChatAPI from './core/chat-api.js?v=8';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
-import * as Gauges from './core/speech-card.js?v=23';
-import { configureTts, say } from './core/speech-card.js?v=23';
+import * as Gauges from './core/speech-card.js?v=24';
+import { configureTts, say } from './core/speech-card.js?v=24';
 import { localTimeString } from './core/util.js?v=1';
-import * as Actions from './live2d/actions.js?v=103';
+import * as Actions from './live2d/actions.js?v=104';
 import { fitModel } from './live2d/camera.js?v=78';
-import * as Live2D from './live2d/live2d.js?v=93';
+import * as Live2D from './live2d/live2d.js?v=94';
 import { S } from './live2d/state.js?v=75';
-import * as Outfit from './outfit/outfit.js?v=103';
-import * as Body from './desktop/body.js?v=40';
+import * as Outfit from './outfit/outfit.js?v=104';
+import * as Body from './desktop/body.js?v=42';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=5';
-import * as Moods from './desktop/moods.js?v=6';
+import * as Fx from './desktop/fx.js?v=6';
+import * as Moods from './desktop/moods.js?v=8';
+import * as FeelBody from './desktop/feelbody.js?v=4';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 
 const D = window.junDesktop || null;
@@ -68,6 +69,14 @@ window.addEventListener('storage', (e) => { if (e.key === Fx.FX_KEY) Fx.applyFx(
 // how she feels about each touch, shown around her (desktop/moods.js)
 Moods.installCss();
 Moods.setAnchor(() => (ready ? Live2D.faceAnchor() : null), document.body);
+// ...and in her body: ears, tail, eyes, blush, a soft lean (desktop/feelbody.js)
+FeelBody.setPrefs(Fx.currentFx());
+Moods.setBody(FeelBody);
+FeelBody.setOnAway((ms) => Body.busyFor(ms));
+// where his hand is, so she leans away from it, not from where it pressed
+window.addEventListener('pointermove', (e) => Moods.setPointer(e.clientX, e.clientY), { capture: true, passive: true });
+window.addEventListener('mousemove', (e) => Moods.setPointer(e.clientX, e.clientY), { passive: true });
+window.addEventListener('storage', (e) => { if (e.key === Fx.FX_KEY) FeelBody.setPrefs(Fx.readFx()); });
 
 const OOC = '(OOC stage direction, not spoken by Anon: ';
 const NOTES = {

@@ -144,6 +144,19 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   her)/heart/star (masked `.ma-shape` inside a blurred `.mood-aura`), `mGlowMove` feel (per feeling)/breathe/beat/spin/
   still, `mGlowSpeed` ×, `mGlowColor` feeling/one (`--mood-glow` in the theme)/rainbow, `mGlowLayer` behind/front,
   `mGlowFade` seconds; "Show the glow" previews it.
+- **Her body shows the feeling** (`webapp/js/desktop/feelbody.js`, desktop only, wired in js/desktop.js via
+  `Moods.setBody(FeelBody)`): moods.js `tick` calls `show(feeling, power)` every 120 ms while a feeling is on (even with
+  the effects amount off; the body has its own switch) and `after(feeling, power, side)` once when it ends (side = where
+  his mouse IS then, `Moods.setPointer` from desktop.js). Not ready: ears flat, tail stiff and up with a shiver, small
+  pupils, a start; after: a SOFT lean away from his hand (BodyZ/HeadZ/HeadX/eyes, 2.6 s, `Body.busyFor` keeps her
+  cursor-watching from turning her back). Flustered: blush (only raised, `raise()` reads state.js `targetParams`), ears
+  twitch/flicker (double flicks when strong), tail flicks (`Live2D.tailFlickOnce`), eyes look away and down. Likes: relaxed
+  ears, tail low and slow, soft happy eyes. Loves: ears up, fast wag, happy eyes, blush, heart eyes now and then.
+  Giggly: bouncing ears, very fast wiggle, squinty eyes. The tail mood lives in live2d/anim.js `setTailMood({ amp, period,
+  rest, tremble }, ms)` (eased, back to normal by itself) on top of `driveTail`. Numbers in feelbody.js `TUNE`. Settings
+  (Touch feedback > How she feels > Her body, desktop.fx): `mBody`, `mBodyStr`, `mBodyEars`, `mBodyTail`, `mBodyEyes`,
+  `mBodyLean`. Testing in the cloud: a fake rig (state.js `setParamRanges` + `setRaw({ parameters: { values } })` + a PIXI
+  container as model) and calling anim.js `tick()` by hand, then reading `raw.parameters.values`.
 - **Her picture in the settings preview** (`webapp/js/desktop/snapshot.js`, served by BOTH her main window
   (js/app/main.js) and the desktop page, so it works without the desktop page ever opened): `take()` renders the model
   with `app.renderer.extract.canvas(model)`, then TRIMS to her visible pixels (columns/rows with too few of her pixels

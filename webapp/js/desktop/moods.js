@@ -15,7 +15,7 @@
 // colors in the theme: --mood-notready, --mood-flustered, --mood-likes,
 // --mood-loves, --mood-giggly.
 
-import * as Fx from './fx.js?v=5';
+import * as Fx from './fx.js?v=6';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],
@@ -398,7 +398,7 @@ function strongest() {
   if (demo) {
     const t = Date.now() - demo.t0;
     if (t > demo.ms) { demo = null; return null; }
-    return { feeling: demo.feeling, power: demo.from + (demo.to - demo.from) * Math.min(1, t / demo.ms), at: null };
+    return { feeling: demo.feeling, power: demo.from + (demo.to - demo.from) * Math.min(1, t / demo.ms), at: demo.at || null };
   }
   let best = null;
   const now = Date.now();
@@ -411,8 +411,30 @@ function strongest() {
   }
   return best;
 }
+// her body showing the feeling (desktop/feelbody.js, set by desktop.js;
+// the settings window has no rig, so none there): show() every tick,
+// after() once when it ends, with the side his hand was on
+let body = null;
+export function setBody(b) { body = b; }
+let felt = null; // { feeling, power, at } the body is showing
+// where his mouse is now (desktop.js tells us): she leans away from
+// where the hand IS when the touch ends, not where it pressed
+let pointer = null;
+export function setPointer(x, y) { pointer = { x, y }; }
+function sideOf(at) {
+  const p = pointer || at;
+  const a = p && anchorFn();
+  return a ? Math.sign(p.x - a.x) || 1 : 0;
+}
+
 function tick() {
-  const f = amount() === 'off' ? null : strongest();
+  const any = strongest();
+  // the body follows its own switch, the effects their amount
+  if (body) {
+    if (any) { body.show(any.feeling, any.power); felt = any; }
+    else if (felt) { body.after(felt.feeling, felt.power, sideOf(felt.at)); felt = null; }
+  }
+  const f = amount() === 'off' ? null : any;
   if (!f) {
     aura(null);
     shown = null;
@@ -457,13 +479,15 @@ export function endAll() { active.clear(); demo = null; tick(); }
 
 // a single moment: a poke, a combo, "she wriggled free"
 export function burst(feeling, power = 0.7, where = null) {
-  if (amount() === 'off' || !COLOR[feeling]) return;
-  const lots = amount() === 'lots';
-  const n = 1 + (power > 0.5 ? 1 : 0) + (lots ? 1 : 0);
-  for (let i = 0; i < n; i++) setTimeout(() => puff(feeling, power, where), i * 150);
-  // a short glow when nothing longer is going on
+  if (!COLOR[feeling]) return;
+  if (amount() !== 'off') {
+    const lots = amount() === 'lots';
+    const n = 1 + (power > 0.5 ? 1 : 0) + (lots ? 1 : 0);
+    for (let i = 0; i < n; i++) setTimeout(() => puff(feeling, power, where), i * 150);
+  }
+  // a short moment (glow, her body) when nothing longer is going on
   if (!active.size && !demo) {
-    demo = { feeling, from: power, to: power, t0: Date.now(), ms: 900 };
+    demo = { feeling, from: power, to: power, t0: Date.now(), ms: 900, at: where };
     run();
   }
 }

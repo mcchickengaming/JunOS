@@ -1,10 +1,10 @@
 // never writes a note, the server only scores it (consolidate.php?action=game)
 
 import * as Feed from './consolidation-feed.js?v=3';
-import * as Live2D from '../live2d/live2d.js?v=93';
-import * as VoiceMode from '../voice/voicemode.js?v=94';
+import * as Live2D from '../live2d/live2d.js?v=94';
+import * as VoiceMode from '../voice/voicemode.js?v=95';
 import * as Achievements from '../achievements/achievements.js?v=8';
-import { showFaceBubble } from './face-bubble.js?v=95';
+import { showFaceBubble } from './face-bubble.js?v=96';
 import { escapeHtml } from '../core/util.js?v=1';
 
 const DRAWERS = [

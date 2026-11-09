@@ -1,7 +1,7 @@
 import * as ui from '../core/ui.js?v=1';
 import { assignOwners, buildSections, fetchLrclib, parseId3Lyrics, trackMeta } from './lyrics.js?v=1';
-import { audioCtx, ensureCtx, renderLyrics, start } from './playback.js?v=23';
-import { $, overlay } from './karaoke.js?v=30';
+import { audioCtx, ensureCtx, renderLyrics, start } from './playback.js?v=24';
+import { $, overlay } from './karaoke.js?v=31';
 import { api, apiJson } from '../core/api.js?v=1';
 import { idbStore } from '../core/idb.js?v=1';
 import { escapeHtml } from '../core/util.js?v=1';

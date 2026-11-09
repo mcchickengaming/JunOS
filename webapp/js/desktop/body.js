@@ -11,8 +11,8 @@
 // every number that shapes a move is in TUNE, so a walk that looks
 // off on the real rig is a one-line change.
 
-import * as Actions from '../live2d/actions.js?v=103';
-import * as Live2D from '../live2d/live2d.js?v=93';
+import * as Actions from '../live2d/actions.js?v=104';
+import * as Live2D from '../live2d/live2d.js?v=94';
 
 export const TUNE = {
   turnDeg: 8,         // how far the figure turns toward where she walks
@@ -198,6 +198,9 @@ export function flyVelocity(vx, vy) {
 // Familiar, 2 = Friend, 3 = Close and up (desktop.js from the bond stage)
 let close = 2;
 export function setCloseness(c) { close = c; }
+// keep her idle moves and cursor-watching out of the way for a while
+// (her body showing a feeling, desktop/feelbody.js: leaning away)
+export function busyFor(ms) { busyMove = Math.max(busyMove, performance.now() + ms); }
 
 export function setMood(m, daypart) {
   mood = m || 'neutral';

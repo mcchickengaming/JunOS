@@ -1,13 +1,13 @@
 import * as Prefs from '../core/prefs.js?v=7';
 import { api, apiJson } from '../core/api.js?v=1';
 import { COLOR_GROUPS, GLASSES_STYLES, ITEMS, VARIANTS, VARIANT_OWNER } from './catalog.js?v=5';
-import { Presets, applyChanged, loadPresetState } from './presets.js?v=33';
-import { applyGlassesTexture } from './composite.js?v=33';
-import { applyItems, applyVariants } from './apply.js?v=33';
+import { Presets, applyChanged, loadPresetState } from './presets.js?v=34';
+import { applyGlassesTexture } from './composite.js?v=34';
+import { applyItems, applyVariants } from './apply.js?v=34';
 import { colors, state, variantState } from './current.js?v=5';
-import { loadBakedTiles } from '../wardrobe/tile-bake.js?v=33';
+import { loadBakedTiles } from '../wardrobe/tile-bake.js?v=34';
 import { normalizeHex } from './colors.js?v=1';
-import * as Mods from '../mods/mods.js?v=104';
+import * as Mods from '../mods/mods.js?v=105';
 import { hooks } from './hooks.js?v=1';
 
 const STORAGE_KEY = 'omega.outfit.v1';

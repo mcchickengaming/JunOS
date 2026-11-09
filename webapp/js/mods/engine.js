@@ -1,11 +1,11 @@
-import * as Live2D from '../live2d/live2d.js?v=93';
+import * as Live2D from '../live2d/live2d.js?v=94';
 import * as Prefs from '../core/prefs.js?v=7';
 import { idbStore } from '../core/idb.js?v=1';
 import { hexToRgb01 } from '../outfit/colors.js?v=1';
-import { applyDrawOrder, applyFootCover, hiddenItemDrawables, refreshVisibility, setModdedDrawables } from '../outfit/apply.js?v=33';
+import { applyDrawOrder, applyFootCover, hiddenItemDrawables, refreshVisibility, setModdedDrawables } from '../outfit/apply.js?v=34';
 import { unzip } from './zip.js?v=1';
-import { itemDrawables, parseMod } from './parse.js?v=21';
-import { MOD_SLOT, bakeDrawable, fileUrl } from './layers.js?v=21';
+import { itemDrawables, parseMod } from './parse.js?v=22';
+import { MOD_SLOT, bakeDrawable, fileUrl } from './layers.js?v=22';
 import { hooks } from '../outfit/hooks.js?v=1';
 
 const STATE_KEY = 'omega.mods.state.v1';

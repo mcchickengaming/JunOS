@@ -7,9 +7,9 @@
 // get colors later (her rooms, furniture, the chat window) should add
 // a row to GROUPS the same way.
 
-import { makeItemColorButton } from './wardrobe/color-picker.js?v=38';
-import * as Fx from './desktop/fx.js?v=5';
-import * as Moods from './desktop/moods.js?v=6';
+import { makeItemColorButton } from './wardrobe/color-picker.js?v=39';
+import * as Fx from './desktop/fx.js?v=6';
+import * as Moods from './desktop/moods.js?v=8';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -514,6 +514,24 @@ function buildFeedback() {
     row('Colors', 'One for each feeling. Right-click a color to go back to the default.',
       colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood')),
   );
+  // her body showing it: on her on the desktop (the picture here can't move)
+  const bodyHead = document.createElement('h3');
+  bodyHead.className = 'sub';
+  bodyHead.textContent = 'Her body';
+  const bodyHint = document.createElement('p');
+  bodyHint.className = 'hint';
+  bodyHint.textContent = 'Her ears, tail, eyes and blush show it too: a fast wag when she loves it, a stiff tail shooting up when she isn\'t ready, '
+    + 'ears twitching when she\'s flustered, the tail low and slow when she likes it. You\'ll see this on her on the desktop.';
+  mood.append(
+    bodyHead, bodyHint,
+    row('Her body shows it', 'Ears, tail, eyes and blush move with how she feels.', checkOf('mBody', 'body')),
+    row('How much', 'Subtle to big.', rangeOf('mBodyStr', 0.2, 1.5, 0.05, 'body', (v) => Math.round(v * 100) + '%')),
+    row('Ears', 'Flat, twitching, relaxed, perked, bouncing.', checkOf('mBodyEars', 'body')),
+    row('Tail', 'Stiff and up, flicks, low and slow, a happy wag, a fast wiggle.', checkOf('mBodyTail', 'body')),
+    row('Eyes and blush', 'Wide eyes, looking away, happy eyes, heart eyes now and then.', checkOf('mBodyEyes', 'body')),
+    row('Leaning away', 'After a touch she wasn\'t ready for, she leans away from your hand a little, softly.', checkOf('mBodyLean', 'body')),
+  );
+
   // the glow: every part of it is his to shape
   const glowHead = document.createElement('h3');
   glowHead.className = 'sub';
