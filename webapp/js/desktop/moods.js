@@ -14,8 +14,9 @@
 // picks (mAmount off/some/lots, mGlow) live in desktop.fx (fx.js), the
 // colors in the theme: --mood-notready, --mood-flustered, --mood-likes,
 // --mood-loves, --mood-giggly.
+import * as Often from './often.js?v=2';
 
-import * as Fx from './fx.js?v=8';
+import * as Fx from './fx.js?v=9';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],
@@ -266,7 +267,7 @@ function pickText(list, key) {
   return t;
 }
 function choosePiece(feeling, power) {
-  const asciiW = { off: 0, sometimes: 1, often: 2.2 }[Fx.currentFx().eAscii] ?? 1;
+  const asciiW = Often.mul(Fx.currentFx().eAscii);
   let list = PIECES[feeling].map(([p, w]) => [p, p === 'ascii' ? w * asciiW * 0.5 : w]).filter(x => x[1] > 0);
   // the big heart ring is for a strong moment
   if (power < 0.6) list = list.filter(x => x[0] !== 'heartring');

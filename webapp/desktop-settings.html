@@ -40,6 +40,9 @@
   .row.flash { animation: row-flash 1.6s ease-out; }
   @keyframes row-flash { 0%, 30% { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); } }
   .row.off { opacity: .55; }
+  .often { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
+  .often-line { display: flex; align-items: center; gap: 6px; }
+  .often input[type=range] { width: 120px; }
   .res { cursor: pointer; }
   .res:hover { border-color: var(--accent); }
   .res .where { display: block; font-size: 11.5px; color: var(--accent); margin-bottom: 2px; }
@@ -329,6 +332,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=31"></script>
+<script type="module" src="js/desktop-settings.js?v=32"></script>
 </body>
 </html>

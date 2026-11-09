@@ -27,10 +27,11 @@ import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
 import * as Body from './desktop/body.js?v=42';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=8';
-import * as Moods from './desktop/moods.js?v=10';
+import * as Fx from './desktop/fx.js?v=9';
+import * as Moods from './desktop/moods.js?v=11';
 import * as FeelBody from './desktop/feelbody.js?v=5';
 import * as Snapshot from './desktop/snapshot.js?v=5';
+import * as Often from './desktop/often.js?v=2';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -250,7 +251,6 @@ const TOUCH_CHANCE = {
   // combos are rarer and mean more, so they're likelier to get a word
   'combo:melt': 0.8, 'combo:patboop': 0.5, 'combo:handhug': 0.8, 'combo:cozy': 0.6, 'combo:tickleattack': 0.7, 'combo:tailtease': 0.6,
 };
-const TALK = { often: 1.6, sometimes: 1, rarely: 0.35, never: 0 };
 const POKE_TALK = { cheek: 'cheek', nose: 'nose', ear: 'earflick', shoulder: 'shoulder', tail: 'tail', hand: 'squeeze',
   side: 'tickle', thigh: 'thighpoke', feet: 'feet' };
 const RUB_TALK = { ear: 'ear', side: 'tickle', thigh: 'thighrub', feet: 'feetrub', feettickle: 'feettickle', tail: 'tailrub' };
@@ -400,7 +400,7 @@ window.addEventListener('keydown', (e) => {
 });
 function maybeSay(kind) {
   if (!kind || !TOUCH_NOTES[kind] || settings.quiet) return;
-  const f = TALK[settings.talk] ?? 1;
+  const f = Often.mul(settings.talk);
   const now = Date.now();
   // the same touch twice in a row doesn't get two remarks
   if (now - (lastTouchTalk[kind] || 0) < 90000) return;
@@ -672,16 +672,19 @@ async function refreshMood() {
 // ---------------------------------------------------------------
 // "On the desktop" settings from the tray (desktop/main.js)
 
-let settings = { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false, patFollow: 'normal' };
-const WATCH = { often: 1.6, normal: 1, rarely: 0.4, never: 0 };
-const PAT_FOLLOW = { lots: 1.6, normal: 1, little: 0.45, none: 0 };
-const WANDER_S = { often: [15, 35], sometimes: [25, 75], rarely: [90, 240], never: null };
+let settings = { walk: 50, doze: 5, watch: 50, quiet: false, sounds: false, hints: 'glow', talk: 50, showSpots: false, patFollow: 50 };
+// walk/talk/watch/patFollow are 0..100 (desktop/often.js; old words still read). a stroll every
+// 25-75 s at 50 %, quicker above, slower below, never at 0
+function wanderRange() {
+  const m = Often.mul(settings.walk);
+  return m > 0 ? [25 / m, 75 / m] : null;
+}
 D?.onSettings?.((s) => {
   const before = settings.herPx;
   settings = { ...settings, ...s };
   applySize(before !== settings.herPx);
-  Body.setWatch(WATCH[settings.watch] ?? 1);
-  Body.setPatFollow(PAT_FOLLOW[settings.patFollow] ?? 1);
+  Body.setWatch(Often.mul(settings.watch, 1.8));
+  Body.setPatFollow(Often.mul(settings.patFollow, 1.8));
   if (settings.quiet) D?.stopWalk();
   showSpots(!!settings.showSpots);
 });
@@ -1501,9 +1504,9 @@ D?.onIdle(({ seconds, dozeAfter }) => {
 
 // a stroll every so often, when she isn't busy with him
 function scheduleWander() {
-  const range = WANDER_S[settings.walk] || [30, 60];
+  const range = wanderRange() || [30, 60];
   setTimeout(() => {
-    const may = WANDER_S[settings.walk] && !settings.quiet;
+    const may = !!wanderRange() && !settings.quiet;
     if (may && !calibrating && MODE === 'stepout' && ready && !busy && !dozing && !walking && !press && talk.hidden && !Body.patting()) D?.wander(pace);
     scheduleWander();
   }, (range[0] + Math.random() * (range[1] - range[0])) * 1000);
@@ -1551,7 +1554,7 @@ function onHeadpat(ms) {
     sparkles(2);
     if (ms > 3000 && Math.random() < 0.4) floatHearts(1);
   }
-  if (ms > 2500 && Date.now() - patSpoke > 120000 && Math.random() < 0.5 * (TALK[settings.talk] ?? 1)) {
+  if (ms > 2500 && Date.now() - patSpoke > 120000 && Math.random() < 0.5 * Often.mul(settings.talk)) {
     patSpoke = Date.now();
     react('headpat');
   }

@@ -58,13 +58,27 @@ const DEFAULTS = {
   mode: 'window', inside: 'window', onTop: false, size: 0.425,
   window: null, compact: null, stepX: null, displayId: null, tipShown: false,
   // "On the desktop" settings, the page reads them (jun:settings)
-  desk: { walk: 'sometimes', doze: 5, watch: 'normal', quiet: false, sounds: false, hints: 'glow', talk: 'sometimes', showSpots: false, patFollow: 'normal', growFx: true },
+  desk: { walk: 50, doze: 5, watch: 50, quiet: false, sounds: false, hints: 'glow', talk: 50, showSpots: false, patFollow: 50, growFx: true },
 };
-const WALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
-const DOZE_CHOICES = [[2, 'After 2 minutes'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [0, 'Never']];
-const TALK_CHOICES = [['often', 'Often'], ['sometimes', 'Sometimes'], ['rarely', 'Rarely'], ['never', 'Never']];
-const WATCH_CHOICES = [['often', 'Often'], ['normal', 'Now and then'], ['rarely', 'Rarely'], ['never', 'Never']];
-const PATFOLLOW_CHOICES = [['lots', 'A lot'], ['normal', 'Normal'], ['little', 'A little'], ['none', 'Not at all (only the hand moves)']];
+// "how often" / "how much" are 0..100 (the same steps as webapp/js/desktop/often.js; the settings
+// page also has a slider for any percent). old installs saved words, loadCfg turns them into these
+const OFTEN = [[0, 'Never'], [10, 'Almost never'], [25, 'Rarely'], [40, 'Now and then'],
+  [50, 'Sometimes'], [70, 'Often'], [85, 'Very often'], [100, 'All the time']];
+const MUCH = [[0, 'Not at all (only the hand moves)'], [10, 'A tiny bit'], [25, 'A little'], [40, 'A bit less'],
+  [50, 'Normal'], [70, 'More'], [85, 'A lot'], [100, 'All the way']];
+const OLD_WORDS = { never: 0, none: 0, off: 0, rarely: 25, little: 25, sometimes: 50, normal: 50, some: 50, often: 70, lots: 85 };
+function pctOf(v, d = 50) {
+  if (typeof v === 'string' && v in OLD_WORDS) return OLD_WORDS[v];
+  const n = Number(v);
+  return v !== '' && v != null && Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : d;
+}
+const WALK_CHOICES = OFTEN;
+const TALK_CHOICES = OFTEN;
+const WATCH_CHOICES = OFTEN;
+const PATFOLLOW_CHOICES = MUCH;
+const PCT_KEYS = ['walk', 'talk', 'watch', 'patFollow'];
+const DOZE_CHOICES = [[1, 'After 1 minute'], [2, 'After 2 minutes'], [5, 'After 5 minutes'], [10, 'After 10 minutes'],
+  [15, 'After 15 minutes'], [30, 'After 30 minutes'], [60, 'After an hour'], [0, 'Never']];
 let cfg = { ...DEFAULTS };
 function clampSize(v) {
   const n = Number(v);
@@ -80,6 +94,7 @@ function loadCfg() {
   if (!['window', 'compact', 'stepout'].includes(cfg.mode)) cfg.mode = 'window';
   if (!['window', 'compact'].includes(cfg.inside)) cfg.inside = 'window';
   cfg.desk = { ...DEFAULTS.desk, ...(cfg.desk || {}) };
+  for (const k of PCT_KEYS) cfg.desk[k] = pctOf(cfg.desk[k]);
 }
 let saveTimer = null;
 // set while she's going back to a save: the save's desktop.json goes
@@ -918,7 +933,7 @@ const DESK_KEYS = {
 function deskInfo() {
   const choices = {};
   for (const [k, t] of Object.entries(DESK_KEYS)) if (Array.isArray(t)) choices[k] = t;
-  return { desk: { ...cfg.desk }, choices, onTop: !!cfg.onTop, openAtStart: envDesktopOn(),
+  return { desk: { ...cfg.desk }, choices, pct: PCT_KEYS, onTop: !!cfg.onTop, openAtStart: envDesktopOn(),
     startWithWindows: process.platform === 'win32' && fs.existsSync(startupLink()), canStartWithWindows: process.platform === 'win32',
     outside: winMode === 'stepout' };
 }
@@ -927,6 +942,7 @@ ipcMain.handle('jun:desk', (e, action, key, value) => {
   if (action === 'set' && DESK_KEYS[key]) {
     const t = DESK_KEYS[key];
     if (t === 'bool') cfg.desk[key] = !!value;
+    else if (PCT_KEYS.includes(key)) cfg.desk[key] = pctOf(value, cfg.desk[key]);
     else { const hit = t.find(([v]) => String(v) === String(value)); if (hit) cfg.desk[key] = hit[0]; }
     saveCfg(); sendSettings(); rebuildMenus();
   } else if (action === 'onTop') setOnTop(!!value);
@@ -983,6 +999,8 @@ ipcMain.on('prop:menu', (e) => {
 function windowMenu() {
   return Menu.buildFromTemplate([
     { label: 'Jun', submenu: [
+      { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => openSettings('her') },
+      { type: 'separator' },
       { label: 'Step out onto the desktop', accelerator: 'CmdOrCtrl+Shift+S', click: () => openMode('stepout', 'stepout') },
       { label: 'Compact', accelerator: 'CmdOrCtrl+Shift+C', click: () => openMode('compact', '') },
       { type: 'separator' },
@@ -1021,9 +1039,14 @@ function setOnTop(on) {
 // "On the desktop": how lively she is out there
 function deskMenu() {
   const set = (k, v) => { cfg.desk[k] = v; saveCfg(); sendSettings(); rebuildMenus(); };
-  const radio = (k, choices) => choices.map(([v, label]) => ({
-    label, type: 'radio', checked: cfg.desk[k] === v, click: () => set(k, v),
-  }));
+  const radio = (k, choices) => {
+    const items = choices.map(([v, label]) => ({ label, type: 'radio', checked: cfg.desk[k] === v, click: () => set(k, v) }));
+    if (PCT_KEYS.includes(k)) {
+      if (!choices.some(([v]) => v === cfg.desk[k])) items.push({ label: `Your own (${cfg.desk[k]}%)`, type: 'radio', checked: true, enabled: false });
+      items.push({ type: 'separator' }, { label: 'Any amount you like…', click: () => openSettings(k === 'patFollow' ? 'touch' : k === 'talk' ? 'talk' : 'desktop') });
+    }
+    return items;
+  };
   return { label: 'On the desktop', submenu: [
     { label: 'Quiet mode (no wandering, no talking on her own)', type: 'checkbox', checked: !!cfg.desk.quiet, click: (i) => set('quiet', i.checked) },
     { type: 'separator' },
@@ -1150,7 +1173,7 @@ function modeItems(fromHer) {
   if (fromHer) {
     items.push({ type: 'separator' });
     if (out) items.push(spotsMenu());
-    items.push({ label: 'How to play with her', click: () => openSettings('help') }, { label: 'Hide her', click: hideJun });
+    items.push({ label: 'Settings…', click: () => openSettings('her') }, { label: 'How to play with her', click: () => openSettings('help') }, { label: 'Hide her', click: hideJun });
   }
   return items;
 }
@@ -1160,6 +1183,7 @@ function rebuildTrayMenu() {
   const menu = Menu.buildFromTemplate([
     { label: 'Show Jun', click: showJun },
     { label: 'Hide Jun', click: hideJun },
+    { label: 'Settings…', click: () => openSettings('her') },
     { type: 'separator' },
     ...modeItems(false),
     { type: 'separator' },

@@ -8,13 +8,14 @@
 // size...); the colors in localStorage['desktop.theme'] like every
 // other desktop color (--ripple, --label, --label-edge, --label-ink).
 // a change in the settings window reaches her through the storage event.
+import * as Often from './often.js?v=2';
 
 export const FX_KEY = 'desktop.fx';
 
 export const FX_DEFAULTS = {
   rShape: 'circle', rMotion: 'expand', rSize: 1, rSpeed: 1, rRings: 1, rWidth: 2, rHerPick: true,
   lBox: 'rounded', lFont: 'arial', lSize: 12, lAnim: 'pop', lBorder: 1, lAlpha: 1,
-  eAscii: 'sometimes', eAnim: 'mix',
+  eAscii: 50, eAnim: 'mix',
   // how she feels about a touch (desktop/moods.js): off / some / lots, and the glow around her
   mAmount: 'some', mGlow: true, mTsun: true, mComfort: true,
   // anime tsundere lines ("b-baka"): auto = once she's picked the habit up (lib/quirks.php), on, off
@@ -348,7 +349,7 @@ let lastIcon = null, lastIconAt = 0;
 // never the same one twice in a row (within a few seconds)
 export function pickEmote(kind, ctx = {}) {
   if (!EMOTES[kind]) return kind;
-  const asciiW = { off: 0, sometimes: 1, often: 2.2 }[fx.eAscii] ?? 1;
+  const asciiW = Often.mul(fx.eAscii);
   const alts = variants(kind, ctx.close || 1, ctx.mood).filter(k => EMOTES[k][1] !== 'ascii' || asciiW > 0);
   let pick = kind;
   const chance = 0.3 + (asciiW > 1 ? 0.12 : 0);
@@ -370,7 +371,7 @@ export function pickEmote(kind, ctx = {}) {
 }
 // for her own idle thoughts: pick from a pool, but not the last one
 export function pickFromPool(pool) {
-  const asciiW = { off: 0, sometimes: 1, often: 2.2 }[fx.eAscii] ?? 1;
+  const asciiW = Often.mul(fx.eAscii);
   // 'hearts' is the burst-of-hearts effect, not an icon of its own
   let p = pool.filter(k => k === 'hearts' || (EMOTES[k] && (EMOTES[k][1] !== 'ascii' || asciiW > 0)));
   if (asciiW > 1) p = p.concat(p.filter(k => EMOTES[k]?.[1] === 'ascii'));

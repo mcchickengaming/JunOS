@@ -8,8 +8,9 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
-import * as Fx from './desktop/fx.js?v=8';
-import * as Moods from './desktop/moods.js?v=10';
+import * as Fx from './desktop/fx.js?v=9';
+import * as Moods from './desktop/moods.js?v=11';
+import * as Often from './desktop/often.js?v=2';
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -619,7 +620,7 @@ function buildFeedback() {
   const ico = document.getElementById('iconRows');
   ico.innerHTML = '';
   ico.append(
-    row('Robot faces', 'Her ASCII faces (^_^ >_< [ERR]): she knows she\'s an android and finds it funny.', selectOf(Fx.ASCII_AMOUNTS, 'eAscii', 'icon')),
+    row('Robot faces', 'Her ASCII faces (^_^ >_< [ERR]): she knows she\'s an android and finds it funny.', oftenControl(Fx.readFx().eAscii, Often.OFTEN, (p) => setFx('eAscii', p, 'icon'))),
     row('How they appear', 'Pop, bounce, wobble, drop in or spin. A mix keeps her from moving the same way every time.', selectOf(Fx.ICON_ANIMS, 'eAnim', 'icon')),
   );
   const gal = document.getElementById('gallery');
@@ -873,11 +874,54 @@ $('saveKeep').addEventListener('change', () => D?.saves && savesCall('keep', $('
 $('updateNow').addEventListener('click', () => D?.saves && savesCall('update'));
 D?.onSavesChanged?.(() => { if (!$('tab-saves').hidden) loadSaves(); });
 
+// "how often" / "how much": the named steps in a dropdown AND a slider for any percent (desktop/often.js).
+// onChange(percent) runs when he picks a step or lets go of the slider
+function oftenControl(value, list, onChange, disabled) {
+  const wrap = document.createElement('div');
+  wrap.className = 'often';
+  const sel = document.createElement('select');
+  sel.className = 'btn';
+  const own = document.createElement('option');
+  own.value = 'own';
+  sel.appendChild(own);
+  for (const [v, name] of list) {
+    const o = document.createElement('option');
+    o.value = String(v); o.textContent = name;
+    sel.appendChild(o);
+  }
+  const line = document.createElement('div');
+  line.className = 'often-line';
+  const r = document.createElement('input');
+  r.type = 'range'; r.min = '0'; r.max = '100'; r.step = '1';
+  r.setAttribute('aria-label', 'Percent');
+  const out = document.createElement('span');
+  out.className = 'pct';
+  line.append(r, out);
+  wrap.append(sel, line);
+  const draw = (p) => {
+    p = Math.round(Often.pct(p));
+    r.value = String(p);
+    out.textContent = p + '%';
+    const step = list.some(([v]) => v === p);
+    own.hidden = step;
+    own.textContent = 'Your own (' + p + '%)';
+    sel.value = step ? String(p) : 'own';
+  };
+  draw(value);
+  sel.disabled = r.disabled = !!disabled;
+  sel.addEventListener('change', () => { if (sel.value === 'own') return; draw(Number(sel.value)); onChange(Number(sel.value)); });
+  r.addEventListener('input', () => draw(Number(r.value)));
+  r.addEventListener('change', () => onChange(Number(r.value)));
+  return wrap;
+}
+
 // ---------------------------------------------------------------
 // "On the desktop" switches (they used to live only in the tray and Jun menu; the menus still have
 // the quick ones). kept in desktop.json by the app, through junDesktop.desk()
 
 let deskState = null;
+// these are 0..100 with a slider (the others are plain picks)
+const PCT_ROWS = { walk: Often.OFTEN, talk: Often.OFTEN, watch: Often.OFTEN, patFollow: Often.MUCH };
 const DESK_ROWS = {
   talkRows: [
     ['quiet', 'Quiet mode on the desktop', 'Out on the desktop she doesn\'t wander or talk on her own. She still answers you.'],
@@ -916,6 +960,7 @@ function deskControl(key) {
     return b;
   }
   const top = ['onTop', 'openAtStart', 'startWithWindows'].includes(key);
+  if (PCT_ROWS[key]) return oftenControl(st ? st.desk[key] : 50, PCT_ROWS[key], (p) => deskCall('set', key, p), off);
   const choices = st?.choices?.[key];
   if (choices) {
     const sel = document.createElement('select');

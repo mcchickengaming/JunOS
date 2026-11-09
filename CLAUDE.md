@@ -239,7 +239,12 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   The "On the desktop" switches that used to be menu-only (quiet, talk, patFollow, hints, showSpots, calibrate, walk,
   doze, watch, sounds, keep on top, open at start, start with Windows) are rows via `junDesktop.desk()` → main.js
   `jun:desk` (`DESK_KEYS` validates; `rebuildMenus` pushes `jun:desk-changed` so window and menus stay in step).
-  Settings stay stored where they were (localStorage, desktop.json, .env, server). Anime tsundere talk moved to
+  Settings stay stored where they were (localStorage, desktop.json, .env, server).
+  "How often / how much" settings are 0..100 (`webapp/js/desktop/often.js`: 8 named steps `OFTEN`/`MUCH`, `pct()` reads
+  old words, `mul(v, top)` = 0 at 0 %, 1 at 50 % (the old default), `top` at 100 %): desk `walk`, `talk`, `watch`,
+  `patFollow` (main.js `PCT_KEYS`, `pctOf` migrates old words on load) and desktop.fx `eAscii`. The settings page shows
+  a dropdown of the steps plus a slider (`oftenControl`); menus show the steps + "Your own (N%)" + "Any amount you like…".
+  "Settings…" is in the Jun menu (Ctrl+,), the tray and her right-click menu. Anime tsundere talk moved to
   Her > Habits she's picked up (`#habitRows`, part B's page). Next steps: her main window's settings move in, the
   tray/Jun menu get trimmed to quick actions, "Dates" becomes a "Do something together" button in her window.
 
