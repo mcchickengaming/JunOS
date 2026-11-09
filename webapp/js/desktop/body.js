@@ -64,6 +64,15 @@ export const TUNE = {
   // (onto an ear, her face, off her), so he has time to find the spot again
   // before it turns into an ear rub or she goes back to idle
   patGraceMs: 600,
+  // thigh squish, wriggling free. a period is one full side-to-side
+  // squirm in ms, [at the start, right before she's out]: smaller = faster.
+  // stranger/familiar: squirms right away and is out after wriggleStrangerMs.
+  // friend: holds still until wriggleFriendFrom, squirms, out at wriggleFriendMs
+  wriggleStrangerMs: 1400,
+  wriggleStrangerPeriod: [360, 170],
+  wriggleFriendFrom: 3200,
+  wriggleFriendMs: 6000,
+  wriggleFriendPeriod: [620, 300],
   rubPatX: 0.45,      // (owner: 0.3 felt a little small, Nov 8; halfway back toward 0.6)
   rubPatSmoothMs: 0,  // extra easing on the hover hand. 0 = off: 140 lagged so far behind a quick rub
                       // that the hand looked like it went the opposite way (owner, Nov 8)
@@ -909,6 +918,39 @@ export function thighRub(ms) {
 // (she doesn't). desktop.js keeps calling thighSquishTick() while held.
 // true from the tick = she's had enough, let go
 let squish = null;
+
+// a wriggle: she squirms side to side, smoothly, every frame (the hold
+// ticks are too slow for that). setWriggle changes the speed and size on
+// the fly; the phase carries on, so speeding up never jumps
+let wrig = null;
+function setWriggle(periodMs, amp) {
+  if (!wrig) {
+    wrig = { phase: 0, last: performance.now(), periodMs, amp, raf: 0 };
+    const step = (now) => {
+      if (!wrig) return;
+      // the squish ended some other way: never squirm on by herself
+      if (!squish) { stopWriggle(); return; }
+      wrig.phase += ((now - wrig.last) / wrig.periodMs) * Math.PI * 2;
+      wrig.last = now;
+      const w = Math.sin(wrig.phase), a = wrig.amp;
+      setHeld('ParamBodyZ', a * w, 120);
+      setHeld('ParamBodyX', a * 0.7 * Math.sin(wrig.phase - 0.6), 120);
+      setHeld('ParamHeadZ', -a * 0.5 * w, 120);
+      // the legs kick with it once she really means it
+      if (a > 0.16) setHeld(w > 0 ? 'ParamLegL' : 'ParamLegR', -0.25 * Math.abs(w), 120);
+      wrig.raf = requestAnimationFrame(step);
+    };
+    wrig.raf = requestAnimationFrame(step);
+  }
+  wrig.periodMs = Math.max(80, periodMs);
+  wrig.amp = amp;
+}
+function stopWriggle() {
+  if (!wrig) return;
+  cancelAnimationFrame(wrig.raf);
+  wrig = null;
+}
+
 export function thighSquish(on, side, close = 2) {
   if (on) {
     const s = side === 'left' ? -1 : 1;
@@ -923,6 +965,7 @@ export function thighSquish(on, side, close = 2) {
   } else if (squish) {
     const s = squish.s;
     squish = null;
+    stopWriggle();
     Live2D.playSequence([
       { dt_ms: 0, params: { [s < 0 ? 'ParamLegR' : 'ParamLegL']: -0.3, ParamBodyZ: -0.08 * s } },
       { dt_ms: 350, params: { ParamLegL: 0, ParamLegR: 0, ParamBodyZ: 0, ParamHeadY: 0 } },
@@ -942,9 +985,10 @@ export function thighSquishTick(ms) {
   setHeld('ParamEyeballRY', -0.6, 500);
   if (close <= 1) {
     setHeld('ParamBlush', 0.5, 800);
-    setHeld('ParamBodyZ', -0.2 * s, 500);
-    // she wriggles free quickly
-    if (ms > 1400) { act('[A:emote|angry]'); emote('anger'); return true; }
+    // she wriggles free quickly: side to side, faster and harder until she's out
+    const t = Math.min(1, ms / TUNE.wriggleStrangerMs);
+    setWriggle(TUNE.wriggleStrangerPeriod[0] + (TUNE.wriggleStrangerPeriod[1] - TUNE.wriggleStrangerPeriod[0]) * t, 0.2 + 0.12 * t);
+    if (ms > TUNE.wriggleStrangerMs) { act('[A:emote|angry]'); emote('anger'); return true; }
     return false;
   }
   setHeld('ParamBlush', Math.min(1, (close >= 3 ? 0.55 : 0.45) + ms / 3500), 900);
@@ -963,8 +1007,14 @@ export function thighSquishTick(ms) {
     act('[A:emote|pout]');
     emote(close >= 3 ? 'heart' : 'sweat');
   }
+  // a friend holds still, then starts squirming, slow at first, quicker
+  // as she gets ready to pull away
+  if (close === 2 && ms > TUNE.wriggleFriendFrom) {
+    const t = Math.min(1, (ms - TUNE.wriggleFriendFrom) / (TUNE.wriggleFriendMs - TUNE.wriggleFriendFrom));
+    setWriggle(TUNE.wriggleFriendPeriod[0] + (TUNE.wriggleFriendPeriod[1] - TUNE.wriggleFriendPeriod[0]) * t, 0.08 + 0.12 * t);
+  }
   // a friend has had enough after a while; close, she lets him
-  if (close === 2 && ms > 6000) { act('[A:emote|pout]'); return true; }
+  if (close === 2 && ms > TUNE.wriggleFriendMs) { act('[A:emote|pout]'); return true; }
   return false;
 }
 

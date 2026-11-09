@@ -441,11 +441,13 @@ const growFx = document.getElementById('growFx');
 let sizeState = null;
 const QUICK_NAMES = { small: 'Small', medium: 'Medium', large: 'Large' };
 function sizeWords(share) {
+  if (share < 0.12) return 'Pocket-sized';
   if (share < 0.22) return 'Tiny';
   if (share < 0.36) return 'Small';
   if (share < 0.48) return 'Medium';
   if (share < 0.6) return 'Large';
-  return 'Huge';
+  if (share < 0.75) return 'Huge';
+  return 'Giant';
 }
 function drawSize(share) {
   const st = sizeState;

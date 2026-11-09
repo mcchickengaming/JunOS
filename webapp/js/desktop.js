@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=92';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=102';
-import * as Body from './desktop/body.js?v=38';
+import * as Body from './desktop/body.js?v=39';
 import * as TouchLog from './core/touch-log.js?v=1';
 import * as Fx from './desktop/fx.js?v=3';
 

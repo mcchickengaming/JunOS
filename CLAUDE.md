@@ -76,7 +76,9 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   localStorage `desktop.touchSpots.v2`; pairs mirror unless unlinked, then `left` holds its own place, so
   nothing assumes she's symmetrical; `off: true` switches one off; Undo/Ctrl+Z; she's held in place while adjusting via `junDesktop.hold` → main.js `held`; "Show touch spots" desk setting draws outlines). The tail spot is the rig's TailMain meshes (geometry `drawablesSpot`), and anim.js `holdTail(ms)` stills its swing under a hand. Head on the rig's headpat area, else body; click
   = poke, hold = hand-hold / hug (torso) / tail grab / foot rub / thigh squish (body.js `thighSquish`/`thighSquishTick`, by bond:
-  Stranger/Familiar wriggles free fast, Friend holds still then pulls away, Close+ blush builds and she lets him), rub = headpat/ear rub/tickle/thigh/foot/tail rub (on her feet: a foot rub is press and hold, owner's call, and a hover
+  Stranger/Familiar wriggles free fast, Friend holds still then pulls away, Close+ blush builds and she lets him;
+  the wriggle is a real side-to-side squirm every frame, `setWriggle(periodMs, amp)`, getting faster until she's out,
+  numbers in TUNE `wriggle*`), rub = headpat/ear rub/tickle/thigh/foot/tail rub (on her feet: a foot rub is press and hold, owner's call, and a hover
   jiggle, 5 turns in 0.6 s, is a foot tickle `feettickle`; by bond she pulls her foot away: Stranger/Familiar right away, Friend after ~3 s of
   tickling, Close+ after ~6 s; `Body.setCloseness` from the bond stage), drag =
   carry; cursor icon + glow show the spot. Hold-to-pat (like the game): press on her head (160 ms or the first
@@ -122,7 +124,8 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   mood, hour and bond (`pickFromPool`); bubble pops in a mix of ways (`eAnim`); robot faces never/sometimes/often.
 
 - **Her size on the desktop** (`desktop/main.js` `setSize`, settings window "Her size" tab): `cfg.size` is a share of
-  the screen's height (0.15–0.7; Small/Medium/Large = 0.31/0.425/0.54, old string values migrate), so she looks the
+  the screen's height (0.05–0.9, widened on the owner's request; at the big end the room over her head shrinks so her
+  window still fits the screen, `headroom()`, never under 40 px; Small/Medium/Large = 0.31/0.425/0.54, old string values migrate), so she looks the
   same on every monitor; a monitor of another height re-fits her when she lands on it. She resizes live around her
   feet (no reload). Every px number in main.js is for her at `REF_PX` (440 px) and scales with `sizeK()`: headroom
   (never under 80%), walk speed (k^0.6), hop, throw/gravity/bounces. The page gets `size, herPx, k, headroom` with

@@ -29,7 +29,8 @@ const ICON_ICO = path.join(__dirname, 'jun.ico');
 // her height on the desktop: a share of the screen's height (cfg.size),
 // so the same setting looks right on every monitor. the quick picks
 // match the old fixed sizes (320/440/560 px) on a 1080p screen
-const SIZE_MIN = 0.15, SIZE_MAX = 0.7;
+// owner, Nov 8: bigger and smaller than 15-70%
+const SIZE_MIN = 0.05, SIZE_MAX = 0.9;
 const SIZES = { small: 0.31, medium: 0.425, large: 0.54 };
 // every px number below is for her at REF_PX tall (medium on 1080p);
 // sizeK() scales them with her
@@ -340,13 +341,19 @@ function stepoutSize() {
 // her height in px on the monitor she's on (or will step out onto)
 function herPx(display) {
   if (!display) display = displayFor(win && !win.isDestroyed() && winMode === 'stepout' ? win.getBounds() : null);
-  return Math.max(110, Math.round(cfg.size * display.workArea.height));
+  return Math.max(40, Math.round(cfg.size * display.workArea.height));
 }
 // how big she is next to the size every px number was made for
 const sizeK = () => herPx() / REF_PX;
 // the room over her head shrinks with her, but never so far that the
 // chat line and her bubbles have nowhere to go
-const headroom = () => Math.round(HEADROOM * Math.max(0.8, Math.min(1.8, sizeK())));
+// a very tall Jun: her window still has to fit on the screen, so the
+// room over her head shrinks (never under 40 px)
+const headroom = () => {
+  const room = Math.round(HEADROOM * Math.max(0.8, Math.min(1.8, sizeK())));
+  const display = displayFor(win && !win.isDestroyed() && winMode === 'stepout' ? win.getBounds() : null);
+  return Math.max(40, Math.min(room, display.workArea.height - herPx(display)));
+};
 
 // half her body's width, what has to stay on screen
 const herHalf = () => herPx() * 0.2;
