@@ -260,7 +260,7 @@ let snap = null;
 function pvLoadSnap() {
   let next = null;
   try { next = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null'); } catch { next = null; }
-  if (!next || !next.img || (next.v || 1) < 2) { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); return; }
+  if (!next || !next.img || (next.v || 1) < 3) { snap = null; pvHer.hidden = true; preview.classList.remove('has-her'); return; }
   pvHer.onload = () => {
     snap = next;
     const fx = Number.isFinite(next.fx) ? Math.max(0.1, Math.min(0.9, next.fx)) : 0.5;

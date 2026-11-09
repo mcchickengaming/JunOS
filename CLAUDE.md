@@ -151,11 +151,12 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   third, else from the middle of her head's pixels; the preview centers the picture on her face via `--pv-fx` and
   clamps every number, and the icon always stays inside the box) (the model's bounds are far bigger than
   her art: hidden parts count, which made her tiny in a corner at first), crops from the top of her head to her waist,
-  360 px tall, and stores `localStorage['desktop.snapshot']` = `{ v: 2, img (webp), fx (share of width), fy, headW,
+  cut from the FULL-size render (found on a small copy; she's a small part of the bounds, so cutting from the small copy
+  made her blurry), up to 640 px tall, and stores `localStorage['desktop.snapshot']` = `{ v: 3, img (webp), fx (share of width), fy, headW,
   modelW, modelH (shares of height) }`; the face comes from the rig's face drawables (geometry.js `faceBox`). Taken
   2.5 s after she's dressed, every 15 min, and whenever the settings window writes `desktop.snapshot.want` (on opening
   the Touch feedback tab, so outfit changes show). The settings page shows it as `#pvHer` (breathing a little) instead
-  of the stand-in head and ignores snapshots older than v 2; `pvFace()` gives the anchor for ripples, icons and moods.
+  of the stand-in head and ignores snapshots older than v 3; `pvFace()` gives the anchor for ripples, icons and moods.
   The preview box has `clip-path` so the fixed-position effects don't float out over the tabs. No rig = stand-in head.
 
 - **Her size on the desktop** (`desktop/main.js` `setSize`, settings window "Her size" tab): `cfg.size` is a share of

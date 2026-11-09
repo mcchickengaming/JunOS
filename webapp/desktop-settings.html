@@ -58,7 +58,7 @@
   .preview .pv-head::before { left: 2px; } .preview .pv-head::after { right: 2px; }
   /* her real picture (taken by the desktop page), head to waist, breathing a little */
   .preview .pv-her { position: absolute; left: 50%; top: 34px; height: 100%; transform: translateX(calc(var(--pv-fx, .5) * -100%)); transform-origin: 50% 100%;
-    pointer-events: none; animation: pv-breathe 4.2s ease-in-out infinite; }
+    pointer-events: none; animation: pv-breathe 4.2s ease-in-out infinite; image-rendering: auto; }
   .preview.has-her .pv-head { display: none; }
   /* her face in the middle of the box (--pv-fx), whatever else is in the picture */
   @keyframes pv-breathe { 0%, 100% { transform: translateX(calc(var(--pv-fx, .5) * -100%)) scale(1, 1); } 50% { transform: translateX(calc(var(--pv-fx, .5) * -100%)) scale(1.006, 1.012); } }
@@ -268,6 +268,6 @@
   <p class="hint" id="saveNote"></p>
 </section>
 
-<script type="module" src="js/desktop-settings.js?v=24"></script>
+<script type="module" src="js/desktop-settings.js?v=25"></script>
 </body>
 </html>

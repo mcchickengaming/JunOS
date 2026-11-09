@@ -15,8 +15,8 @@ import { faceBox } from '../live2d/geometry.js?v=82';
 
 export const KEY = 'desktop.snapshot';
 export const WANT = 'desktop.snapshot.want';
-const OUT_H = 360;    // the stored picture's height
-const SCAN_H = 900;   // the size the trimming works at
+const OUT_H = 640;    // the stored picture's height (sharp in the preview on a hi-dpi screen too)
+const SCAN_H = 900;   // the size the trimming works at (only to FIND her; the picture is cut from the full size)
 const CROP = 0.5;     // the top half of her: head, shoulders, chest
 
 export function take() {
@@ -89,14 +89,20 @@ export function take() {
     const cw = cx1 - cx0 + 1;
     const top = Math.max(0, cy0 - pad);
     const h = Math.min(sh - top, cropH + pad);
+    // cut her out of the FULL size render: she's only a small part of the
+    // model's bounds, so the scan copy has too few pixels of her
+    const up = full.height / sh;
+    const outH = Math.min(OUT_H, Math.round(h * up)); // never blown up past her real pixels
     const out = document.createElement('canvas');
-    const ok = OUT_H / h;
-    out.width = Math.max(1, Math.round(cw * ok));
-    out.height = OUT_H;
-    out.getContext('2d').drawImage(scan, cx0, top, cw, h, 0, 0, out.width, out.height);
+    out.width = Math.max(1, Math.round(cw * outH / h));
+    out.height = Math.max(1, outH);
+    const og = out.getContext('2d');
+    og.imageSmoothingEnabled = true;
+    og.imageSmoothingQuality = 'high';
+    og.drawImage(full, cx0 * up, top * up, cw * up, h * up, 0, 0, out.width, out.height);
     const snap = {
-      v: 2, // trimmed to her visible pixels (older ones had her tiny in a corner)
-      img: out.toDataURL('image/webp', 0.9),
+      v: 3, // trimmed to her visible pixels (older ones had her tiny in a corner)
+      img: out.toDataURL('image/webp', 0.95),
       at: Date.now(),
       fx: (face.x - cx0) / cw,          // share of the picture's width
       fy: (face.y - top) / h,           // the rest: shares of its height
