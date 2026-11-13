@@ -7,10 +7,10 @@
 // No DOM. desktop.js measures (how far the hand is from the nearest spot, how fast it's coming),
 // this decides, feelbody.js shows it.
 
-import * as Store from './store.js?v=3';
-import { TUNE } from './tune.js?v=3';
-import * as Tired from './tired.js?v=3';
-import * as Repeat from './repeat.js?v=3';
+import * as Store from './store.js?v=4';
+import { TUNE } from './tune.js?v=5';
+import * as Tired from './tired.js?v=4';
+import * as Repeat from './repeat.js?v=4';
 import * as K from './kinds.js?v=2';
 
 export const TYPES = ['notice', 'leanin', 'perk', 'flinch', 'blink', 'brace', 'guard'];

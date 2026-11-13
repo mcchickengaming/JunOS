@@ -1,6 +1,6 @@
 import { api, apiJson } from './api.js?v=1';
 import * as TouchLog from './touch-log.js?v=2';
-import * as Feel from './feel/feel.js?v=3';
+import * as Feel from './feel/feel.js?v=4';
 
 export async function listModels() {
   const r = await api('models.php');

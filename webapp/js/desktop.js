@@ -13,7 +13,7 @@
 
 import * as Auth from './core/auth.js?v=1';
 import { api, apiJson } from './core/api.js?v=1';
-import * as ChatAPI from './core/chat-api.js?v=10';
+import * as ChatAPI from './core/chat-api.js?v=11';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
@@ -25,16 +25,17 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=94';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
-import * as Body from './desktop/body.js?v=46';
+import * as Body from './desktop/body.js?v=47';
 import * as TouchLog from './core/touch-log.js?v=2';
-import * as Fx from './desktop/fx.js?v=11';
-import * as Moods from './desktop/moods.js?v=15';
+import * as Fx from './desktop/fx.js?v=12';
+import * as Moods from './desktop/moods.js?v=16';
 import * as FeelBody from './desktop/feelbody.js?v=6';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 import * as Often from './desktop/often.js?v=2';
 import * as Gate from './core/gate.js?v=3';
 import * as Features from './core/features.js?v=3';
-import * as Feel from './core/feel/feel.js?v=3';
+import * as Feel from './core/feel/feel.js?v=4';
+import { waveGesture } from './core/feel/gesture.js?v=2';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -271,6 +272,7 @@ const TOUCH_NOTES = {
   feettickle: 'Anon is tickling your feet',
   feet: 'Anon poked your foot and found out it is ticklish',
   waveback: 'you waved at Anon and he waved back',
+  hiswave: 'Anon waved at you and you waved back',
   tailgrab: 'Anon grabbed your tail and is holding on to it',
   tailrub: 'Anon is rubbing your tail',
   'combo:melt': 'Anon is holding your tail and giving you headpats at the same time',
@@ -284,7 +286,7 @@ const TOUCH_NOTES = {
 // than a passing poke
 const TOUCH_CHANCE = {
   hug: 0.5, hand: 0.45, squeeze: 0.2, tickle: 0.35, thighsquish: 0.35, ear: 0.35, earflick: 0.2, nose: 0.25, cheek: 0.2,
-  shoulder: 0.2, tail: 0.3, thighpoke: 0.3, thighrub: 0.5, feetrub: 0.4, feettickle: 0.35, feet: 0.3, waveback: 0.5,
+  shoulder: 0.2, tail: 0.3, thighpoke: 0.3, thighrub: 0.5, feetrub: 0.4, feettickle: 0.35, feet: 0.3, waveback: 0.5, hiswave: 0.25,
   tailgrab: 0.45, tailrub: 0.4,
   // combos are rarer and mean more, so they're likelier to get a word
   'combo:melt': 0.8, 'combo:patboop': 0.5, 'combo:handhug': 0.8, 'combo:cozy': 0.6, 'combo:tickleattack': 0.7, 'combo:tailtease': 0.6,
@@ -704,6 +706,7 @@ const closeness = () => (Gauges.bondStage <= 2 ? 1 : Gauges.bondStage === 3 ? 2 
 async function refreshMood() {
   try { await Gauges.fetchGauges(); } catch (e) {}
   Body.setCloseness(closeness());
+  Feel.setStage(Gauges.bondStage);
   const m = moodTier({ affection: Gauges.affection, trust: Gauges.trust, tension: Gauges.tension });
   const part = daypart();
   Body.setMood(m, part);
@@ -796,7 +799,7 @@ window.addEventListener('resize', () => setTimeout(frame, 60));
 // whatever is under the window
 
 function overUi(t) {
-  return !!(t && t.closest && t.closest('.talk, .tools, .note, .help, .calib, .pin'));
+  return !!(t && t.closest && t.closest('.talk, .tools, .note, .help, .calib, .pin, .ask'));
 }
 function overHer(x, y) {
   return ready && !!Body.regionAt(x, y);
@@ -854,9 +857,13 @@ function watchWaveBack(x, y) {
   if (waveTrail.flips.length >= 3) {
     waveTrail.flips = [];
     Body.wavedBack();
+    Body.setWaveWindow(5000);
     maybeSay('waveback');
     touched('waveback');
     TouchLog.tap('waveback');
+    // a wave she started on her own: he answered it (the initiative engine)
+    Feel.waved();
+    Feel.initAnswer('wave', 'yes');
   }
 }
 
@@ -1506,6 +1513,12 @@ D?.onWalk(({ state, dir, speed, edge, kind }) => {
   Body.walking(0);
   shadow.classList.remove('walking');
   stopSteps();
+  // she came over to his cursor (the initiative engine): now she does what she came for
+  if (arrive) {
+    const f = arrive;
+    arrive = null;
+    if (state === 'stopped' && Date.now() < f.until) setTimeout(f.done, 280);
+  }
   if (state === 'landed') {
     Body.landed();
     shadow.classList.remove('lifted');
@@ -1567,6 +1580,7 @@ function wake(withLine) {
 }
 
 D?.onIdle(({ seconds, dozeAfter }) => {
+  idleSeen = { sec: Number(seconds) || 0, at: Date.now() };
   if (!ready) return;
   // at night she nods off sooner
   if (daypart() === 'night' && Number.isFinite(dozeAfter)) dozeAfter = Math.min(dozeAfter, 120);
@@ -1655,14 +1669,292 @@ async function goInside() {
 }
 
 // the cursor anywhere on screen, from desktop/main.js. she watches it
-D?.onCursor?.(({ x, y }) => { if (ready && !press) Body.cursor(x, y); });
+D?.onCursor?.(({ x, y }) => {
+  cur = { x, y, at: Date.now() };
+  if (ready && !press) { Body.cursor(x, y); watchHisWave(x, y); }
+});
 
 D?.onCommand((cmd) => {
   if (cmd === 'go-inside') goInside();
   else if (cmd === 'calibrate') startCalibrate();
   else if (cmd === 'kick') { Body.kick(); showEmote(Math.random() < 0.5 ? 'star' : 'note'); sound('pop'); }
   else if (cmd === 'talk') openTalk();
+  // fetch: he threw the ball (she may have been hoping he would); the round is over
+  else if (cmd === 'ball-thrown') Feel.fetch();
+  else if (cmd === 'ball-rest') fetchRoundOver();
 });
+
+// ---------------------------------------------------------------
+// the initiative engine (#4): what she starts on her own. core/feel/initiative.js decides (her
+// wants, the room, the ladder, how she takes his answer); this plays it on her. Every few
+// seconds she thinks about it, and most of the time nothing comes of it.
+//
+// a new thing she can start = a row in initiative.js ACTIONS + an entry in INIT_PLAY here
+
+const Init = Feel.Initiative;
+const INIT_T = Feel.Tune.TUNE.init;
+const askEl = document.getElementById('ask');
+const askText = document.getElementById('askText');
+let cur = null;                       // his cursor, window px (the app's feed + mousemove)
+let idleSeen = { sec: 0, at: 0 };     // seconds without any input, as of when
+let arrive = null;                    // { done, until }: she's walking over to his cursor
+let askFor = null, askTimer = null;
+
+const initOn = () => Features.isOn('initiative');
+const chance = (p) => Math.random() < p;
+const talkMul = () => (settings.quiet ? 0 : Often.mul(settings.talk));
+const pickNew = (ch, list) => Feel.Repeat.pick(ch, list);
+const herUnit = () => Number(settings.herPx) || window.innerHeight * 0.8;
+// which side of her his hand is on (-1 left on screen, 1 right)
+function handSide() {
+  const a = ready && Live2D.faceAnchor();
+  return a && cur ? Math.sign(cur.x - a.x) || 1 : 1;
+}
+function glanceAtHand(ms = 1600) { if (cur) Body.lookAtPoint(cur.x, cur.y, ms); }
+// she can't start anything right now / he's with her right now (an open ask waits, it isn't "ignored")
+const initBusy = () => !ready || busy || dozing || calibrating || leaving || walking || thrown || !!press || !!arrive;
+const initEngaged = () => !!pin || Body.rubbing() || Body.patting() || document.activeElement === input
+  || (MODE === 'stepout' && !talk.hidden);
+function idleNow() {
+  const now = Date.now();
+  let s = idleSeen.at ? idleSeen.sec + (now - idleSeen.at) / 1000 : 0;
+  const moved = Math.max(cur ? cur.at : 0, lastMoveAt);
+  if (moved > idleSeen.at) s = Math.min(s, (now - moved) / 1000);
+  return s;
+}
+function initLive() {
+  return { idleSec: idleNow(), cursorAt: Math.max(cur ? cur.at : 0, lastMoveAt), quietMode: !!settings.quiet, stage: Gauges.bondStage,
+    can: { fetch: MODE === 'stepout' && !!D?.offerBall && !Body.sittingIn() }, busy: initBusy(), engaged: initEngaged(),
+    opts: { talk: talkMul() > 0 } };
+}
+function initTick() {
+  if (!ready || document.hidden) return;
+  let out = [];
+  try { out = Init.tick(initLive()); } catch (e) { console.warn('initiative', e); }
+  for (const d of out) initPlay(d);
+}
+function initPlay(d) {
+  if (!ready || !d) return;
+  if (d.do === 'act') { if (d.how === 'harder') tryHarder(d); (INIT_PLAY[d.id] || (() => {}))(d); }
+  else if (d.do === 'letgo') initLetGo(d);
+  else if (d.do === 'lit') initLit(d);
+  else if (d.do === 'toldno') initToldNo(d);
+  else if (d.do === 'melt') { hideAsk(); Body.lightUp('shy', 0.6); showEmote(pickNew('emote', ['heart', 'a_blush', 'sparkle'])); Moods.burst('comforted', 0.6); }
+}
+Feel.onChange((ev) => { if (ev.type === 'init') initPlay(ev.d); });
+
+// one short line of her own about what she wants (step 4 of the ladder, and now and then after
+// an answer). her brain writes the words; this only says what's going on
+async function initSay(what) {
+  if (!ready || busy || talkMul() <= 0) return;
+  lastReactAt = Date.now();
+  let note = `${OOC}${what} Say one short line out loud, in character, the way you honestly feel about him right now. No narration.)`;
+  const lately = Feel.switches().repeat ? Feel.Repeat.recent('line', 3) : [];
+  if (lately.length) note = note.replace(/\)$/, ` Say something different from what you said just now: ${lately.map(l => '"' + l + '"').join(', ')}.)`);
+  await ask(note, { ephemeral: true, fallback: '' });
+}
+const whyWords = (d) => (d.why && d.why.length ? ' (' + d.why.join(', ') + ')' : '');
+
+// her question bubble. id = what a Yes / Not now answers; null = just words that fade
+function showAsk(text, id, ms = 0) {
+  const t = headTop();
+  if (!t || !text) return;
+  clearTimeout(askTimer);
+  askFor = id;
+  askText.textContent = text;
+  askEl.classList.toggle('plain', !id);
+  askEl.classList.remove('bye');
+  askEl.hidden = false;
+  // over her head, kept inside her window
+  const w = askEl.offsetWidth, h = askEl.offsetHeight;
+  askEl.style.left = Math.max(w / 2 + 4, Math.min(window.innerWidth - w / 2 - 4, t.a.x)) + 'px';
+  askEl.style.top = Math.max(h + 4, t.y - 6 * Fx.scale()) + 'px';
+  sound('pop');
+  if (ms) askTimer = setTimeout(hideAsk, ms);
+}
+function hideAsk() {
+  clearTimeout(askTimer);
+  askFor = null;
+  if (askEl.hidden) return;
+  askEl.classList.add('bye');
+  askTimer = setTimeout(() => { askEl.hidden = true; askEl.classList.remove('bye'); }, 200);
+}
+document.getElementById('askYes').addEventListener('click', () => {
+  const id = askFor;
+  hideAsk();
+  if (!id) return;
+  Feel.initAnswer(id, 'yes');
+  // and now the thing itself: she offers her head, or tosses him the ball
+  if (id === 'headpat') setTimeout(() => Body.askPat(handSide(), 1), 900);
+  if (id === 'fetch') setTimeout(() => D?.offerBall?.('toss'), 700);
+});
+document.getElementById('askNo').addEventListener('click', () => {
+  const id = askFor;
+  hideAsk();
+  if (id) Feel.initAnswer(id, 'no');
+});
+
+// she walks over to his cursor first (out on the desktop, when it's a way off), then done()
+function comeOver(done) {
+  const a = Live2D.faceAnchor();
+  const far = a && cur && Math.abs(cur.x - a.x) > herUnit() * 0.55;
+  if (MODE !== 'stepout' || !D?.walkToCursor || !far || Body.sittingIn()) { done(); return; }
+  arrive = { done, until: Date.now() + 15000 };
+  setTimeout(() => { if (arrive && Date.now() > arrive.until) arrive = null; }, 15500);
+  D.walkToCursor(pace);
+}
+// ignored, and she tries a step harder: a little more insistent, a little cuter
+function tryHarder(d) {
+  if (d.rung >= 3 && chance(0.6)) Body.play('hop');
+  else Body.play('ears');
+}
+
+// how each step of the ladder looks, per thing she can start (step 1 a body hint, 2 a thought
+// icon, 3 she comes over / does it nearby, 4 says something, 5 asks)
+const INIT_PLAY = {
+  headpat(d) {
+    const side = handSide();
+    if (d.rung === 1) {
+      glanceAtHand(1800);
+      const m = pickNew('hint', ['tilt', 'ears', 'tail', 'sigh']);
+      if (m === 'tilt') Body.askPat(side, 0.3, 1900); else Body.play(m);
+    } else if (d.rung === 2) {
+      glanceAtHand(1400);
+      showEmote(d.icon || 'heart');
+      Body.askPat(side, 0.35, 2200);
+    } else if (d.rung === 3) {
+      comeOver(() => { glanceAtHand(2400); Body.askPat(handSide(), 0.8); if (chance(0.5)) setTimeout(() => showEmote(d.icon || 'pat'), 500); });
+    } else if (d.rung === 4) {
+      Body.askPat(side, 0.6);
+      initSay(`You'd really like a headpat from Anon right now${whyWords(d)}. Hint at it or ask for it in your own way; you can be shy about it.`);
+    } else {
+      comeOver(() => { Body.askPat(handSide(), 0.9, 4200); showAsk(d.text || 'Headpat?', 'headpat'); });
+    }
+  },
+  wave(d) {
+    // he has longer to wave back than after one of her passing waves
+    Body.setWaveWindow(INIT_T.waveBackMs);
+    glanceAtHand(1200);
+    Body.play(closeness() === 1 && chance(0.6) ? 'smallWave' : 'wave');
+  },
+  fetch(d) {
+    if (d.rung === 1) Body.play(pickNew('hint', ['lookAround', 'tail', 'hop']));
+    else if (d.rung === 2) { glanceAtHand(1400); showEmote(d.icon || 'ball'); }
+    else if (d.rung === 3) {
+      // she brings the ball over (or throws it his way when she's feeling lively)
+      const lively = Body.currentMood() === 'happy' || (Feel.Needs.levels().play || 0) >= 0.75;
+      D?.offerBall?.(lively && chance(0.4) ? 'toss' : 'bring');
+      setTimeout(() => showEmote(d.icon || 'ball'), 700);
+    } else if (d.rung === 4) {
+      Body.askPlay(0.7);
+      initSay(`You really want to play fetch with Anon right now${whyWords(d)}. Say so in your own way.`);
+    } else {
+      Body.askPlay(0.9);
+      showAsk(d.text || 'Fetch?', 'fetch');
+    }
+  },
+};
+
+// no answer, and she lets it go. never a penalty: at most a shrug or a small pout
+function initLetGo(d) {
+  hideAsk();
+  if (d.id === 'wave') Body.setWaveWindow(5000);
+  if (d.rung <= 2 || d.how === 'fine') return;
+  const name = Init.ACTIONS[d.id]?.name || 'that';
+  if (d.how === 'shrug') { Body.play('shrug'); if (chance(0.4)) showEmote(pickNew('emote', ['dots', 'a_flat', 'note'])); }
+  else if (d.how === 'pout') { Body.play('pout'); showEmote(pickNew('emote', ['hmph', 'a_flat', 'dots'])); }
+  else if (d.how === 'own') {
+    // off to her own thing for a while
+    showEmote(pickNew('emote', ['dots', 'note', 'a_load']));
+    setTimeout(() => { if (!initBusy() && MODE === 'stepout' && !settings.quiet && wanderRange()) D?.wander(pace); }, 900);
+    setTimeout(() => { if (!initBusy()) Body.play(pickNew('idle', ['rest', 'stretch', 'lookAround'])); }, 6000);
+  }
+  if (chance(0.15 * talkMul())) {
+    initSay(`You tried to get ${name} from Anon just now but he was too busy to notice, so you let it go (${d.how === 'pout' ? 'a small pout, nothing more' : 'no hard feelings'}).`);
+  }
+}
+// he took her up on it: she lights up
+const LIT_EMOTES = { bright: ['sparkle', 'a_happy', 'heart'], bounce: ['star', 'notes', 'a_owo'], shy: ['a_blush', 'smug', 'dots'], melt: ['heart', 'a_heart', 'twohearts'] };
+function initLit(d) {
+  hideAsk();
+  // a wave back already has its own moment (Body.wavedBack)
+  if (d.id !== 'wave') {
+    Body.lightUp(d.how, d.power);
+    showEmote(pickNew('emote', LIT_EMOTES[d.how] || LIT_EMOTES.bright));
+    Moods.burst(d.how === 'shy' && closeness() <= 2 ? 'secret' : d.power > 0.75 ? 'loves' : 'likes', d.power * 0.8);
+  }
+  if (d.asked && chance(0.4 * talkMul())) {
+    initSay(`You asked Anon for ${Init.ACTIONS[d.id]?.name || 'something'} and he said yes. You're ${d.how === 'shy' ? 'pleased and trying not to show it' : 'really happy about it'}.`);
+  }
+}
+// he said no. by how much she wanted it, her mood and the dice (initiative.js): she takes it
+// well, pouts, asks once more, sulks a little, pretends she didn't care, says "later then", or
+// offers something else. short, and it melts with a kind gesture
+const LATER = ['Later, then.', 'Later? Promise?', 'Okay. Later.', 'I\'ll ask again.'];
+function initToldNo(d) {
+  const name = Init.ACTIONS[d.id]?.name || 'that';
+  if (d.how === 'please') {
+    if (d.id === 'fetch') Body.askPlay(1); else Body.askPat(handSide(), 1, 4200);
+    setTimeout(() => showAsk(d.text || 'Pretty please?', d.id), 350);
+    return;
+  }
+  if (d.how === 'offer' && d.offer) {
+    Body.play('ears');
+    setTimeout(() => { if (d.offer === 'fetch') Body.askPlay(0.7); else Body.askPat(handSide(), 0.7, 4200); showAsk(d.text || 'Then…?', d.offer); }, 500);
+    return;
+  }
+  hideAsk();
+  if (d.how === 'fine') { Body.play('ears'); if (chance(0.5)) showEmote(pickNew('emote', ['note', 'a_ok', 'dots'])); }
+  else if (d.how === 'pout') { Body.play('pout'); showEmote(pickNew('emote', ['hmph', 'a_flat', 'a_cry'])); }
+  else if (d.how === 'sulk') { Body.play('pout'); showEmote(pickNew('emote', ['hmph', 'a_flat', 'anger'])); Moods.burst('flustered', 0.4); setTimeout(() => { if (!initBusy()) Body.play('lookAway'); }, 3200); }
+  else if (d.how === 'tsun') { Body.play('lookAway'); showEmote(pickNew('emote', ['hmph', 'smug', 'a_flat'])); setTimeout(() => { if (!initBusy()) Body.play('tail'); }, 1300); }
+  else if (d.how === 'later') { Body.play('ears'); setTimeout(() => showAsk(pickNew('ask', LATER), null, 2600), 300); }
+  const feel = { pout: 'a small pout', sulk: 'you\'re sulking a little (it won\'t last)', tsun: 'you act like you never wanted it anyway (you did)',
+    fine: 'you take it well', later: 'you\'ll ask again later' }[d.how];
+  if (feel && d.how !== 'later' && chance((d.how === 'fine' ? 0.15 : 0.35) * talkMul())) {
+    initSay(`You asked Anon for ${name} and he said not now: ${feel}. Never guilt-trip him.`);
+  }
+}
+// fetch: the ball came to rest after she chased it. one more?
+function fetchRoundOver() {
+  if (!ready || !initOn() || initBusy()) return;
+  if (Init.oneMoreLive({ stage: Gauges.bondStage }) === 'more') {
+    showEmote(pickNew('emote', ['ball', 'bang', 'a_owo']));
+    Body.askPlay(0.8);
+    setTimeout(() => { if (!initBusy()) D?.offerBall?.('bring'); }, 900);
+  } else if (chance(0.6)) showEmote(pickNew('emote', ['note', 'a_happy', 'star']));
+}
+
+// waving both ways (#1d (i)): he waves at her with the cursor, near her, side to side or in a
+// circle (his pick, Settings > Her > On her own), and she waves back her own way
+let hisTrail = [];
+let lastMoveAt = 0;
+function watchHisWave(x, y) {
+  if (!ready || walking || thrown || dozing || calibrating || press || pin || Body.waveBackWindow()) { hisTrail = []; return; }
+  if (!Features.isOn('wave_at_her')) return;
+  const a = Live2D.faceAnchor();
+  if (!a) return;
+  const unit = herUnit(), now = Date.now();
+  // near her, and not a rub on one of her spots (that's a touch, not a wave)
+  const r = Body.regionAt(x, y);
+  if (Math.hypot(x - a.x, y - a.y) > INIT_T.hisWaveNear * unit || Body.rubbing() || (r && r.kind !== 'body' && r.kind !== 'hug')) { hisTrail = []; return; }
+  hisTrail.push({ x, y, t: now });
+  while (hisTrail.length && now - hisTrail[0].t > INIT_T.hisWaveWindowMs) hisTrail.shift();
+  if (!waveGesture(hisTrail, { unit, style: Init.setting('waveStyle'), size: Init.setting('waveSize'), now })) return;
+  hisTrail = [];
+  const d = Init.hisWaveLive({ ...initLive(), busy: busy || leaving });
+  if (!d) return;
+  actionLabel('Wave!', x, y);
+  Feel.waved();
+  glanceAtHand(1500);
+  if (d.how === 'wave') { Body.play('wave'); Body.closeWaveWindow(); }
+  else if (d.how === 'big') { Body.play('wave'); Body.closeWaveWindow(); setTimeout(() => { Body.lightUp('bounce', 0.8); showEmote(pickNew('emote', ['hearts', 'sparkle', 'a_happy'])); }, 600); }
+  else if (d.how === 'shy') { Body.play('smallWave'); Body.closeWaveWindow(); if (chance(0.4)) showEmote(pickNew('emote', ['a_blush', 'dots', 'question'])); }
+  else if (d.how === 'amused') { Body.play('ears'); showEmote(pickNew('emote', ['laugh', 'a_tongue', 'smug'])); }
+  else if (chance(0.3)) showEmote('question');
+  if (d.how !== 'look' && d.how !== 'amused') maybeSay('hiswave');
+}
+window.addEventListener('mousemove', (e) => { lastMoveAt = Date.now(); cur = { x: e.clientX, y: e.clientY, at: lastMoveAt }; watchHisWave(e.clientX, e.clientY); }, { passive: true });
 
 // ---------------------------------------------------------------
 // boot
@@ -1720,6 +2012,8 @@ async function main() {
   await loadConversation();
   scheduleWander();
   scheduleMoves();
+  // the initiative engine: she thinks about what she'd like every few seconds
+  setInterval(initTick, INIT_T.tickSec * 1000);
   if (MODE === 'stepout' && REASON === 'stepout') react('stepout');
 }
 

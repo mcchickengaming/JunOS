@@ -124,9 +124,36 @@
     </div>
     <div class="btns"><button type="button" id="doIt">Do it for real (counts toward her state)</button></div>
   </section>
+  <section class="wide" id="initiative">
+    <h2>What she starts on her own (the initiative engine)</h2>
+    <p class="note" id="iLine"></p>
+    <div class="result" style="margin-top:0">
+      <div><h3>Her wants</h3><div id="iWants"></div>
+        <div class="btns"><button type="button" id="iClear">She may start something now (clear her waiting times)</button></div></div>
+      <div><h3>The room, and where she is</h3><div class="kv" id="iRoom"></div></div>
+    </div>
+    <h3 style="font-size:12px;color:var(--dim);margin:12px 0 4px">What she started lately</h3>
+    <ul id="iLog" style="margin:0;padding-left:16px;font-size:12px;color:var(--dim)"></ul>
+  </section>
+  <section class="wide" id="timelapse">
+    <h2>A day in a minute (time-lapse)</h2>
+    <p class="note">A whole day of her decisions with a made-up you, using the numbers and settings as they are right now. Nothing here touches the real her.
+      It is for spotting nagging, dead stretches and repeats before living with them. The made-up you answers by dice, so try a few days.</p>
+    <div class="try">
+      <label for="lHim">Your day</label><select id="lHim"></select>
+      <label for="lStage">Bond</label><select id="lStage"></select>
+      <label for="lDay">Her mood of the day</label><select id="lDay"><option value="">By the dice</option></select>
+      <label for="lYes">You take her up on it</label><span><input type="range" id="lYes" min="0" max="100" step="5" value="55"> <span id="lYesOut"></span></span>
+    </div>
+    <div class="btns"><button type="button" id="lRun">Run a day</button><button type="button" id="lMany">Run 30 days (averages)</button></div>
+    <div id="lFlags"></div>
+    <div class="kv" id="lSum" style="margin-top:8px"></div>
+    <div id="lHours" style="display:flex;align-items:flex-end;gap:3px;height:70px;margin-top:10px"></div>
+    <div id="lEvents" style="max-height:320px;overflow-y:auto;font-size:12px;margin-top:8px"></div>
+  </section>
   <section class="wide">
     <h2>Tune the numbers</h2>
-    <input id="tuneFilter" placeholder="Filter, e.g. rest, halfLife, plenty">
+    <input id="tuneFilter" placeholder="Filter, e.g. rest, halfLife, plenty, init, room">
     <div id="tune"></div>
     <div class="btns">
       <button type="button" id="tuneReset">All numbers back to how she comes</button>
@@ -134,6 +161,6 @@
     </div>
   </section>
 </main>
-<script type="module" src="js/feel-lab.js?v=4"></script>
+<script type="module" src="js/feel-lab.js?v=5"></script>
 </body>
 </html>

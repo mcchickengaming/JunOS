@@ -36,6 +36,20 @@ const FEEL_PHASE_LINES = [
     'afterglow' => "You're still warm and a little clingy from the cuddle just now.",
 ];
 
+// the initiative engine (#4, webapp/js/core/feel/initiative.js forChat): what she's been wanting
+// from him, and how the last thing she started went. The same ids as its ACTIONS (feel.test.mjs
+// keeps them equal)
+const FEEL_INIT_WANT = [
+    'headpat' => "You've been wanting a headpat from Anon for a while. You may hint at it or ask, in your own way; don't push.",
+    'fetch' => "You've been wanting to play fetch with Anon for a while. You may bring it up, in your own way; don't push.",
+];
+const FEEL_INIT_NAMES = ['headpat' => 'a headpat', 'wave' => 'a wave', 'fetch' => 'a game of fetch'];
+const FEEL_INIT_LAST = [
+    'yes' => 'A little while ago you went to Anon for %s and he gave it to you; you\'re still pleased about it.',
+    'no' => 'A little while ago you asked Anon for %s and he said no. That\'s fine; you don\'t hold it against him.',
+    'ignored' => 'A little while ago you tried to get %s from Anon and he was too busy to notice. No hard feelings.',
+];
+
 function feel_enabled(): bool {
     return strtolower(env_str('JUN_FEEL', 'on')) !== 'off';
 }
@@ -81,6 +95,17 @@ function feel_context(mixed $feel): string {
     $away = is_int($feel['away_min'] ?? null) ? $feel['away_min'] : 0;
     if ($phase === 'greeting' && $away >= 60) $lines[] = "Anon just came back after a while; you're glad he's here.";
     elseif (isset(FEEL_PHASE_LINES[$phase])) $lines[] = FEEL_PHASE_LINES[$phase];
+
+    // what she started on her own lately
+    $init = is_array($feel['init'] ?? null) ? $feel['init'] : [];
+    $want = is_string($init['want'] ?? null) ? $init['want'] : '';
+    if (isset(FEEL_INIT_WANT[$want])) $lines[] = FEEL_INIT_WANT[$want];
+    $last = is_array($init['last'] ?? null) && count($init['last']) === 2 ? $init['last'] : null;
+    if ($last && is_string($last[0]) && is_string($last[1]) && isset(FEEL_INIT_NAMES[$last[0]], FEEL_INIT_LAST[$last[1]])
+        && !($last[0] === 'wave' && $last[1] !== 'yes')) {
+        $lines[] = sprintf(FEEL_INIT_LAST[$last[1]], FEEL_INIT_NAMES[$last[0]]);
+    }
+    if (($init['sulk'] ?? false) === true) $lines[] = "You're sulking a little because Anon said no to something you really wanted. It's small and it melts the moment he's kind to you.";
 
     if (!$lines) return '';
     return "## INSIDE YOU RIGHT NOW - let it color what you say and do; never list it or say it like a status report\n"

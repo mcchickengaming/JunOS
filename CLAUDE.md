@@ -387,6 +387,40 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   what just happened, time together, "How it plays out", "Your hand coming". Tests: the second half of `feel.test.mjs`.
   NOT yet seen on the real rig (no rig in the cloud): the body variants, onset and approach numbers are first guesses.
 
+- **The initiative engine, core** (#4, Nov 13, on Fable; with "she asks first" #1 (9) and waving both ways #1d (i)): what she
+  starts on her own. `core/feel/initiative.js`: `ACTIONS` (one row per thing: which needs feed it, `cap` = the highest
+  ladder step per bond stage, its steps, icons, ask words) with the first three, **headpat / wave / fetch**. Pure
+  `step(st, inp)` → `[]` most ticks, or one directive (`act` with a rung 1 body hint · 2 thought icon · 3 comes over · 4 says
+  something · 5 asks; `letgo`), `answer(st, id, 'yes' | 'no', inp)` → `lit` / `toldno` (fine, pout, please (once), sulk
+  (minutes, a warm touch melts it), tsun, later (a promise she remembers `promiseHours`), offer (asks for something else)),
+  `happened` (a touch she was hoping for = yes), `hisWave`, `oneMore` (fetch rounds), `learned` (± `learnSpan`, fades),
+  `describe` / `whyLine` (plain words), and `simulate()` = the time-lapse (a made-up him, the same step/answer). Wants rise
+  per hour by need fit and her mood of the day (`DAY_MOODS`, seeded per day; "As she feels" off = steady and always
+  understanding); a quiet hint nobody saw costs nothing, so an unmet want gets louder over the day; after something loud
+  she leaves him be `gapMin × gapLoud` (at most ~4 visits an hour, tested); a daily attention `budget`. `room.js`: `tracker()`
+  (keys without the mouse = typing, mouse share, away → back) + `read()` → `{ a, cap, why }`: away 0, quiet mode / quiet
+  hours / senses (fullscreen, call, video) 1, typing / gone still / mouse-busy 2, just back 3, free 5. **She can't see
+  games, videos or calls until her senses (#3) exist: `Room.setSenses()` is the door.** `gesture.js` `waveGesture()` (side
+  to side or a circle, in her heights). Her state rides in `jun.feel` → `init` (store.js; nothing ticks except the desktop
+  page's `initTick` every `tickSec`; saved only when something happens or once a minute). feel.js: `setStage`, `initAnswer`,
+  `waved`, events out as `onChange({ type: 'init', d })`, `forChat().init` (`want`, `last`, `sulk` → api/lib/feel.php
+  `FEEL_INIT_*`, a test keeps the ids equal). Desktop (js/desktop.js "the initiative engine"): `INIT_PLAY` per action per
+  rung, `comeOver()` (main.js `jun:walk` `toCursor` → preload `walkToCursor`), the question bubble `#ask` (Yes / Not now;
+  colors `--ask`, `--ask-edge`, `--ask-ink`; in `overUi`), `initLetGo` / `initLit` / `initToldNo`, `watchHisWave` (the app's
+  cursor feed + mousemove, never over a rub spot), `fetchRoundOver`. body.js: `askPat`, `askPlay`, `lightUp`, moves sigh /
+  shrug / pout / hop / smallWave, `setWaveWindow` (her own wave leaves him `waveBackMs`), TUNE `ask*`, `lit*`. props.js
+  `offerBall('bring' | 'toss')` (preload `offerBall`, ipc `jun:init`); commands `ball-thrown` (his throw → `Feel.fetch()`,
+  which was never called before) and `ball-rest`. main.js polls idle every 4 s now. Compact: no walking, no fetch; her
+  window: only her prompt. Settings > Her > On her own (`buildOwnWay()`, `#ownRows`): feature:initiative, as_she_feels,
+  wave_at_her; local `jun.init.often / bold / persist / closeness / play / quietFrom / quietTo` (default midnight to 6) `/
+  waveStyle / waveSize`; the "Today she's…" line; "Why did she do that?"; forget what she's learned. Feel lab: the
+  initiative panel + "A day in a minute". Numbers: tune.js `init`, `room`. Tests: `.github/scripts/js/initiative.test.mjs`
+  (+ feel.test.php). Cloud test of the page: Playwright + Chrome, `api/assets.php?probe` stubbed to `{ model: false }`
+  (placeholder art) and a mocked `junDesktop`. NOT built yet (design doc `claude/initiative-engine-design.md`): ladder
+  step 6 (chat message / phone push), "something to show him" after hours away, going to one of her spots when ignored
+  (she'd stay there: startWander keeps her seated), bond lean-in hints (#1b), more rows, her window / compact HUD loop.
+  NOT seen on the real rig: `askPat`, `lightUp` and the new moves are first guesses.
+
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`
   `features_registry()`): every feature once: `id`, `name`, `line`, `section` (+ `anchor`, or `where` for

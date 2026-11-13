@@ -2,10 +2,10 @@
 // through the reaction composer, and every number of core feel to tune live. A plain dev panel;
 // the diegetic version (her console, #19) comes later and can show the same snapshot().
 
-import * as Feel from './core/feel/feel.js?v=3';
-import * as Moods from './desktop/moods.js?v=15';
+import * as Feel from './core/feel/feel.js?v=4';
+import * as Moods from './desktop/moods.js?v=16';
 
-const { Needs, Tired, Repeat, Session, Tune, Kinds, Store } = Feel;
+const { Needs, Tired, Repeat, Session, Tune, Kinds, Store, Initiative: Init, Room } = Feel;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const n2 = (v) => (Math.round(v * 100) / 100).toFixed(2);
@@ -59,7 +59,7 @@ function drawNow(s) {
   $('now').innerHTML = rows.map(([k, v]) => `<b>${esc(k)}</b><span>${esc(v)}</span>`).join('');
   const sw = s.switches;
   $('switches').innerHTML = [['needs', 'Her needs'], ['tiring', 'Getting tired'], ['favorites', 'Favorites'], ['repeat', 'Mixes it up'],
-    ['manner', 'Gentle or rough'], ['anticipate', 'Sees your hand']]
+    ['manner', 'Gentle or rough'], ['anticipate', 'Sees your hand'], ['initiative', 'Starts things']]
     .map(([k, name]) => `<span class="chip">${esc(name)}: ${sw[k] ? 'on' : 'off'}</span>`).join('')
     + `<span class="chip">How quickly she's had enough: ${sw.pace}%</span>`;
 }
@@ -92,9 +92,97 @@ function drawHist(s) {
     : '<p class="note">Nothing yet.</p>';
 }
 
+// what she starts on her own (initiative.js): her wants, the room as she reads it, what she did
+const iBuilt = {};
+function drawInit(s) {
+  const i = s.init;
+  $('iLine').textContent = Init.describeLive();
+  for (const id of Init.IDS) {
+    if (!iBuilt[id]) {
+      const r = document.createElement('div');
+      r.className = 'need';
+      r.innerHTML = `<span>${esc(Init.ACTIONS[id].name)}</span><div class="bar"><i></i></div><input type="number" min="0" max="1" step="0.05" aria-label="${esc(Init.ACTIONS[id].name)}"><small></small>`;
+      r.querySelector('input').addEventListener('change', (e) => { Init.setWant(id, Number(e.target.value)); draw(); });
+      $('iWants').append(r);
+      iBuilt[id] = r;
+    }
+    const r = iBuilt[id], v = i.wants[id] || 0;
+    r.querySelector('i').style.width = Math.round(v * 100) + '%';
+    const inp = r.querySelector('input');
+    if (document.activeElement !== inp) inp.value = n2(v);
+    const cap = Init.ACTIONS[id].cap[i.stage || s.stage] || 0;
+    r.querySelector('small').textContent = (cap ? 'At this bond she goes as far as: ' + Init.RUNG_WORDS[cap] : 'Not at this bond yet')
+      + (i.cool[id] > 0 ? ' · not again for ' + Math.ceil(i.cool[id] / 60000) + ' min' : '')
+      + (Math.abs(i.learned[id] - 1) > 0.02 ? ' · learned ×' + n2(i.learned[id]) : '');
+  }
+  const room = i.room;
+  const rows = [
+    ['Her mood of the day', i.opts.asFeels ? Init.DAY_MOODS[i.day].words : 'steady ("As she feels" is off)'],
+    ['The room', room ? (Room.WHY[room.why] || room.why) + ' → at most: ' + Init.RUNG_WORDS[room.cap] + (room.at ? ' (' + ago(room.at) + ' ago)' : '') : 'not read yet (she isn\'t out on the desktop)'],
+    ['Bond stage', i.stage ? STAGES[i.stage - 1] : 'not known yet (she isn\'t out on the desktop)'],
+    ['Right now', i.ep ? 'waiting for an answer: ' + Init.ACTIONS[i.ep.id].name + ' (' + Init.RUNG_WORDS[i.ep.rung] + ')' : i.sulking ? 'sulking a little' : 'nothing open'],
+    ['Today\'s attention budget', n2(i.used) + ' of ' + n2(i.budget) + ' used'],
+    ['Promise', i.promise ? '"later": ' + Init.ACTIONS[i.promise.id].name : 'none'],
+  ];
+  $('iRoom').innerHTML = rows.map(([k, v]) => `<b>${esc(k)}</b><span>${esc(v)}</span>`).join('');
+  const log = i.log.slice().reverse();
+  $('iLog').innerHTML = log.length ? log.map(e => `<li>${ago(e.at)} ago: ${esc(Init.whyLine(e))}</li>`).join('') : '<li>Nothing yet.</li>';
+}
+$('iClear').addEventListener('click', () => { Init.clearCooldowns(); draw(); });
+
+// the time-lapse: a day of her decisions with a made-up him (initiative.js simulate)
+for (const [id, h] of Object.entries(Init.HIM)) $('lHim').add(new Option(h.name, id));
+STAGES.forEach((name, i) => $('lStage').add(new Option(name, String(i + 1), i === 3, i === 3)));
+for (const [id, m] of Object.entries(Init.DAY_MOODS)) $('lDay').add(new Option(m.words, id));
+const lYes = () => Number($('lYes').value) / 100;
+const lShowYes = () => { $('lYesOut').textContent = Math.round(lYes() * 100) + '% of the times you notice'; };
+$('lYes').addEventListener('input', lShowYes);
+lShowYes();
+let lSeed = Math.floor(Math.random() * 1e6);
+const lOpts = (seed) => ({ seed, him: $('lHim').value, stage: Number($('lStage').value), day: $('lDay').value || null, opts: Init.opts(), yes: lYes(), no: Math.max(0.05, (1 - lYes()) * 0.45) });
+function lFlags(flags) {
+  $('lFlags').innerHTML = flags.length ? flags.map(f => `<p class="warn">⚠ ${esc(f)}</p>`).join('') : '<p class="note">Nothing stood out: no nagging, no dead stretch, no repeats.</p>';
+}
+$('lRun').addEventListener('click', () => {
+  const r = Init.simulate(lOpts(lSeed++));
+  lFlags(r.flags);
+  const c = r.counts;
+  $('lSum').innerHTML = [
+    ['Her mood that day', Init.DAY_MOODS[r.day].words],
+    ['Things she started', c.starts + ' (' + Object.entries(c.byAction).map(([k, v]) => v + ' × ' + Init.ACTIONS[k].name).join(', ') + ')'],
+    ['How loud', Init.RUNG_WORDS.map((w, i) => (i && c.byRung[i] ? c.byRung[i] + ' × ' + w : '')).filter(Boolean).join(', ') || '—'],
+    ['Your answers', c.yes + ' yes, ' + c.no + ' no, ' + c.ignored + ' unnoticed'],
+    ['Attention budget', r.used + ' of ' + n2(r.budget * Math.max(0.2, Init.mul(Init.opts().often, 2)))],
+  ].map(([k, v]) => `<b>${esc(k)}</b><span>${esc(v)}</span>`).join('');
+  const max = Math.max(1, ...r.perHour.map(h => h.n));
+  $('lHours').innerHTML = r.perHour.map(h => `<div title="${esc(h.h)}: ${h.n} things, ${h.loud} of them loud" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%">`
+    + `<div style="height:${Math.round(h.n / max * 100)}%;background:var(--bar);border-radius:3px 3px 0 0;min-height:${h.n ? 3 : 0}px"></div>`
+    + `<small style="font-size:9px;color:var(--dim);text-align:center">${esc(h.h.slice(0, 2))}</small></div>`).join('');
+  $('lEvents').innerHTML = '<table>' + r.events.map(e => `<tr><td class="num">${esc(e.t)}</td><td>${esc(e.text)}</td></tr>`).join('') + '</table>';
+});
+$('lMany').addEventListener('click', () => {
+  const N = 30, sum = { starts: 0, yes: 0, no: 0, ignored: 0, loud: 0, asks: 0 }, flags = {};
+  for (let i = 0; i < N; i++) {
+    const r = Init.simulate(lOpts(lSeed++));
+    sum.starts += r.counts.starts; sum.yes += r.counts.yes; sum.no += r.counts.no; sum.ignored += r.counts.ignored;
+    sum.loud += r.perHour.reduce((a, h) => a + h.loud, 0); sum.asks += r.counts.byRung[5];
+    for (const f of r.flags) { const k = f.replace(/\d+:\d+|\d+/g, '…'); flags[k] = (flags[k] || 0) + 1; }
+  }
+  const per = (v) => (v / N).toFixed(1);
+  lFlags(Object.entries(flags).map(([k, n]) => `On ${n} of ${N} days: ${k}`));
+  $('lSum').innerHTML = [
+    ['On an average day she starts', per(sum.starts) + ' things'],
+    ['...of which she comes over, speaks up or asks', per(sum.loud) + ' times'],
+    ['...and asks you outright', per(sum.asks) + ' times'],
+    ['Your answers', per(sum.yes) + ' yes, ' + per(sum.no) + ' no, ' + per(sum.ignored) + ' unnoticed'],
+  ].map(([k, v]) => `<b>${esc(k)}</b><span>${esc(v)}</span>`).join('');
+  $('lHours').innerHTML = '';
+  $('lEvents').innerHTML = '';
+});
+
 function draw() {
   const s = Feel.snapshot();
-  drawNeeds(s); drawNow(s); drawTired(s); drawFavs(s); drawRepeat(s); drawHist(s);
+  drawNeeds(s); drawNow(s); drawTired(s); drawFavs(s); drawRepeat(s); drawHist(s); drawInit(s);
   tryIt();
 }
 
@@ -211,5 +299,6 @@ $('startOver').addEventListener('click', (e) => {
 drawTune();
 draw();
 setInterval(draw, 1000);
+if (location.hash) { try { document.querySelector(location.hash)?.scrollIntoView(); } catch (e) { /* not an id */ } }
 // someone tuned in another window
 window.addEventListener('storage', (e) => { if (e.key === Tune.TUNE_KEY) { drawTune(); draw(); } });

@@ -83,6 +83,12 @@ export const TUNE = {
   // head; past it she leans with the hand, all the way at the ends
   patCenter: 0.45,
   patCenterLean: 0.15, // how much she still leans inside the middle (0 = not at all)
+  // the initiative engine (#4): asking for a headpat, lighting up (first guesses, not seen on the rig yet)
+  askTilt: 0.5,       // ParamHeadZ toward his hand
+  askBow: 0.35,       // ParamHeadY: her head down a little, offering it
+  askLean: 0.25,      // ParamBodyZ toward his hand
+  askHoldMs: 3200,    // how long she holds the pose
+  litBlush: 0.5,
 };
 
 let canvas = null;
@@ -1238,7 +1244,12 @@ export function earRub() {
 
 // she waved; if he waves back (wiggles the pointer near her) she lights up
 export function waved() { lastWave = performance.now(); }
-export function waveBackWindow() { return performance.now() - lastWave < 5000; }
+let waveWindowMs = 5000;
+// a wave she started on her own (the initiative engine) leaves him longer to wave back
+export function setWaveWindow(ms) { waveWindowMs = Math.max(1000, Number(ms) || 5000); }
+export function waveBackWindow() { return performance.now() - lastWave < waveWindowMs; }
+// a wave that answers HIS wave doesn't ask for one back
+export function closeWaveWindow() { lastWave = 0; }
 export function wavedBack() {
   lastWave = 0;
   act('[A:heart_eyes] [A:emote|excited]');
@@ -1272,13 +1283,37 @@ const MOVES = {
     { dt_ms: 0, params: { ParamHeadX: -0.7, ParamHeadY: -0.25, ParamEyeballLX: -1, ParamEyeballRX: -1, ParamEyeballLY: -0.4, ParamEyeballRY: -0.4, ParamBodyX: -0.25 } },
     { dt_ms: 2600, params: { ParamHeadX: 0, ParamHeadY: 0, ParamEyeballLX: 0, ParamEyeballRX: 0, ParamEyeballLY: 0, ParamEyeballRY: 0, ParamBodyX: 0 } },
   ],
+  // the initiative engine (#4): the small things around what she starts on her own
+  sigh: [
+    { dt_ms: 0, params: { ParamBodyY: 0.3, ParamHeadY: 0.15, ParamMouthOpen: 0.25 } },
+    { dt_ms: 700, params: { ParamBodyY: -0.35, ParamHeadY: -0.3, ParamMouthOpen: 0.1, ParamEyeOpen: -0.4, ParamEarL: -0.3, ParamEarR: -0.3 } },
+    { dt_ms: 900, params: { ParamBodyY: 0, ParamHeadY: 0, ParamMouthOpen: 0, ParamEyeOpen: 0, ParamEarL: 0, ParamEarR: 0 } },
+  ],
+  shrug: [
+    { dt_ms: 0, params: { ParamBodyY: 0.35, ParamHeadZ: 0.25, ParamArmLUp: 0.25, ParamArmRUp: 0.25, ParamEyeOpen: -0.3 } },
+    { dt_ms: 650, params: { ParamBodyY: 0, ParamHeadZ: 0, ParamArmLUp: 0, ParamArmRUp: 0, ParamEyeOpen: 0 } },
+  ],
+  pout: [
+    { dt_ms: 0, params: { ParamHeadX: 0.45, ParamHeadY: -0.2, ParamEyeballLX: 0.8, ParamEyeballRX: 0.8, ParamEarL: -0.5, ParamEarR: -0.5, ParamBodyX: 0.15 } },
+    // a stolen look back at him, then away again
+    { dt_ms: 1100, params: { ParamEyeballLX: -0.5, ParamEyeballRX: -0.5 } },
+    { dt_ms: 450, params: { ParamEyeballLX: 0.8, ParamEyeballRX: 0.8 } },
+    { dt_ms: 800, params: { ParamHeadX: 0, ParamHeadY: 0, ParamEyeballLX: 0, ParamEyeballRX: 0, ParamEarL: 0, ParamEarR: 0, ParamBodyX: 0 } },
+  ],
+  hop: [
+    { dt_ms: 0, params: { ParamBodyY: -0.5 } },
+    { dt_ms: 150, params: { ParamBodyY: 0.7, ParamEarL: 0.5, ParamEarR: 0.5 } },
+    { dt_ms: 260, params: { ParamBodyY: -0.2, ParamEarL: 0, ParamEarR: 0 } },
+    { dt_ms: 200, params: { ParamBodyY: 0 } },
+  ],
   sway: [
     { dt_ms: 0, params: { ParamBodyZ: 0.3, ParamHeadZ: -0.2, ParamLegL: 0.3 } },
     { dt_ms: 900, params: { ParamBodyZ: -0.3, ParamHeadZ: 0.2, ParamLegL: 0, ParamLegR: 0.3 } },
     { dt_ms: 900, params: { ParamBodyZ: 0, ParamHeadZ: 0, ParamLegR: 0 } },
   ],
 };
-const MOVE_MS = { lookAround: 2600, stretch: 2400, yawn: 2300, rest: 7500, sway: 2000, tail: 2000, wave: 1200, ears: 900, lookAway: 2900 };
+const MOVE_MS = { lookAround: 2600, stretch: 2400, yawn: 2300, rest: 7500, sway: 2000, tail: 2000, wave: 1200, ears: 900, lookAway: 2900,
+  sigh: 1900, shrug: 1500, pout: 2600, hop: 900, smallWave: 1100 };
 // the thought icon that goes with a move, if any
 const MOVE_EMOTE = { lookAround: 'question', yawn: 'dots', rest: 'dots', sway: 'note', wave: 'heart', lookAway: 'dots' };
 
@@ -1311,6 +1346,74 @@ export function play(kind) {
   else if (kind === 'wave') { for (const a of Actions.parseActions('[A:wave] [A:emote|happy]')) Actions.applyAction(a); waved(); }
   else if (kind === 'tail') { Live2D.startLoop('ParamTailWiggle', 1, 600); setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 1800); }
   else if (kind === 'ears') { for (const a of Actions.parseActions('[A:ear_wiggle]')) Actions.applyAction(a); }
+  // a small, shy wave: the hand barely up
+  else if (kind === 'smallWave') {
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamArmRUp: 0.45, ParamHeadZ: 0.15, ParamEarL: -0.2, ParamEarR: -0.2 } },
+      { dt_ms: 300, params: { ParamArmRUp: 0.6 } }, { dt_ms: 250, params: { ParamArmRUp: 0.45 } },
+      { dt_ms: 350, params: { ParamArmRUp: 0, ParamHeadZ: 0, ParamEarL: 0, ParamEarR: 0 } },
+    ]);
+    waved();
+  }
+}
+
+// ---------------------------------------------------------------
+// the initiative engine (#4): how her body asks, and how it takes his answer. every number in
+// TUNE (ask*, lit*)
+
+// she'd like a headpat: her head tips toward his hand and down a little, ears forward, a hopeful
+// look up at the hand and (shy) away again. side: -1 his hand is to her left on screen, 1 right.
+// strength 0..1: a glance (0.3) up to leaning right in (1)
+export function askPat(side = 1, strength = 0.7, ms = TUNE.askHoldMs) {
+  if (asleep || carried || walkDir) return;
+  const k = clamp(strength, 0.15, 1), d = Math.sign(side) || 1;
+  busyMove = performance.now() + ms;
+  Live2D.playSequence([
+    { dt_ms: 0, params: { ParamHeadZ: d * TUNE.askTilt * k, ParamHeadY: -TUNE.askBow * k, ParamBodyZ: d * TUNE.askLean * k,
+      ParamEarL: 0.4 * k, ParamEarR: 0.4 * k, ParamEyeballLX: d * 0.7, ParamEyeballRX: d * 0.7, ParamEyeballLY: 0.5, ParamEyeballRY: 0.5 } },
+    // the look away, then back up at the hand
+    { dt_ms: Math.round(ms * 0.35), params: { ParamEyeballLX: -d * 0.4, ParamEyeballRX: -d * 0.4, ParamEyeballLY: -0.3, ParamEyeballRY: -0.3 } },
+    { dt_ms: Math.round(ms * 0.2), params: { ParamEyeballLX: d * 0.7, ParamEyeballRX: d * 0.7, ParamEyeballLY: 0.5, ParamEyeballRY: 0.5 } },
+    { dt_ms: Math.round(ms * 0.45), params: { ParamHeadZ: 0, ParamHeadY: 0, ParamBodyZ: 0, ParamEarL: 0, ParamEarR: 0,
+      ParamEyeballLX: 0, ParamEyeballRX: 0, ParamEyeballLY: 0, ParamEyeballRY: 0 } },
+  ]);
+  if (k > 0.5) setHeld('ParamBlush', 0.25 * k, ms * 0.6);
+}
+// she'd like to play: up on her toes, a bounce, the tail going
+export function askPlay(strength = 0.7) {
+  if (asleep || carried || walkDir) return;
+  play('hop');
+  Live2D.startLoop('ParamTailWiggle', 1, 420);
+  setTimeout(() => { if (!walkDir && !carried) Live2D.stopLoop('ParamTailWiggle'); }, 900 + 1400 * clamp(strength, 0, 1));
+}
+// he took her up on it: she lights up. how: bright (eyes and ears up) / bounce (a hop, tail going) /
+// shy (pleased, hiding it) / melt (eyes closing, leaning in)
+export function lightUp(how = 'bright', power = 0.7) {
+  if (asleep || carried) return;
+  const k = clamp(power, 0.2, 1);
+  busyMove = performance.now() + 1400;
+  if (how === 'bounce') { play('hop'); act('[A:emote|excited]'); Live2D.startLoop('ParamTailWiggle', 1, 380); setTimeout(() => Live2D.stopLoop('ParamTailWiggle'), 1600); }
+  else if (how === 'shy') {
+    setHeld('ParamBlush', TUNE.litBlush * k, 1800);
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamHeadX: -0.3, ParamHeadY: -0.25, ParamEyeballLX: -0.7, ParamEyeballRX: -0.7, ParamEarL: 0.3, ParamEarR: 0.3 } },
+      { dt_ms: 900, params: { ParamEyeballLX: 0.4, ParamEyeballRX: 0.4 } },
+      { dt_ms: 700, params: { ParamHeadX: 0, ParamHeadY: 0, ParamEyeballLX: 0, ParamEyeballRX: 0, ParamEarL: 0, ParamEarR: 0 } },
+    ]);
+    Live2D.startLoop('ParamTailWiggle', 0.6, 520); setTimeout(() => Live2D.stopLoop('ParamTailWiggle'), 1700);
+  } else if (how === 'melt') {
+    setHeld('ParamBlush', TUNE.litBlush * k, 2200);
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamEyeOpen: -0.8 * k, ParamHeadY: -0.2, ParamBodyY: -0.2, ParamEarL: -0.3, ParamEarR: -0.3 } },
+      { dt_ms: 1700, params: { ParamEyeOpen: 0, ParamHeadY: 0, ParamBodyY: 0, ParamEarL: 0, ParamEarR: 0 } },
+    ]);
+  } else {
+    act(k > 0.75 ? '[A:heart_eyes] [A:emote|excited]' : '[A:emote|happy] [A:ear_wiggle]');
+    Live2D.playSequence([
+      { dt_ms: 0, params: { ParamBodyY: 0.4 * k, ParamEarL: 0.6 * k, ParamEarR: 0.6 * k } },
+      { dt_ms: 500, params: { ParamBodyY: 0, ParamEarL: 0, ParamEarR: 0 } },
+    ]);
+  }
 }
 
 // ---------------------------------------------------------------

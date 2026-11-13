@@ -236,6 +236,11 @@
   <h2 id="at-habits">Habits she's picked up</h2>
   <p class="hint">Little things she catches from you over time, from what you watch, talk about and do together. They come in slowly, now and then.</p>
   <div id="habitRows"></div>
+  <h2 id="at-ownway">On her own</h2>
+  <p class="hint">She has wants of her own and acts on them: a hopeful glance, a thought bubble, coming over, saying something, or asking you. She reads the room first and never minds a no.</p>
+  <p class="hint" id="ownNow" role="status"></p>
+  <div id="ownRows"></div>
+  <ul class="touch-all-list" id="ownWhy" hidden></ul>
   <h2 id="at-memories">Her memories <span class="count" id="memoryCount">0</span></h2>
   <p class="hint">Notes she keeps about you between conversations, grouped by category alongside her journal. Click one to read it; drag to look around.</p>
   <div class="memory-graph-wrap" id="memoryGraphWrap">
@@ -489,7 +494,14 @@
   <div class="row"><div class="gesture">✊</div><div class="what"><b>Pick her up</b><span>Click and drag her body (pressing on her head is a headpat). Let go to drop her on the taskbar, or onto one of her spots.</span></div></div>
   <div class="row"><div class="gesture">🤾</div><div class="what"><b>Throw her</b><span>Let go while the mouse is still moving.</span></div></div>
   <div class="row"><div class="gesture">📏</div><div class="what"><b>Make her bigger or smaller</b><span>Settings &gt; On the desktop &gt; Her size, or the quick picks in the Jun menu. She grows or shrinks right where she stands.</span></div></div>
-  <div class="row"><div class="gesture">👋</div><div class="what"><b>Wave back</b><span>When she waves, wiggle your mouse near her.</span></div></div>
+  <div class="row"><div class="gesture">👋</div><div class="what"><b>Wave back</b><span>When she waves, wiggle your mouse near her. She lights up if you do, and doesn't mind if you're busy.</span></div></div>
+  <h2>Things she starts</h2>
+  <div class="row"><div class="gesture">💭</div><div class="what"><b>She wants things too</b><span>A hopeful glance at your hand, a thought bubble, coming over to you, saying so, or a small question bubble over her head.
+    How far she goes depends on how close you two are, how much she wants it and how busy you look. Settings &gt; Her &gt; On her own: how often, how bold, your quiet hours.</span></div></div>
+  <div class="row"><div class="gesture">✋</div><div class="what"><b>She'd like a headpat</b><span>She tips her head toward your hand. Give her one and she lights up. Too busy? She lets it go.</span></div></div>
+  <div class="row"><div class="gesture">🎾</div><div class="what"><b>She wants to play fetch</b><span>She brings you her ball. Drag it and let go while moving to throw it; she runs after it, and may want one more.</span></div></div>
+  <div class="row"><div class="gesture">💬</div><div class="what"><b>Yes or Not now</b><span>When she asks, click an answer in her bubble. Not now is always fine: she may pout, ask once more or offer something else, and it's never held against you.</span></div></div>
+  <div class="row"><div class="gesture">👋</div><div class="what"><b>Wave at her</b><span>Move your mouse side to side near her, or draw a circle, and she waves back her own way. Settings &gt; Her &gt; On her own picks the gesture and how big it has to be.</span></div></div>
   <h2>Talking</h2>
   <div class="row"><div class="gesture">💬</div><div class="what"><b>Chat</b><span>Click her torso, legs or anywhere without its own reaction. Double-click to send her back inside.</span></div></div>
   <div class="row"><div class="gesture">🖱️</div><div class="what"><b>Her menu</b><span>Right-click her: talk, spots, go back inside, hide.</span></div></div>
@@ -501,6 +513,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=50"></script>
+<script type="module" src="js/desktop-settings.js?v=51"></script>
 </body>
 </html>

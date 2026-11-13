@@ -2,8 +2,8 @@
 // out from what happened lately (store.js hist), so every window agrees. The composer and her
 // prompt use it; the full "she has a feel for how the time together is going" grows from here.
 
-import * as Store from './store.js?v=3';
-import { TUNE } from './tune.js?v=3';
+import * as Store from './store.js?v=4';
+import { TUNE } from './tune.js?v=5';
 import * as K from './kinds.js?v=2';
 
 export const PHASES = ['away', 'greeting', 'warmup', 'peak', 'winddown', 'afterglow'];

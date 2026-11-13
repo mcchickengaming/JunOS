@@ -4,7 +4,7 @@
 
 import * as Auth from './core/auth.js?v=1';
 import { api, apiJson } from './core/api.js?v=1';
-import * as ChatAPI from './core/chat-api.js?v=10';
+import * as ChatAPI from './core/chat-api.js?v=11';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { say } from './core/speech-card.js?v=25';

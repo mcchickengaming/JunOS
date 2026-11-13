@@ -23,6 +23,7 @@ export const DEFAULTS = {
     combo: { affection: 0.08, play: 0.06, stimulation: 0.05 },
     message: { attention: 0.12, stimulation: 0.03 },
     toss: { play: 0.07, stimulation: 0.04 },
+    wave: { attention: 0.05 },
     // something she hasn't had for a while is new again; doing the same thing is a little boring
     newKind: 0.07, newKindAfterMin: 12, sameAgain: 0.004,
   },
@@ -99,10 +100,52 @@ export const DEFAULTS = {
     chance: 0.8,        // she doesn't notice every single time
     leanInChance: 0.6,  // how often a welcome hand gets a lean in (the rest: her eyes and an ear)
   },
+  // the initiative engine (#4, initiative.js): what she starts on her own
+  init: {
+    tickSec: 4,          // how often she thinks about it (cheap; most ticks end in nothing)
+    // how fast each want grows, per hour, when her needs fit it about halfway
+    rise: { headpat: 0.2, wave: 0.2, fetch: 0.15 },
+    startAt: 0.4,        // a want under this stays inside her
+    meanSec: 230,        // a strong want and a free him: about one start in this long
+    gapMin: 5,           // at least this long between two things she starts...
+    gapLoud: 3,          // ...times this after something loud (she came over, spoke up or asked)
+    // not the same thing again for this many minutes, by how the last one went
+    againYes: 12, againIgnored: 20, againNo: 45, againHint: 8,
+    // how long she waits for an answer on each step of the ladder (seconds; step 3 = she came over)
+    wait1: 12, wait2: 14, wait3: 24, wait4: 22, wait5: 30,
+    // what each step costs of her day's attention budget, and the budget itself
+    cost1: 0.2, cost2: 0.5, cost3: 1.5, cost4: 2.5, cost5: 3.5,
+    budget: 45,
+    climbMax: 2,         // at most this many steps up in one go
+    persist: 0.45,       // ignored: how often she tries harder (the rest: she lets it go)
+    // how strong a want has to be before she'd go up to step 3, 4, 5
+    urge3: 0.5, urge4: 0.66, urge5: 0.76,
+    strongWant: 0.72,    // told no while wanting it this much: a pout, "pretty please", an offer...
+    keepAfterYes: 0.12, keepAfterNo: 0.7, keepAfterIgnored: 0.85, // how much of the want is left
+    learnSpan: 0.35, learnHalfLifeDays: 12, // what she learns he likes: up to ± this much, fading
+    backWave: 0.9,       // he's just back: she wants to wave this much
+    promiseHours: 6, promiseBoost: 2.2, // "later, promise?": she remembers this long
+    sulkMinLo: 2, sulkMinHi: 5, // a sulk is short (minutes) and melts with a kind touch
+    moodSwing: 0.4,      // how much her mood of the day moves things (As she feels)
+    oneMore: 0.55,       // fetch: how often she wants "one more!" while she still feels like playing
+    waveBackMs: 9000,    // she waved on her own: he has this long to wave back
+    hisWaveEveryMs: 9000, hisWaveNear: 1.1, // he waves at her: not more often; this close (her heights)
+    hisWaveFlips: 3, hisWaveWindowMs: 1500, hisWaveSweep: 0.07, hisWaveTurn: 5.2, // the gesture itself
+  },
+  // reading the room (room.js): how free he looks, 0..1, and how loud she may be (ladder step)
+  room: {
+    awaySec: 180,        // no input for this long: nobody's there to see it
+    stillSec: 45,        // quiet this long (reading? watching?): hints only
+    typingMs: 8000,      // keys without the mouse for this long: he's typing
+    backSec: 90,         // "just came back" lasts this long
+    busyShare: 0.75,     // the mouse moving this much of the last half minute: he's busy
+    afterIgnored: 0.6,   // right after she was ignored she holds back this much
+    afterIgnoredMin: 10,
+  },
   repeat: {
     keep: 24,
     // how long something counts as "just did that", in seconds, per kind of thing
-    forget: { line: 1800, emote: 180, idle: 300, piece: 20, reaction: 120, thought: 240, variant: 90, linetype: 600, approach: 45 },
+    forget: { line: 1800, emote: 180, idle: 300, piece: 20, reaction: 120, thought: 240, variant: 90, linetype: 600, approach: 45, hint: 240, ask: 3600, lit: 600, letgo: 1200, toldno: 7200, hiswave: 120 },
     // how hard a repeat is pushed down (1 = never again while remembered)
     strength: 0.85,
   },

@@ -29,6 +29,7 @@ const fresh = () => ({
   repeat: {},      // repeat.js: channel -> [[id, at]...] (only the channels worth keeping)
   marks: {},       // one-off flags: kind -> the state she last told about (tired.js)
   use: {},         // what he's given her these days: kind -> { n, at } (tired.js, fades over days)
+  init: null,      // initiative.js: her wants, what she's learned he likes, what she started lately
 });
 
 let cache = null, cacheAt = 0, dirty = false, saveT = null;

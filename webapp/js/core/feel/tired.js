@@ -14,8 +14,8 @@
 //
 // The composer (compose.js) decides what all of this means for a reaction.
 
-import * as Store from './store.js?v=3';
-import { TUNE } from './tune.js?v=3';
+import * as Store from './store.js?v=4';
+import { TUNE } from './tune.js?v=5';
 import * as K from './kinds.js?v=2';
 
 export const STATES = ['fresh', 'enjoying', 'plenty', 'enough', 'sore'];

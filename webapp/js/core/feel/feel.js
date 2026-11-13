@@ -12,39 +12,45 @@
 //   compose.js the reaction composer: everything above → one reaction, and how it plays out
 //   manner.js  how a touch is done (slow and gentle, fast and scrubby)
 //   approach.js she sees his hand coming
+//   room.js    reading the room: how free he looks, how loud she may be
+//   initiative.js the initiative engine (#4): what she starts on her own, and how he answers
 //
 // Switches (Settings > Touch & feelings > Inside her): feature:needs, feature:tiring,
-// feature:favorites, feature:repeat, feature:manner, feature:anticipate, and local:jun.feel.tirePct. Off is always safe: she just
+// feature:favorites, feature:repeat, feature:manner, feature:anticipate, and local:jun.feel.tirePct.
+// Settings > Her > On her own: feature:initiative, feature:as_she_feels, feature:wave_at_her + local:jun.init.*. Off is always safe: she just
 // reacts the way moods.js does on its own.
 
-import * as Store from './store.js?v=3';
-import * as Tune from './tune.js?v=3';
-import { TUNE } from './tune.js?v=3';
-import * as Needs from './needs.js?v=3';
-import * as Tired from './tired.js?v=3';
-import * as Repeat from './repeat.js?v=3';
-import * as Session from './shape.js?v=3';
-import * as Compose from './compose.js?v=3';
-import * as Manner from './manner.js?v=2';
-import * as Approach from './approach.js?v=2';
+import * as Store from './store.js?v=4';
+import * as Tune from './tune.js?v=5';
+import { TUNE } from './tune.js?v=5';
+import * as Needs from './needs.js?v=4';
+import * as Tired from './tired.js?v=4';
+import * as Repeat from './repeat.js?v=4';
+import * as Session from './shape.js?v=4';
+import * as Compose from './compose.js?v=4';
+import * as Manner from './manner.js?v=3';
+import * as Approach from './approach.js?v=3';
 import * as K from './kinds.js?v=2';
+import * as Room from './room.js?v=2';
+import * as Initiative from './initiative.js?v=2';
 import * as Features from '../features.js?v=3';
 
-export { Store, Tune, Needs, Tired, Repeat, Session, Compose, Manner, Approach, K as Kinds };
+export { Store, Tune, Needs, Tired, Repeat, Session, Compose, Manner, Approach, K as Kinds, Room, Initiative };
 
 export const PACE_KEY = 'jun.feel.tirePct';
 const HIST_MAX = 240;
 
 // the switches: feature:<id> in jun.features (Features.isOn honors "new things after an update")
 let isOn = (id) => { try { return Features.isOn(id); } catch (e) { return true; } };
-let on = { needs: true, tiring: true, favorites: true, repeat: true, manner: true, anticipate: true };
+let on = { needs: true, tiring: true, favorites: true, repeat: true, manner: true, anticipate: true, initiative: true };
 // read the switches (pages pass Features.isOn; tests and the lab leave it all on)
 export function configure({ isOn: fn } = {}) {
   if (fn) isOn = fn;
+  Initiative.configure({ isOn: (id) => isOn(id) });
   refresh();
 }
 export function refresh() {
-  on = { needs: isOn('needs'), tiring: isOn('tiring'), favorites: isOn('favorites'), repeat: isOn('repeat'), manner: isOn('manner'), anticipate: isOn('anticipate') };
+  on = { needs: isOn('needs'), tiring: isOn('tiring'), favorites: isOn('favorites'), repeat: isOn('repeat'), manner: isOn('manner'), anticipate: isOn('anticipate'), initiative: isOn('initiative') };
   let pace = 50;
   try { const v = Number(globalThis.localStorage?.getItem(PACE_KEY)); if (globalThis.localStorage?.getItem(PACE_KEY) != null && Number.isFinite(v)) pace = v; } catch (e) { /* default */ }
   Tired.setOptions({ tiring: on.tiring, favorites: on.favorites, pace });
@@ -101,7 +107,18 @@ function newness(kind) {
 // what happens (moods.js calls these for touches; desktop.js for the rest)
 
 const going = new Map(); // slot -> { kind, t0, rough }
-export function touchBegin(slot, kind, t0 = Store.now()) { going.set(slot, { kind, t0, rough: 0 }); }
+export function touchBegin(slot, kind, t0 = Store.now()) {
+  going.set(slot, { kind, t0, rough: 0 });
+  // the initiative engine: was she hoping for exactly this? (and a kind touch ends a sulk)
+  initEvent(Initiative.happenedLive(kind, { stage, warm: K.isWarm(kind) }));
+}
+// how close they are (the bond stage, 1..6): the page tells her (desktop.js refreshMood)
+let stage = 1;
+export function setStage(n) { stage = Math.max(1, Math.min(6, Math.round(n) || 1)); }
+export const stageNow = () => stage;
+// something the initiative engine wants played (she lit up, a pout, she melted): the page listens
+function initEvent(d) { if (d) emit({ type: 'init', d }); return d; }
+export function initAnswer(id, ans) { return on.initiative ? initEvent(Initiative.answerLive(id, ans, { stage })) : null; }
 // how the touch on this hand is being done (moods.js, from manner.js): the share of it that was
 // fast and scrubby wears on her quicker
 export function touchManner(slot, m) { const g = going.get(slot); if (g && m) g.rough = on.manner ? (m.roughShare || 0) : 0; }
@@ -148,7 +165,9 @@ export function combo(id) {
 export function message() { log('message'); if (on.needs) Needs.satisfy(TUNE.needs.message); }
 // thrown across the screen (a toss or two is play), carried, fetch
 export function toss() { newness('toss'); log('toss', 'toss'); Tired.add('toss', TUNE.tired.toss); if (on.needs) Needs.satisfy(TUNE.needs.toss); afterTouch('toss'); }
-export function fetch() { newness('fetch'); log('fetch', 'fetch'); if (on.needs) Needs.satisfy(TUNE.needs.toss); }
+export function fetch() { newness('fetch'); log('fetch', 'fetch'); if (on.needs) Needs.satisfy(TUNE.needs.toss); initEvent(Initiative.happenedLive('fetch', { stage })); }
+// he waved at her, or waved back (attention, a little)
+export function waved() { log('wave', 'wave'); if (on.needs) Needs.satisfy(TUNE.needs.wave); }
 export function resting(isResting) { Needs.setResting(isResting); }
 
 // ---------------------------------------------------------------------------------------------
@@ -191,7 +210,8 @@ export function idleExtras() {
   const n = Needs.levels(), out = [];
   if (n.rest >= 0.5) out.push('yawn', 'rest', ...(n.rest >= 0.75 ? ['yawn', 'rest'] : []));
   if (n.play >= 0.5) out.push('sway', 'tail', ...(n.play >= 0.75 ? ['tail', 'ears'] : []));
-  if (n.attention >= 0.5) out.push('wave', 'lookAround', ...(n.attention >= 0.75 ? ['wave'] : []));
+  // wanting attention: with the initiative engine on, SHE decides when to wave (initiative.js)
+  if (n.attention >= 0.5) out.push(...(on.initiative ? ['lookAround'] : ['wave', 'lookAround', ...(n.attention >= 0.75 ? ['wave'] : [])]));
   if (n.stimulation >= 0.6) out.push('lookAround', 'lookAround');
   return out;
 }
@@ -220,6 +240,7 @@ export function forChat() {
   out.phase = Session.phase();
   const st = Session.start();
   out.away_min = Math.round(st.awayMs / 60000);
+  if (on.initiative) { const i = Initiative.forChat(stage); if (Object.keys(i).length) out.init = i; }
   return out;
 }
 
@@ -241,6 +262,8 @@ export function snapshot() {
     hist: Store.get().hist.slice(-25),
     going: [...going.entries()].map(([slot, g]) => ({ slot, kind: g.kind, ms: Store.now() - g.t0 })),
     last: lastReaction,
+    stage,
+    init: Initiative.snapshot(),
   };
 }
 

@@ -309,6 +309,8 @@ export const EMOTES = {
   interrobang: ['!?', 'sym'], twohearts: ['💕', 'pic'], sparkheart: ['💖', 'pic'], idea: ['💡', 'pic'], sleepy: ['💤', 'pic'], notes: ['♫', 'sym'],
   game: ['🎮', 'pic'], snack: ['🍙', 'pic'], gear: ['⚙️', 'pic'], battery: ['🔋', 'pic'], processing: ['⏳', 'pic'], paw: ['🐾', 'pic'],
   sun: ['☀️', 'pic'], rain: ['☔', 'pic'], smug: ['ehe~', 'sym'], hmph: ['hmph', 'sym'],
+  // what she'd like (the initiative engine): a headpat, a wave, her ball
+  pat: ['✋', 'pic'], wave: ['👋', 'pic'], ball: ['🎾', 'pic'],
   // her robot faces
   a_happy: ['^_^', 'ascii'], a_cat: [':3', 'ascii'], a_fluster: ['>_<', 'ascii'], a_heart: ['<3', 'ascii'], a_shock: ['o_O', 'ascii'],
   a_flat: ['-_-', 'ascii'], a_cry: ['T_T', 'ascii'], a_dizzy: ['x_x', 'ascii'], a_tongue: [':P', 'ascii'], a_owo: ['OwO', 'ascii'],
@@ -320,6 +322,7 @@ export const EMOTE_GROUPS = [
   ['Feelings', ['heart', 'twohearts', 'sparkheart', 'note', 'notes', 'sparkle', 'star', 'flower', 'laugh', 'smug']],
   ['Surprised and flustered', ['bang', 'bonk', 'interrobang', 'question', 'sweat', 'dots', 'anger', 'hmph']],
   ['Her day', ['coffee', 'snack', 'game', 'idea', 'moon', 'zzz', 'sleepy', 'sun', 'rain', 'paw']],
+  ['Things she asks for', ['pat', 'wave', 'ball']],
   ['Android', ['gear', 'battery', 'processing']],
   ['Robot faces (ASCII)', Object.keys(EMOTES).filter(k => EMOTES[k][1] === 'ascii')],
 ];

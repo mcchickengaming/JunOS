@@ -16,7 +16,7 @@
 // --mood-loves, --mood-giggly.
 import * as Often from './often.js?v=2';
 
-import * as Fx from './fx.js?v=11';
+import * as Fx from './fx.js?v=12';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],

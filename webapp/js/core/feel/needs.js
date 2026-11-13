@@ -7,8 +7,8 @@
 // Lazy: kept with the time they were true and moved forward when read, so they keep going while
 // no window is open (she misses you while you're away; she sleeps through the night).
 
-import * as Store from './store.js?v=3';
-import { TUNE } from './tune.js?v=3';
+import * as Store from './store.js?v=4';
+import { TUNE } from './tune.js?v=5';
 
 export const NEEDS = ['attention', 'affection', 'play', 'rest', 'stimulation'];
 export const NAMES = { attention: 'Attention', affection: 'Affection', play: 'Play', rest: 'Rest', stimulation: 'Something new' };

@@ -359,7 +359,8 @@ function stopBall() { if (ball && ball.timer) { clearInterval(ball.timer); ball.
 function throwBall(vx, vy, byHim) {
   if (!ball || ball.win.isDestroyed()) return;
   stopBall();
-  if (byHim) ball.chases = 0;
+  // his throw: she chases it, and the page hears about it (the initiative engine: he took her up on fetch)
+  if (byHim) { ball.chases = 0; ball.played = true; ctx.send('jun:command', 'ball-thrown'); }
   const b = ball.win.getBounds();
   const display = screen.getDisplayMatching(b);
   const range = ctx.stripRange(display, b.width);
@@ -398,6 +399,8 @@ function throwBall(vx, vy, byHim) {
 // the ball came to rest: she runs over and kicks it, a couple of
 // times per throw of his
 function ballStopped(cx) {
+  // the round is over (she's had her kicks): the page decides whether she wants one more
+  if (ball && ball.chases >= 3 && ball.played) { ball.played = false; ctx.send('jun:command', 'ball-rest'); }
   if (!ball || ball.chases >= 3 || ctx.getMode() !== 'stepout' || ctx.isBusy() || onSpotId) return;
   ball.chases++;
   const her = ctx.getWin();
@@ -411,8 +414,49 @@ function ballStopped(cx) {
   });
 }
 
+// the initiative engine (#4): SHE starts a game of fetch. 'bring' = she walks over to about a step
+// from his cursor and rolls the ball the rest of the way; 'toss' = she throws it his way from
+// where she stands. either way the ball then waits for him: his throw starts the game
+function offerBall(how) {
+  const her = ctx.getWin();
+  if (!her || her.isDestroyed() || ctx.getMode() !== 'stepout' || ctx.isBusy() || onSpotId) return false;
+  const size = Math.round(Math.max(28, unit() * 0.08));
+  const c = screen.getCursorScreenPoint();
+  if (!ball || ball.win.isDestroyed()) {
+    const win = makeWindow({ x: c.x - size / 2, y: c.y - size / 2, width: size, height: size }, 'ball.html', {}, true);
+    ball = { win, size, chases: 0, timer: null };
+    win.on('closed', () => { if (ball && ball.win === win) ball = null; });
+    win.hide();
+    ctx.menusChanged();
+  }
+  stopBall();
+  const launch = (vx, vy) => {
+    if (!ball || ball.win.isDestroyed() || her.isDestroyed()) return;
+    const hb = her.getBounds();
+    const dir = screen.getCursorScreenPoint().x >= hb.x + hb.width / 2 ? 1 : -1;
+    ball.win.setPosition(Math.round(hb.x + hb.width / 2 + dir * unit() * 0.15 - size / 2), Math.round(hb.y + hb.height * 0.55));
+    if (shown) ball.win.showInactive();
+    // her own throw: she doesn't chase it, she waits for him
+    ball.chases = 3;
+    ball.played = false;
+    throwBall(dir * vx, vy, false);
+  };
+  if (how === 'toss') {
+    const hb = her.getBounds();
+    launch(Math.max(350, Math.min(1400, Math.abs(c.x - (hb.x + hb.width / 2)) * 1.6)), -650);
+    return true;
+  }
+  const hb = her.getBounds();
+  const dir = c.x >= hb.x + hb.width / 2 ? 1 : -1;
+  ctx.walkTo(c.x - dir * unit() * 0.45 - hb.width / 2, 1.2, () => {
+    ctx.send('jun:command', 'kick');
+    setTimeout(() => launch(160 + Math.random() * 120, -260), 200);
+  });
+  return true;
+}
+
 module.exports = {
   TYPES, init, show, hide, rebuild, zOrder, add, remove, setColor, list, types, dragStart, dragEnd,
-  goTo, leave, stay, afterLanding, onSpot, wantsSpot, restY, spawnBall, removeBall, hasBall: () => !!ball,
+  goTo, leave, stay, afterLanding, onSpot, wantsSpot, restY, spawnBall, removeBall, offerBall, hasBall: () => !!ball,
   spotByContents, ballContents: () => (ball && !ball.win.isDestroyed() ? ball.win.webContents : null),
 };

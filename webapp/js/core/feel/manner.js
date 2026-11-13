@@ -5,7 +5,7 @@
 // Everything is measured in "her heights" (px / how tall she is on screen), so it reads the same
 // at any size of hers. No DOM, no clock of its own: moods.js feeds it points and asks.
 
-import { TUNE } from './tune.js?v=3';
+import { TUNE } from './tune.js?v=5';
 
 export const PACES = ['still', 'gentle', 'even', 'rough'];
 export const PACE_WORDS = { still: 'a hand resting on her', gentle: 'slow and gentle', even: 'an easy rub', rough: 'fast and scrubby' };

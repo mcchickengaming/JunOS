@@ -21,6 +21,10 @@ contextBridge.exposeInMainWorld('junDesktop', {
   // opts: { speed, hop }, her mood sets them
   wander: (opts) => ipcRenderer.send('jun:walk', { what: 'wander', speed: Number(opts?.speed) || 1, hop: Number(opts?.hop) || 0, back: !!opts?.back }),
   stopWalk: () => ipcRenderer.send('jun:walk', 'stop'),
+  // the initiative engine: she walks over to his cursor (a 'stopped' walk state follows), and
+  // starts a game of fetch herself (how: 'bring' | 'toss')
+  walkToCursor: (opts) => ipcRenderer.send('jun:walk', { what: 'toCursor', speed: Number(opts?.speed) || 1, hop: Number(opts?.hop) || 0 }),
+  offerBall: (how) => ipcRenderer.send('jun:init', 'ball', how === 'toss' ? 'toss' : 'bring'),
   // keep her in place (adjusting her touch spots): no walking or carrying
   hold: (on) => ipcRenderer.send('jun:hold', !!on),
   goInside: () => ipcRenderer.send('jun:mode', 'inside'),

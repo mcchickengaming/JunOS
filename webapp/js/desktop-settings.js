@@ -8,15 +8,15 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
-import * as Fx from './desktop/fx.js?v=11';
-import * as Moods from './desktop/moods.js?v=15';
+import * as Fx from './desktop/fx.js?v=12';
+import * as Moods from './desktop/moods.js?v=16';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=8';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=3';
-import * as Controls from './home/controls.js?v=9';
-import * as Stores from './home/stores.js?v=6';
-import * as Feel from './core/feel/feel.js?v=3';
+import * as Controls from './home/controls.js?v=10';
+import * as Stores from './home/stores.js?v=7';
+import * as Feel from './core/feel/feel.js?v=4';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -32,6 +32,7 @@ const GROUPS = [
   ['Thought bubbles', 'The ♪ ? ! ♥ over her head, and her thinking cloud.', [['Bubble', '--bubble', '#191233'], ['Outline', '--bubble-edge', '#ec0054']]],
   ['Touch glow', 'The soft glow where your mouse is on her.', [['Glow', '--glow', '#ec0054']]],
   ['Touch spot outlines', 'The outlines from Touch & feelings > Show touch spots.', [['Outline', '--spot-outline', '#ff78be']]],
+  ['Her question bubble', 'The little bubble she asks things in ("Headpat?").', [['Bubble', '--ask', '#191233'], ['Outline', '--ask-edge', '#ec0054'], ['Text', '--ask-ink', '#ffffff']]],
 ];
 
 function readTheme() {
@@ -575,6 +576,75 @@ function buildInside() {
   );
   drawInsideNow();
 }
+// Her > On her own: the initiative engine (#4, core/feel/initiative.js)
+const Init = Feel.Initiative;
+const HOURS = Array.from({ length: 24 }, (_, h) => [h, (h % 12 || 12) + (h < 12 ? ' am' : ' pm')]);
+const WAVE_SIZES = [[0, 'Any little wiggle'], [25, 'Small'], [50, 'Normal'], [75, 'Big'], [100, 'Big sweeps only']];
+let whyOpen = false;
+function buildOwnWay() {
+  const host = document.getElementById('ownRows');
+  if (!host) return;
+  host.innerHTML = '';
+  const on = F.isOn('initiative');
+  const sw = (id, off) => Controls.switchCtl(F.isOn(id), async (v) => { await Stores.write('feature:' + id, v); Feel.refresh(); buildOwnWay(); soon(); }, off);
+  const put = (name, v) => { try { localStorage.setItem(Init.KEYS[name], String(v)); } catch (e) {} drawOwnNow(); };
+  const often = (name, list = Often.OFTEN) => Controls.oftenCtl(Often.pct(Init.setting(name), 50), list, (v) => put(name, v), !on);
+  const hours = document.createElement('div');
+  hours.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+  hours.append(Controls.choiceCtl(HOURS, Init.setting('quietFrom'), (v) => put('quietFrom', v), { disabled: !on }), 'to',
+    Controls.choiceCtl(HOURS, Init.setting('quietTo'), (v) => put('quietTo', v), { disabled: !on }));
+  const waveOn = F.isOn('wave_at_her');
+  host.append(
+    Controls.row('She starts things on her own', 'A headpat, a wave, a game of fetch. She hints first and only comes over when you look free.', sw('initiative'), 'feature:initiative'),
+    Controls.row('How often', 'Sometimes is how she comes.', often('often'), 'local:jun.init.often'),
+    Controls.row('As she feels', 'Her mood of the day moves it: playful one day, cuddly or quiet the next. Off keeps her steady.', sw('as_she_feels', !on), 'feature:as_she_feels'),
+    Controls.row('How bold', 'The most she\'ll do to get your attention.',
+      Controls.choiceCtl(Init.BOLD, Init.setting('bold'), (v) => put('bold', v), { disabled: !on }), 'local:jun.init.bold'),
+    Controls.row('When you don\'t notice', 'How often she tries a little harder before she lets it go.', often('persist'), 'local:jun.init.persist'),
+    Controls.row('Closeness', 'Headpats and waves.', often('closeness'), 'local:jun.init.closeness'),
+    Controls.row('Play', 'Fetch, out on the desktop.', often('play'), 'local:jun.init.play'),
+    Controls.row('Your quiet hours', 'Between these hours she keeps to silent little hints. The same hour twice turns this off.', hours, 'local:jun.init.quietFrom'),
+    Controls.row('Why did she do that?', 'The last few things she started, and why.',
+      Controls.buttonCtl(whyOpen ? 'Hide' : 'Show', () => { whyOpen = !whyOpen; buildOwnWay(); soon(); })),
+    Controls.row('What she\'s learned you like', 'She leans a little toward what you take her up on. This starts that over.',
+      Controls.buttonCtl('Forget it', (e) => { Init.forget(); e.target.textContent = 'Forgotten'; e.target.disabled = true; drawOwnWhy(); })),
+    Controls.row('Wave at her', 'Wave your cursor near her and she waves back in her own way.', sw('wave_at_her'), 'feature:wave_at_her'),
+    Controls.row('Your wave', 'Side to side, a circle, or either.',
+      Controls.choiceCtl(Init.WAVE_STYLES, Init.setting('waveStyle'), (v) => put('waveStyle', v), { disabled: !waveOn }), 'local:jun.init.waveStyle'),
+    Controls.row('How big a wave', 'How far your cursor has to travel to count.',
+      Controls.oftenCtl(Often.pct(Init.setting('waveSize'), 50), WAVE_SIZES, (v) => put('waveSize', v), !waveOn), 'local:jun.init.waveSize'),
+    Controls.row('A day in a minute', 'Watch what she would do over a whole day with these settings. In the feel lab, for tuning.',
+      Controls.buttonCtl('Open the feel lab', () => window.open('feel-lab.html#timelapse', 'feellab'))),
+  );
+  drawOwnNow();
+  drawOwnWhy();
+}
+// one line in words: "Today she's playful and you're typing, so she's mostly waiting for a break."
+function drawOwnNow() {
+  const el = document.getElementById('ownNow');
+  if (!el) return;
+  try { el.textContent = Init.describeLive(); } catch (e) { el.textContent = ''; }
+}
+function agoWords(ms) {
+  const m = Math.round(ms / 60000);
+  if (m < 2) return 'Just now';
+  if (m < 60) return m + ' minutes ago';
+  const h = Math.round(m / 60);
+  return h < 24 ? (h === 1 ? 'An hour ago' : h + ' hours ago') : 'Earlier';
+}
+function drawOwnWhy() {
+  const ul = document.getElementById('ownWhy');
+  if (!ul) return;
+  ul.hidden = !whyOpen;
+  ul.textContent = '';
+  if (!whyOpen) return;
+  let list = [];
+  try { list = Init.whyLog(8); } catch (e) { /* nothing yet */ }
+  if (!list.length) { const li = document.createElement('li'); li.textContent = 'Nothing yet. She\'ll get to it.'; ul.append(li); return; }
+  for (const e of list) { const li = document.createElement('li'); li.textContent = agoWords(Date.now() - e.at) + ': ' + e.text; ul.append(li); }
+}
+setInterval(() => { if (current === 'her' && !document.hidden) { drawOwnNow(); if (whyOpen) drawOwnWhy(); } }, 5000);
+
 // one short line on how she is right now (settings may say it more exactly than she would)
 function drawInsideNow() {
   const el = document.getElementById('insideNow');
@@ -672,6 +742,7 @@ function buildFeedback() {
   );
   buildMoodBtns();
   buildInside();
+  buildOwnWay();
   const lab = document.getElementById('labelRows');
   lab.innerHTML = '';
   lab.append(

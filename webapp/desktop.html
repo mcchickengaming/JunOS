@@ -64,6 +64,24 @@
   .tools button { width: 28px; height: 28px; border: 0; color: var(--ink); background: color-mix(in srgb, var(--panel) 80%, transparent); cursor: pointer; font: 800 14px Arial, Helvetica, sans-serif; }
   .tools button:hover { background: var(--accent); }
 
+  /* her question bubble (the initiative engine, #4): "Headpat?" with a yes and a not-now. her colors
+     (Settings > Visuals > Her question bubble), grows with her (--fx-k) */
+  .ask { position: absolute; z-index: 9; transform: translate(-50%, -100%); display: flex; align-items: center; gap: calc(7px * var(--fx-k, 1));
+    padding: calc(6px * var(--fx-k, 1)) calc(9px * var(--fx-k, 1)); border-radius: calc(12px * var(--fx-k, 1));
+    font: 800 calc(13px * var(--fx-k, 1))/1.2 Arial, Helvetica, sans-serif; white-space: nowrap; color: var(--ask-ink, var(--ink));
+    background: color-mix(in srgb, var(--ask, var(--bubble)) calc(var(--bubble-a) * 100%), transparent);
+    border: calc(2px * var(--fx-k, 1)) solid color-mix(in srgb, var(--ask-edge, var(--bubble-edge)) calc(var(--edge-a) * 100%), transparent);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .3); animation: ask-pop .28s cubic-bezier(.3, 1.6, .5, 1) both; }
+  .ask[hidden] { display: none; }
+  .ask.bye { animation: ask-bye .2s ease-in both; }
+  .ask button { border: 0; border-radius: calc(8px * var(--fx-k, 1)); padding: calc(4px * var(--fx-k, 1)) calc(8px * var(--fx-k, 1)); cursor: pointer;
+    font: 800 calc(12px * var(--fx-k, 1)) Arial, Helvetica, sans-serif; color: var(--ask-ink, var(--ink)); background: var(--ask-edge, var(--bubble-edge)); }
+  .ask button.no { background: transparent; opacity: .75; }
+  .ask button:hover { filter: brightness(1.2); opacity: 1; }
+  .ask.plain .ask-btns { display: none; }
+  @keyframes ask-pop { from { transform: translate(-50%, -80%) scale(.4); opacity: 0; } to { transform: translate(-50%, -100%) scale(1); opacity: 1; } }
+  @keyframes ask-bye { to { transform: translate(-50%, -110%) scale(.7); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .ask, .ask.bye { animation: none; } }
   .note { position: absolute; left: 12px; right: 12px; bottom: 16px; z-index: 8; padding: 10px 12px; font: 700 14px/1.3 Arial, Helvetica, sans-serif;
     background: var(--panel-bg); border-left: 5px solid var(--accent-edge); }
   .note[hidden] { display: none; }
@@ -203,12 +221,13 @@
 <div class="action-label" id="actionLabel" aria-hidden="true"></div>
 <div class="action-label rub-label" id="rubLabel" aria-hidden="true"></div>
 <div class="zzz" id="zzz" hidden aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
+<div class="ask" id="ask" role="group" aria-live="polite" hidden><span id="askText"></span><span class="ask-btns"><button type="button" id="askYes">Yes</button><button type="button" class="no" id="askNo">Not now</button></span></div>
 <div class="note" id="note" hidden></div>
 
 <script defer src="vendor/live2dcubismcore.min.js"></script>
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=69"></script>
+<script type="module" src="js/desktop.js?v=70"></script>
 </body>
 </html>

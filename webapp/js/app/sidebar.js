@@ -1,10 +1,10 @@
 import { currentConversationId, messages, setCurrentConversationId, stopActiveStream } from './session.js?v=1';
 import { appendMsg, renderMarkdown, scrollToLatest, updateEmptyState } from './messages.js?v=25';
 import { dropDraft, useDraftFor } from './composer.js?v=3';
-import { addReplyActions, discardActiveResponse } from './chat.js?v=63';
+import { addReplyActions, discardActiveResponse } from './chat.js?v=64';
 import { setConversationTitle } from './face-bubble.js?v=96';
 import { announceMobileReply, faceBubble, hideFaceBubble, latestAssistantReply, scheduleFaceBubbleHide, setLatestAssistantReply, showFaceBubble } from './face-bubble.js?v=96';
-import { IDLE_AFTER_JOIN_MS, cancelAutoReset, reportActivity, resetIdleNudge, scheduleIdleNudge } from './consolidation.js?v=135';
+import { IDLE_AFTER_JOIN_MS, cancelAutoReset, reportActivity, resetIdleNudge, scheduleIdleNudge } from './consolidation.js?v=136';
 import { chatInput, conversationSidebar, messagesEl, mobileConversationTitle, mobileMenuBtn, narrowSidebarQuery, reloadPromptBtn, resetLive2DBtn, sidebarBackdrop, sidebarBackground } from './dom.js?v=77';
 import { logAction } from './logging.js?v=78';
 import { makeStreamBuffer } from './stream-filters.js?v=111';

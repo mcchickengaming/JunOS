@@ -199,7 +199,8 @@ async function boot() {
   writeShortcut(startMenuLink());
   if (fs.existsSync(startupLink())) writeShortcut(startupLink());
   powerMonitor.on('resume', () => sendIdle(0));
-  setInterval(pollIdle, 10000);
+  // every few seconds: she dozes off by it, and the initiative engine reads the room from it
+  setInterval(pollIdle, 4000);
   setInterval(pollCursor, 90);
 
   // left by a restore or an update just before this start
@@ -874,7 +875,21 @@ ipcMain.on('jun:feet', (e, px) => {
 ipcMain.on('jun:walk', (e, what) => {
   if (!fromWin(e)) return;
   if (what === 'wander' || (what && what.what === 'wander')) startWander(typeof what === 'object' ? what : {});
+  // the initiative engine: she comes over to his cursor, stopping a little short so his hand is
+  // beside her, not on her
+  else if (what && what.what === 'toCursor') {
+    if (!win || win.isDestroyed() || winMode !== 'stepout') return;
+    const c = screen.getCursorScreenPoint();
+    const b = win.getBounds();
+    const side = c.x >= b.x + b.width / 2 ? 1 : -1;
+    startWander({ to: c.x - side * herPx() * 0.32 - b.width / 2, speed: Number(what.speed) || 1, hop: Number(what.hop) || 0 });
+  }
   else stopWalk();
+});
+// the initiative engine: she starts a game of fetch herself (desktop/props.js offerBall)
+ipcMain.on('jun:init', (e, what, how) => {
+  if (!fromWin(e) || winMode !== 'stepout') return;
+  if (what === 'ball') Props.offerBall(how === 'toss' ? 'toss' : 'bring');
 });
 ipcMain.on('jun:hold', (e, on) => {
   if (!fromWin(e)) return;

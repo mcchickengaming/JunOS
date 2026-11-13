@@ -37,13 +37,13 @@
 //               with the repeat watcher so the same reaction doesn't come twice in a row
 // Every number is in tune.js (needs / tired / manner / moment / variety).
 
-import * as Store from './store.js?v=3';
-import { TUNE } from './tune.js?v=3';
-import * as Tired from './tired.js?v=3';
-import * as Needs from './needs.js?v=3';
-import * as Repeat from './repeat.js?v=3';
-import * as Session from './shape.js?v=3';
-import * as Approach from './approach.js?v=2';
+import * as Store from './store.js?v=4';
+import { TUNE } from './tune.js?v=5';
+import * as Tired from './tired.js?v=4';
+import * as Needs from './needs.js?v=4';
+import * as Repeat from './repeat.js?v=4';
+import * as Session from './shape.js?v=4';
+import * as Approach from './approach.js?v=3';
 import * as K from './kinds.js?v=2';
 
 let opts = { needs: true, manner: true, variety: true };
