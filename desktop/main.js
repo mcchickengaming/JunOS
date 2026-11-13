@@ -879,7 +879,7 @@ ipcMain.on('jun:menu', (e) => {
 });
 // her main window's Settings > Memory has a button for the saves tab
 // old tab names keep working (the page maps them onto the new sections)
-const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'account', 'colors', 'feedback', 'spots', 'size'];
+const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'account', 'comfort', 'colors', 'feedback', 'spots', 'size'];
 ipcMain.on('jun:open-settings', (e, tab) => {
   if (!fromWin(e)) return;
   openSettings(SETTINGS_TABS.includes(tab) ? tab : 'help');
@@ -1006,14 +1006,7 @@ function windowMenu() {
       { label: 'Step out onto the desktop', accelerator: 'CmdOrCtrl+Shift+S', click: () => openMode('stepout', 'stepout') },
       { label: 'Compact', accelerator: 'CmdOrCtrl+Shift+C', click: () => openMode('compact', '') },
       { type: 'separator' },
-      { label: 'Keep her window on top', type: 'checkbox', checked: !!cfg.onTop, click: (i) => setOnTop(i.checked) },
-      sizeMenu(),
-      deskMenu(),
-      spotsMenu(),
-      { type: 'separator' },
-      { label: 'How to play with her', click: () => openSettings('help') },
-      { label: 'Customize colors…', click: () => openSettings('colors') },
-      savesMenu(),
+      ...quickItems(),
       { type: 'separator' },
       { label: 'Hide (she stays by the clock)', accelerator: 'CmdOrCtrl+H', click: hideJun },
       { label: 'Close the desktop app', click: () => { quitting = true; app.quit(); } },
@@ -1038,34 +1031,18 @@ function setOnTop(on) {
   rebuildTrayMenu();
 }
 
-// "On the desktop": how lively she is out there
-function deskMenu() {
-  const set = (k, v) => { cfg.desk[k] = v; saveCfg(); sendSettings(); rebuildMenus(); };
-  const radio = (k, choices) => {
-    const items = choices.map(([v, label]) => ({ label, type: 'radio', checked: cfg.desk[k] === v, click: () => set(k, v) }));
-    if (PCT_KEYS.includes(k)) {
-      if (!choices.some(([v]) => v === cfg.desk[k])) items.push({ label: `Your own (${cfg.desk[k]}%)`, type: 'radio', checked: true, enabled: false });
-      items.push({ type: 'separator' }, { label: 'Any amount you like…', click: () => openSettings(k === 'patFollow' ? 'touch' : k === 'talk' ? 'talk' : 'desktop') });
-    }
-    return items;
-  };
-  return { label: 'On the desktop', submenu: [
-    { label: 'Quiet mode (no wandering, no talking on her own)', type: 'checkbox', checked: !!cfg.desk.quiet, click: (i) => set('quiet', i.checked) },
+// the quick actions both menus share (tidy step 3, owner OK Nov 9: menus = quick actions only;
+// everything else lives in Settings, Ctrl+,)
+function quickItems() {
+  return [
+    { label: 'Quiet mode (no wandering, no talking on her own)', type: 'checkbox', checked: !!cfg.desk.quiet,
+      click: (i) => { cfg.desk.quiet = i.checked; saveCfg(); sendSettings(); rebuildMenus(); } },
+    sizeMenu(),
+    spotsMenu(),
     { type: 'separator' },
-    { label: 'Walks around', submenu: radio('walk', WALK_CHOICES) },
-    { label: 'Dozes off when you are away', submenu: radio('doze', DOZE_CHOICES) },
-    { label: 'Looks at your mouse', submenu: radio('watch', WATCH_CHOICES) },
-    { label: 'Talks about your touches', submenu: radio('talk', TALK_CHOICES) },
-    { label: 'Headpat: her head follows your hand', submenu: radio('patFollow', PATFOLLOW_CHOICES) },
-    { type: 'separator' },
-    { label: 'Little sounds (steps, landing, squeaks)', type: 'checkbox', checked: !!cfg.desk.sounds, click: (i) => set('sounds', i.checked) },
-    { label: 'Touch hints', submenu: [
-      { label: 'Cursor icon and a soft glow', type: 'radio', checked: cfg.desk.hints !== 'cursor', click: () => set('hints', 'glow') },
-      { label: 'Cursor icon only', type: 'radio', checked: cfg.desk.hints === 'cursor', click: () => set('hints', 'cursor') },
-    ] },
-    { label: 'Show touch spots (outlines on her)', type: 'checkbox', checked: !!cfg.desk.showSpots, click: (i) => set('showSpots', i.checked) },
-    { label: 'Adjust touch spots…', click: calibrate },
-  ] };
+    { label: 'Save Jun now…', enabled: !busy, click: () => openSettings('saves') },
+    { label: 'Get the latest update', enabled: !busy, click: () => updateFlow() },
+  ];
 }
 
 // drag the touch spots onto her (desktop.js shows the circles). needs
@@ -1189,21 +1166,7 @@ function rebuildTrayMenu() {
     { type: 'separator' },
     ...modeItems(false),
     { type: 'separator' },
-    { label: 'Keep her window on top', type: 'checkbox', checked: !!cfg.onTop, click: (i) => setOnTop(i.checked) },
-    sizeMenu(),
-    deskMenu(),
-    spotsMenu(),
-    { label: 'How to play with her', click: () => openSettings('help') },
-    { label: 'Customize colors…', click: () => openSettings('colors') },
-    { type: 'separator' },
-    savesMenu(),
-    { label: 'Get the latest update', enabled: !busy, click: () => updateFlow() },
-    { type: 'separator' },
-    { label: 'Open her window when Jun starts', type: 'checkbox', checked: envDesktopOn(), click: (i) => setEnvDesktop(i.checked) },
-    { label: 'Start Jun with Windows', type: 'checkbox', checked: fs.existsSync(startupLink()), enabled: process.platform === 'win32', click: (i) => {
-      if (i.checked) writeShortcut(startupLink());
-      else try { fs.unlinkSync(startupLink()); } catch (e) {}
-    } },
+    ...quickItems(),
     { type: 'separator' },
     { label: 'Close the desktop app', click: () => { quitting = true; app.quit(); } },
   ]);
@@ -1514,15 +1477,6 @@ async function afterRestart(note) {
   } else if (note.kind === 'update-undone') {
     await ask({ type: 'info', message: 'Jun is back on the version she had before the update.', detail: 'Tell Claude what happened, the update can be fixed and tried again.' });
   }
-}
-
-function savesMenu() {
-  return { label: 'Saves & updates', submenu: [
-    { label: 'Save Jun now…', enabled: !busy, click: () => openSettings('saves') },
-    { label: 'Her saves (go back to one)…', click: () => openSettings('saves') },
-    { type: 'separator' },
-    { label: 'Get the latest update', enabled: !busy, click: () => updateFlow() },
-  ] };
 }
 
 // the settings window's "Saves & updates" tab
