@@ -11,11 +11,11 @@ import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
 import * as Fx from './desktop/fx.js?v=10';
 import * as Moods from './desktop/moods.js?v=12';
 import * as Often from './desktop/often.js?v=2';
-import * as HerWin from './home/herwin.js?v=6';
+import * as HerWin from './home/herwin.js?v=7';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=3';
-import * as Controls from './home/controls.js?v=7';
-import * as Stores from './home/stores.js?v=4';
+import * as Controls from './home/controls.js?v=8';
+import * as Stores from './home/stores.js?v=5';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -1269,21 +1269,49 @@ async function whatsNew() {
 // Console helpers for the owner's own debugging (F12 > Console): find a setting by its plain
 // name and switch it. jun.find('glow')  jun.set('glow', false)  jun.set('walks around', 85)
 
-function pickFeature(q) {
+// a setting by any name he'd use: the feature's name, a row title he sees ("Engine"), or its key.
+// needKey: only things jun.set can switch. → { f, key } (key = that exact setting, maybe one of f.more)
+function pickSetting(q, needKey) {
   const t = String(q || '').toLowerCase().trim();
-  const withKey = F.all().filter(f => f.key);
-  return withKey.find(f => f.key.toLowerCase() === t || f.id === t || f.name.toLowerCase() === t)
-    || withKey.find(f => f.name.toLowerCase().includes(t))
-    || F.search(t).find(f => f.key) || null;
+  if (!t) return null;
+  const all = F.all().filter(f => !needKey || f.key);
+  const byName = all.find(f => f.id === t || f.name.toLowerCase() === t || (f.key || '').toLowerCase() === t);
+  if (byName) return { f: byName, key: byName.key };
+  // a row title on the page ("Engine", "Master volume"): its own key
+  for (const r of document.querySelectorAll('main .row[data-feature]:not(.res)')) {
+    const title = (r.querySelector('.what b')?.textContent || '').toLowerCase().trim();
+    if (title && (title === t || title.startsWith(t))) {
+      const f = F.get(r.dataset.feature), key = Controls.keyOfRow(r);
+      if (f && (!needKey || key)) return { f, key: key || f.key, row: r };
+    }
+  }
+  const near = all.find(f => f.name.toLowerCase().includes(t)) || F.search(t).find(f => !needKey || f.key);
+  return near ? { f: near, key: near.key } : null;
 }
+const pickFeature = (q) => pickSetting(q, true)?.f || null;
+// her window's settings can be read and set from here too, while her window is open
+Stores.setMirrorIO({ open: HerWin.herOpen, get: HerWin.mirrorValue, set: HerWin.setMirror });
+
+const STORE_WORDS = {
+  fx: 'touch feedback picks (desktop.fx in this app\'s storage)', desk: 'the desktop app (desktop.json)',
+  size: 'the desktop app (desktop.json)', app: 'the desktop app (shortcuts / desktop.json)',
+  mirror: 'her window\'s own settings', theme: 'your colors (desktop.theme)', comfort: 'her server (Comfort & ratings)',
+  local: 'this app\'s storage', feature: 'this app\'s storage (jun.features)', env: 'her .env file (not changed from Settings)',
+  server: 'her server (shown, not a setting)',
+};
+const shown = (v) => (v === undefined ? '(not known here)' : JSON.stringify(v));
+
 window.jun = {
   help() {
     console.log('jun.find("glow")             list settings that match, with their value now');
     console.log('jun.find()                   list every setting');
     console.log('jun.set("glow", false)       switch one off (true = on)');
     console.log('jun.set("walks around", 85)  how-often settings take 0 to 100');
+    console.log('jun.why("engine")            why a setting is the way it is (greyed out? paused? stored where?)');
+    console.log('jun.changed()                every setting you changed from how she comes');
+    console.log('jun.state()                  a quick check-up: what is connected, what is on');
     console.log('jun.reset("touch")           a whole section back to how she comes');
-    return 'Names are the ones you see in Settings.';
+    return 'Names are the ones you see in Settings. Her window\'s settings (voice, mic...) work while her window is open.';
   },
   find(q) {
     const list = (q ? F.search(q) : F.all()).filter(f => f.key);
@@ -1292,16 +1320,76 @@ window.jun = {
     return list.length + ' found';
   },
   async set(q, value) {
-    const f = pickFeature(q);
-    if (!f) return 'No setting called "' + q + '". Try jun.find("' + q + '")';
-    if (!Stores.canWrite(f.key)) return '"' + f.name + '" can only be changed by clicking it in Settings > ' + (NAMES[f.section] || f.section);
+    const hit = pickSetting(q, true);
+    if (!hit) return 'No setting called "' + q + '". Try jun.find("' + q + '")';
+    const f = { ...hit.f, key: hit.key || hit.f.key };
+    if (!Stores.canWrite(f.key)) {
+      if (F.kindOf(f.key) === 'mirror') return '"' + f.name + '" lives in her window: open her window, then try again.';
+      return '"' + f.name + '" can only be changed by clicking it in Settings > ' + (NAMES[f.section] || f.section);
+    }
     const before = Stores.peek(f.key);
     try { await Stores.write(f.key, value); } catch (e) { return 'Could not change "' + f.name + '": ' + e.message; }
     await loadDesk();
     buildFeedback();
     if (current === 'comfort') drawComfort();
     soon();
-    return '"' + f.name + '": ' + JSON.stringify(before) + ' -> ' + JSON.stringify(Stores.peek(f.key));
+    const label = hit.row ? hit.row.querySelector('.what b')?.textContent || f.name : f.name;
+    return '"' + label + '": ' + JSON.stringify(before) + ' -> ' + JSON.stringify(Stores.peek(f.key));
+  },
+  why(q) {
+    const hit = pickSetting(q, false);
+    if (!hit) return 'No setting called "' + q + '". Try jun.find("' + q + '")';
+    const f = { ...hit.f, key: hit.key || hit.f.key };
+    const say = (t) => console.log(t);
+    if (hit.row) say('— Row "' + hit.row.querySelector('.what b')?.textContent + '" is part of "' + f.name + '"');
+    say('— ' + f.name + ': ' + f.line);
+    say('Where: Settings > ' + (NAMES[f.section] || f.where || f.section));
+    if (f.key) {
+      say('Stored in: ' + (STORE_WORDS[F.kindOf(f.key)] || F.kindOf(f.key)) + '  [' + f.key + ']');
+      say('Now: ' + shown(Stores.peek(f.key)) + '   How she comes: ' + shown(Stores.defaultOf(f.key)));
+      say('Can jun.set change it right now: ' + (Stores.canWrite(f.key) ? 'yes'
+        : F.kindOf(f.key) === 'mirror' ? 'no, open her window first' : F.kindOf(f.key) === 'desk' ? 'no, the desktop app isn\'t connected' : 'no, click it in Settings'));
+    } else say('No switch: it is a touch or something she does. Its How to play / where line says how to use it.');
+    for (const n of (f.needs || []).map(F.get)) say('Needs "' + n.name + '": ' + (Stores.isOn(n.id) ? 'on, fine' : 'OFF, so this is paused'));
+    for (const n of (f.pausedBy || []).map(F.get)) say('Paused while "' + n.name + '" is on: ' + (Stores.isOn(n.id) ? 'it IS on, so this is paused' : 'it is off, fine'));
+    if (f.tier !== 'everyday') {
+      const g = Gate.check({ tier: f.tier }, { comfort: Gate.comfort(), mode: 'desktop', stage: 6, trust: 100 });
+      say('Rating: ' + f.tier + '. ' + (g.show ? 'Allowed by your Comfort & ratings choices.' : 'Blocked: ' + g.words));
+    }
+    if (f.modes) say('Works in: ' + f.modes.join(', ') + (f.fallback ? '. Elsewhere: ' + f.fallback : ''));
+    const rowEls = hit.row ? [hit.row] : [...document.querySelectorAll('.row[data-feature="' + f.id + '"]')];
+    for (const r of rowEls) {
+      const title = r.querySelector('.what b')?.textContent || '?';
+      const bits = [];
+      if (r.classList.contains('off')) bits.push(r.classList.contains('mirror-row') ? 'greyed: her window greys it (its main switch is off, or her window is closed)' : 'greyed: not available here');
+      if (r.classList.contains('paused')) bits.push('dimmed: paused (see Needs / Paused above)');
+      if (r.dataset.more === '1' && document.body.classList.contains('layer-simple') && !r.parentElement?.classList.contains('folds-open')) bits.push('hidden behind "More settings" (Simple view)');
+      const dis = r.querySelectorAll('input:disabled, select:disabled, button:disabled').length;
+      if (dis) bits.push(dis + ' control(s) locked');
+      say('Row "' + title + '": ' + (bits.length ? bits.join('; ') : 'normal'));
+    }
+    return 'That\'s everything known about "' + f.name + '".';
+  },
+  changed() {
+    const out = [];
+    for (const f of F.all()) {
+      for (const key of [f.key, ...(f.more || [])].filter(Boolean)) {
+        const d = Stores.defaultOf(key), now = Stores.peek(key);
+        if (d === undefined || now === undefined || JSON.stringify(now) === JSON.stringify(d)) continue;
+        out.push({ name: f.name, setting: key, now, 'how she comes': d });
+      }
+    }
+    if (out.length) console.table(out);
+    return out.length ? out.length + ' setting(s) changed from how she comes' : 'Everything is how she comes.';
+  },
+  state() {
+    const c = Gate.comfort();
+    console.log('Desktop app connected: ' + (deskState ? 'yes' : 'NO (desktop settings can\'t change)'));
+    console.log('Her window open: ' + (HerWin.herOpen() ? 'yes' : 'no (her window\'s settings greyed out here)'));
+    console.log('What you are to each other: ' + c.flavor + '. Flirty: ' + (c.flirty ? 'on' : 'off') + '. 18+: ' + (c.adult ? 'on' : 'off'));
+    console.log('Settings view: ' + (F.layer() === 'all' ? 'Everything' : 'Simple (extras behind "More settings")'));
+    if (deskState?.desk?.quiet) console.log('Quiet mode is ON: she won\'t wander or talk on her own.');
+    return window.jun.changed();
   },
   async reset(sec) {
     if (!SECTIONS.includes(sec)) return 'Sections: ' + SECTIONS.join(', ');

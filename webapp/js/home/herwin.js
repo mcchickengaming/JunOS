@@ -182,6 +182,18 @@ export function startMirrors() {
 }
 export function hello() { post({ type: 'hello' }); }
 
+// for the Console helpers (stores.js): is her window answering, a mirrored control's value, set one
+export const herOpen = () => rows !== null;
+export function mirrorValue(id) {
+  for (const r of rows || []) for (const c of r.controls || []) if (c.id === id) return c.value;
+  return undefined;
+}
+export function setMirror(id, value) {
+  if (rows === null) return false;
+  post({ type: 'set', id, value });
+  return true;
+}
+
 // ask her window (opening it first if it's closed) to open its developer tools
 function openHerDrawer(panel) {
   try { localStorage.setItem('jun.home.want', JSON.stringify({ drawer: panel, t: Date.now() })); } catch (e) {}
