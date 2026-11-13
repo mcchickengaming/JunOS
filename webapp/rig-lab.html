@@ -91,6 +91,8 @@
   </aside>
 </div>
 <script src="vendor/pixi.min.js"></script>
+<!-- her server forbids eval (CSP), like every page that uses Pixi -->
+<script src="vendor/pixi-unsafe-eval.min.js"></script>
 <script type="module" src="js/rig-lab.js?v=1"></script>
 </body>
 </html>
