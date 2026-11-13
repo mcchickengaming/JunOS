@@ -25,7 +25,7 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=94';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
-import * as Body from './desktop/body.js?v=43';
+import * as Body from './desktop/body.js?v=44';
 import * as TouchLog from './core/touch-log.js?v=1';
 import * as Fx from './desktop/fx.js?v=10';
 import * as Moods from './desktop/moods.js?v=12';
@@ -655,13 +655,13 @@ function sound(kind) {
 
 let pace = { speed: 1, hop: 4 };
 
-// the consent + ratings gate (js/core/gate.js): flirty spots on her (features.json tier) only
-// answer when the gate says so. his settings come from her server, cached, live from the settings
-const FLIRTY_SPOTS = { thigh: 'flirty' };
+// the consent + ratings gate (js/core/gate.js): rubs with a tier above everyday (features.json:
+// thigh_rub) only happen when the gate says so. his settings come from her server, cached, live
+const RUB_TIERS = { thigh: 'flirty' };
 let comfort = Gate.comfort();
 Gate.loadComfort().then(c => { comfort = c; });
 Gate.onComfort(c => { comfort = c; });
-Body.setSpotGate((kind) => !FLIRTY_SPOTS[kind] || Gate.allowed(FLIRTY_SPOTS[kind], { comfort, mode: 'desktop' }));
+Body.setRubGate((kind) => !RUB_TIERS[kind] || Gate.allowed(RUB_TIERS[kind], { comfort, mode: 'desktop' }));
 // how close they are, for touches she isn't fond of yet (body.js)
 const closeness = () => (Gauges.bondStage <= 2 ? 1 : Gauges.bondStage === 3 ? 2 : 3);
 async function refreshMood() {

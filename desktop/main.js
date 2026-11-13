@@ -901,8 +901,11 @@ function openSettings(tab) {
     settingsWin.focus();
     return;
   }
+  // big enough by default for the sidebar on the left (it folds to an icon row under 620 px);
+  // never bigger than the screen
+  const wa = screen.getPrimaryDisplay().workAreaSize;
   settingsWin = new BrowserWindow({
-    width: 480, height: 700, minWidth: 380, minHeight: 420, title: 'Jun settings', icon: ICON_PNG,
+    width: Math.min(820, wa.width - 40), height: Math.min(760, wa.height - 40), minWidth: 380, minHeight: 420, title: 'Jun settings', icon: ICON_PNG,
     backgroundColor: '#100d17', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });

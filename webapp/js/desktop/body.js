@@ -318,6 +318,7 @@ export function pointerMove(x, y) {
   const now = performance.now();
   const region = regionAt(x, y);
   let kind = region && ['head', 'ear', 'side', 'thigh', 'feet', 'tail'].includes(region.kind) ? region.kind : null;
+  if (kind && !rubAllowed(kind)) kind = null;
   if (kind === 'head' && pat && pat.kind === 'head') pat.onAt = now;
   // slipped off her head mid-pat: for a moment it's still the headpat
   if (kind !== 'head' && pat && pat.kind === 'head' && pat.started && now - (pat.onAt || 0) < TUNE.patGraceMs) kind = 'head';
@@ -655,10 +656,11 @@ export function spotCircle(kind, side = 1) {
   return { x: a.x + (c.pair ? side : 1) * c.dx * u, y: a.y + c.dy * u, r, rx: r * (c.w || 1) };
 }
 
-// which spots may answer at all: desktop.js asks the consent + ratings gate (js/core/gate.js),
-// e.g. her thigh is a flirty spot. a spot that may not is just her body (click = chat, drag = carry)
-let spotAllowed = () => true;
-export function setSpotGate(fn) { spotAllowed = typeof fn === 'function' ? fn : () => true; }
+// which rubs may happen: desktop.js asks the consent + ratings gate (js/core/gate.js), e.g. a
+// thigh rub is flirty (owner, Nov 12: only the rub; the poke and the squish are everyday). a rub
+// that may not happen is just the mouse passing over her
+let rubAllowed = () => true;
+export function setRubGate(fn) { rubAllowed = typeof fn === 'function' ? fn : () => true; }
 
 export function regionAt(x, y) {
   const a = anchor();
@@ -677,7 +679,6 @@ export function regionAt(x, y) {
       if (d <= 1 && (!best || d < best.d)) best = { d, kind, side };
     }
   }
-  if (best && !spotAllowed(best.kind)) best = null;
   if (best) {
     const side = best.kind === 'hand' ? (best.side < 0 ? 'left' : 'right') : best.kind === 'head' ? 0 : best.side;
     return { kind: best.kind, side };

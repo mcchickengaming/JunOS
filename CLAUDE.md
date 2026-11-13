@@ -290,6 +290,7 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   **"Do something together"** (`#togetherDrawer` in index.html, `js/app/together.js`, sidebar button next to
   Achievements): rows have `data-group` (out/play/in), buttons still wired by main.js `wireDatesPanel`; a new activity
   is one more row.
+  The settings window opens at 820×760 (fitted to the screen) so the sidebar shows on the left.
   **Step 3 (Nov 12):** tray and Jun menu = quick actions only (main.js `quickItems()`: quiet mode, her size, her spots,
   Save Jun now…, Get the latest update; plus show/hide, modes, Settings…, close). Everything else is in Settings.
   **Step 4 (Nov 12):** Simple / Everything layer (header pick), "More settings (N)" folds for a group's extra rows (one
@@ -346,8 +347,9 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   migration 032 `comfort` (in the factory-reset list), `api/comfort.php` (GET/PUT; 18+ needs `confirmAdult: true`
   the first time), cached in localStorage `jun.comfort` for the pages (`Gate.comfort()`, `loadComfort`, `saveComfort`,
   `onComfort`). Her prompt: `comfort_context` (after quirks) tells her what they are to each other when it isn't
-  romantic, and "keep it sweet" when Flirty is off. First users: her thigh on the desktop is a flirty spot
-  (desktop.js `FLIRTY_SPOTS` → body.js `setSpotGate`; not allowed = just her body). Rated content itself is never
+  romantic, and "keep it sweet" when Flirty is off. First user: the thigh RUB on the desktop is flirty
+  (owner, Nov 12: only the rub; thigh poke and squish are everyday; desktop.js `RUB_TIERS` → body.js `setRubGate`;
+  not allowed = the mouse just passes over her). Rated content itself is never
   Claude's: the gate and the tags are the system, the owner makes the 18+ content in the makers.
 
 ## Everything is customizable

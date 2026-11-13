@@ -69,7 +69,8 @@ $eq('no double flirty line for a locked flavor', str_contains($ctx, 'Keep it swe
 
 echo "registry\n";
 features_registry(__DIR__ . '/../../webapp/data/features.json');
-$eq('thigh squish is flirty', feature_tier('thigh_squish'), 'flirty');
+$eq('thigh rub is flirty', feature_tier('thigh_rub'), 'flirty');
+$eq('thigh squish is everyday', feature_tier('thigh_squish'), 'everyday');
 $eq('headpat is everyday', feature_tier('headpat'), 'everyday');
 $eq('unknown feature = strictest', feature_tier('no_such_thing'), 'adult');
 

@@ -68,7 +68,8 @@ test('the registry matches the code it describes', () => {
       if (F.kindOf(f.key) === 'fx') assert.deepEqual(f.default, Fx.FX_DEFAULTS[name], f.id + ' default');
     }
   }
-  assert.equal(F.get('thigh_squish').tier, 'flirty');
+  assert.equal(F.get('thigh_rub').tier, 'flirty');
+  assert.equal(F.get('thigh_squish').tier, 'everyday', 'owner, Nov 12: only the rub is flirty');
   assert.equal(F.get('headpat').tier, 'everyday');
 });
 

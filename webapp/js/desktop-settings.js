@@ -1207,7 +1207,7 @@ function drawComfort() {
     return r.show ? '' : r.words;
   };
   const flirtyLock = locked('flirty');
-  const fr = row('Flirty moments', flirtyLock || 'Teasing, butt swats, long kisses, thigh squeezes. Always with her say, by your bond.',
+  const fr = row('Flirty moments', flirtyLock || 'Teasing, butt swats, thigh rubs. Always with her say, by your bond.',
     Controls.switchCtl(c.flirty && !flirtyLock, (v) => setComfort({ flirty: v }), !!flirtyLock), 'comfort:flirty');
   if (flirtyLock) fr.classList.add('off');
   host.appendChild(fr);
