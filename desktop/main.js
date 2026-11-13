@@ -139,6 +139,20 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(boot);
 }
 
+// F12 (or Ctrl+Shift+I) opens the developer tools of the window it's pressed in, in their own
+// window (several of hers are tiny, transparent or click-through). For the owner's own debugging:
+// the Console tab shows errors; nothing in there can change her unless typed in on purpose.
+app.on('web-contents-created', (_e, wc) => {
+  wc.on('before-input-event', (ev, input) => {
+    if (input.type !== 'keyDown') return;
+    const k = String(input.key || '').toLowerCase();
+    if (k === 'f12' || (input.control && input.shift && k === 'i')) {
+      ev.preventDefault();
+      if (wc.isDevToolsOpened()) wc.closeDevTools(); else wc.openDevTools({ mode: 'detach' });
+    }
+  });
+});
+
 app.on('window-all-closed', () => { /* she lives in the tray */ });
 app.on('before-quit', () => { quitting = true; });
 
