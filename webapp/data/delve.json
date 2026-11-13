@@ -1,0 +1,286 @@
+{
+  "about": "The delve framework's data (#32; js/core/delve/ is the engine). Areas, hand-made rooms, creatures, abilities, kits (stand-in gear until the economy #9), her lines by code, safe-spot moments and scene slots, all as data: a new room, creature, ability or line is one more entry here, no new code. PLACEHOLDER content: names are working names, shapes and colors stand in for art. Rooms: '#' wall, '.' floor, '+' a place a door may go (the middle of a side), 'E' a creature may wait here, 'B' the area's big one, 'C' chest, 'V' the deep chest, 'T' terminal, '^' trap, 'R' camp, '<' the way in, '>' stairs down, '?' something odd. Rooms are odd-sized, at most 7x7. Creatures are machines, drones and odd creatures, never people. Everything here is everyday tier except scene variants, which carry their own tier and go through the gate. No entry may ask for a bond stage or a relationship flavor to PLAY (tested): the bond only changes her words.",
+  "version": 1,
+  "areas": {
+    "server_farm": {
+      "name": "The old server farm",
+      "line": "Rows of dead racks under the city. Dry, dark, humming somewhere.",
+      "level": 1, "floors": 3, "cols": 3, "rows": 3, "pace": "turn",
+      "colors": { "wall": "#4a4563", "wallDark": "#2a2740", "floor": "#262233", "ceil": "#1b1826", "door": "#8a6a3c", "fog": "#0d0b14", "trim": "#7ac8ff" },
+      "foes": [["sweeper", 4], ["lantern", 3], ["crawler", 2], ["sentry", 1]],
+      "boss": "warden",
+      "rare": 0.12, "secret": 0.55, "loops": 2
+    },
+    "flooded_factory": {
+      "name": "The flooded factory",
+      "line": "Ankle-deep water, slow drips, belts that still twitch.",
+      "level": 6, "floors": 3, "cols": 4, "rows": 3, "pace": "timed",
+      "colors": { "wall": "#3c5a5c", "wallDark": "#213638", "floor": "#1c2e33", "ceil": "#142124", "door": "#7d7a4a", "fog": "#081214", "trim": "#5fd39a" },
+      "foes": [["crawler", 4], ["lantern", 3], ["sentry", 2], ["sweeper", 1]],
+      "boss": "warden",
+      "rare": 0.15, "secret": 0.6, "loops": 3
+    },
+    "scrapyard": {
+      "name": "The scrapyard's buried levels",
+      "line": "Crushed metal pressed into corridors. Things still move in it.",
+      "level": 12, "floors": 4, "cols": 4, "rows": 3, "pace": "real",
+      "colors": { "wall": "#6a4d3c", "wallDark": "#3d2b22", "floor": "#2c221d", "ceil": "#1e1714", "door": "#9a8a6a", "fog": "#120c0a", "trim": "#ffb86a" },
+      "foes": [["sentry", 3], ["crawler", 3], ["sweeper", 2], ["lantern", 2]],
+      "boss": "warden",
+      "rare": 0.15, "secret": 0.6, "loops": 3
+    }
+  },
+  "rooms": {
+    "way_in": { "tags": ["start"], "w": 1, "rows": ["##+##", "#...#", "+.<.+", "#...#", "##+##"] },
+    "stairs": { "tags": ["stairs"], "w": 1, "rows": ["###+###", "#.....#", "#...E.#", "+..>..+", "#.....#", "#.....#", "###+###"] },
+    "camp": { "tags": ["camp"], "w": 1, "rows": ["##+##", "#...#", "+.R.+", "#...#", "##+##"] },
+    "vault": { "tags": ["vault"], "w": 1, "rows": ["###+###", "#.....#", "#..V..#", "+.....+", "#..B..#", "#.....#", "###+###"] },
+    "hall": { "tags": ["room"], "w": 4, "rows": ["###+###", "#.....#", "#.....#", "+..E..+", "#.....#", "#.....#", "###+###"] },
+    "pillars": { "tags": ["room"], "w": 3, "rows": ["###+###", "#.....#", "#.#.#.#", "+..E..+", "#.#.#.#", "#...C.#", "###+###"] },
+    "crossing": { "tags": ["room"], "w": 2, "rows": ["###+###", "###.###", "###.###", "+..E..+", "###.###", "###.###", "###+###"] },
+    "racks": { "tags": ["room"], "w": 3, "rows": ["###+###", "#.#.#.#", "#.#.#.#", "+..E..+", "#.#.#.#", "#.#.#C#", "###+###"] },
+    "console": { "tags": ["room"], "w": 2, "rows": ["###+###", "#T....#", "#.....#", "+.....+", "#...E.#", "#.....#", "###+###"] },
+    "tripwires": { "tags": ["room"], "w": 2, "rows": ["###+###", "#.....#", "#.^.^.#", "+.....+", "#.^.^.#", "#.C...#", "###+###"] },
+    "closet": { "tags": ["room"], "w": 2, "rows": ["##+##", "#...#", "+.C.+", "#...#", "##+##"] },
+    "east_west": { "tags": ["room"], "w": 2, "rows": ["#######", "+..^..+", "#######"] },
+    "north_south": { "tags": ["room"], "w": 2, "rows": ["#+#", "#.#", "#.#", "#E#", "#.#", "#.#", "#+#"] },
+    "quiet_room": { "tags": ["room"], "w": 2, "rows": ["##+##", "#...#", "+...+", "#...#", "##+##"] },
+    "humming_core": { "tags": ["room"], "rare": true, "w": 1, "rows": ["###+###", "#.....#", "#.#.#.#", "+..?..+", "#.#.#.#", "#.....#", "###+###"] },
+    "double_guard": { "tags": ["room"], "rare": true, "w": 1, "rows": ["###+###", "#.....#", "#.E.E.#", "+.....+", "#.....#", "#.C.C.#", "###+###"] },
+    "hidden_nook": { "tags": ["secret"], "w": 3, "rows": ["#+#", "+C+", "#+#"] },
+    "hidden_store": { "tags": ["secret"], "w": 2, "rows": ["##+##", "#C.C#", "+...+", "#.?.#", "##+##"] }
+  },
+  "foes": {
+    "sweeper": { "name": "Floor sweeper", "kind": "machine", "shape": "box", "color": "#9aa3b5", "hp": 16, "atk": 5, "def": 1, "spd": 8, "acc": 0, "eva": 0, "abilities": [["bump", 1]] },
+    "lantern": { "name": "Lantern drone", "kind": "machine", "shape": "diamond", "color": "#ffd76a", "hp": 10, "atk": 6, "def": 0, "spd": 14, "acc": 5, "eva": 12, "abilities": [["zap", 3], ["flash", 1]] },
+    "crawler": { "name": "Cable crawler", "kind": "creature", "shape": "wide", "color": "#c98bff", "hp": 20, "atk": 6, "def": 2, "spd": 9, "acc": 0, "eva": 4, "abilities": [["bite", 3], ["lash", 1]] },
+    "sentry": { "name": "Old sentry", "kind": "machine", "shape": "tall", "color": "#ff8a7a", "hp": 30, "atk": 8, "def": 4, "spd": 6, "acc": 0, "eva": 0, "abilities": [["slam", 3], ["brace", 1]] },
+    "warden": { "name": "The rack warden", "kind": "machine", "big": true, "shape": "big", "color": "#ff6b81", "hp": 64, "atk": 9, "def": 3, "spd": 8, "acc": 0, "eva": 0, "abilities": [["slam", 3], ["sweep", 2], ["brace", 1]] }
+  },
+  "abilities": {
+    "shove": { "name": "Shove", "kind": "hit", "power": 0.7, "target": "foe", "tags": ["dps"], "line": "A plain shove. Everyone has it." },
+    "strike": { "name": "Strike", "kind": "hit", "power": 1, "target": "foe", "tags": ["dps"], "line": "A solid hit." },
+    "heavy": { "name": "Heavy swing", "kind": "hit", "power": 1.8, "acc": -10, "cd": 2, "target": "foe", "tags": ["dps"], "line": "Slow and hard. Misses more." },
+    "quick": { "name": "Quick shots", "kind": "hit", "power": 0.6, "hits": 2, "acc": 5, "target": "foe", "tags": ["dps"], "line": "Two light hits." },
+    "guard": { "name": "Guard", "kind": "guard", "target": "self", "tags": ["front"], "line": "Take half until your next go." },
+    "cover": { "name": "Cover her", "nameHer": "Cover you", "kind": "cover", "cd": 1, "target": "ally", "tags": ["front"], "line": "Step in front: hits meant for them land on you, softened." },
+    "taunt": { "name": "Draw them in", "kind": "taunt", "turns": 2, "cd": 2, "target": "self", "tags": ["front"], "line": "They come for you for a while." },
+    "patch": { "name": "Patch up", "kind": "heal", "power": 0.3, "cd": 1, "target": "ally", "tags": ["support"], "line": "Mend one of you." },
+    "second_wind": { "name": "Second wind", "kind": "heal", "power": 0.25, "cd": 4, "target": "self", "tags": ["support"], "from": { "skill": "delving", "level": 5 }, "line": "You've learned to catch your breath down here." },
+    "steady": { "name": "Steady now", "kind": "heal", "power": 0.22, "cd": 1, "target": "ally", "tags": ["support"], "from": { "skill": "support", "level": 1 }, "line": "A quick fix and a word." },
+    "rally": { "name": "Back you up", "kind": "rally", "power": 1.3, "turns": 3, "cd": 3, "target": "ally", "tags": ["support"], "from": { "skill": "support", "level": 12 }, "line": "Their hits land harder for a while." },
+    "scan": { "name": "Scan", "kind": "expose", "power": 1.3, "turns": 3, "target": "foe", "tags": ["scan"], "from": { "skill": "scanning", "level": 1 }, "line": "Find the weak spot: it takes more from every hit." },
+    "ping": { "name": "Wide ping", "kind": "expose", "power": 1.2, "turns": 2, "all": true, "cd": 3, "target": "foe", "tags": ["scan"], "from": { "skill": "scanning", "level": 15 }, "line": "Every weak spot at once, for a moment." },
+    "hack": { "name": "Hack", "kind": "stun", "cd": 2, "only": "machine", "target": "foe", "tags": ["hack"], "from": { "skill": "hacking", "level": 1 }, "line": "A machine loses its next go." },
+    "bump": { "name": "Bump", "kind": "hit", "power": 1, "target": "foe", "tags": ["dps"] },
+    "zap": { "name": "Zap", "kind": "hit", "power": 1, "acc": 5, "target": "foe", "tags": ["dps"] },
+    "flash": { "name": "Flash", "kind": "hit", "power": 0.5, "all": true, "target": "foe", "tags": ["dps"] },
+    "bite": { "name": "Bite", "kind": "hit", "power": 1, "target": "foe", "tags": ["dps"] },
+    "lash": { "name": "Lash", "kind": "hit", "power": 0.6, "hits": 2, "target": "foe", "tags": ["dps"] },
+    "slam": { "name": "Slam", "kind": "hit", "power": 1.2, "acc": -5, "target": "foe", "tags": ["dps"] },
+    "sweep": { "name": "Sweep", "kind": "hit", "power": 0.7, "all": true, "cd": 2, "target": "foe", "tags": ["dps"] },
+    "brace": { "name": "Brace", "kind": "guard", "target": "self", "tags": ["front"] }
+  },
+  "kits": {
+    "wrench": { "name": "Pipe wrench", "line": "Hits hard.", "stats": { "atk": 3 }, "abilities": ["strike", "heavy"] },
+    "plate": { "name": "Riot plate", "line": "Takes hits, draws them in.", "stats": { "def": 3, "hp": 10 }, "abilities": ["guard", "taunt", "cover"] },
+    "patchkit": { "name": "Patch kit", "line": "Mends either of you.", "stats": { "mend": 3 }, "abilities": ["patch"] },
+    "slingshot": { "name": "Bolt slingshot", "line": "Light, quick, accurate.", "stats": { "acc": 6, "spd": 2 }, "abilities": ["quick"] }
+  },
+  "defaultKits": { "player": ["wrench", "plate"], "jun": ["patchkit", "slingshot"] },
+  "roles": {
+    "decides": { "name": "She decides", "line": "She picks what the fight needs, in her own way." },
+    "scanner": { "name": "Scanner", "line": "Weak spots first.", "want": { "scan": 3, "dps": 1, "support": 1 } },
+    "hacker": { "name": "Hacker", "line": "Shuts machines down.", "want": { "hack": 3, "dps": 1, "support": 1 } },
+    "support": { "name": "Support", "line": "Keeps you both standing.", "want": { "support": 3, "scan": 1, "dps": 0.6 } },
+    "front": { "name": "Front line", "line": "She takes the hits.", "want": { "front": 3, "dps": 1.5 } }
+  },
+  "faces": ["neutral", "uneasy", "scared", "focused", "proud", "grin", "worried", "relieved", "yawn", "curious", "pout"],
+  "lines": {
+    "enter": { "p": 0.9, "say": [
+      { "id": "enter1", "c": ["timid"], "face": "uneasy", "t": "It's darker than I pictured. ...I'm fine. Go on." },
+      { "id": "enter2", "c": ["timid"], "face": "uneasy", "t": "Stay where I can see you. For mapping reasons." },
+      { "id": "enter3", "c": ["steady"], "face": "focused", "t": "Okay. Mapping as we go. Don't wander off." },
+      { "id": "enter4", "c": ["steady"], "face": "curious", "t": "Smells like dust and old current. Let's look around." },
+      { "id": "enter5", "c": ["brave"], "face": "grin", "t": "Finally. Let's see what's still running down here." },
+      { "id": "enter6", "c": ["brave"], "face": "focused", "t": "I'll watch the corners. You pick the way." }
+    ] },
+    "deeper": { "p": 0.6, "say": [
+      { "id": "deeper1", "c": ["timid"], "face": "scared", "t": "Dark... a little scary. Just a little." },
+      { "id": "deeper2", "c": ["timid"], "face": "uneasy", "t": "We're a long way down now, aren't we." },
+      { "id": "deeper3", "c": ["steady"], "face": "focused", "t": "Deeper. The air's colder. Keep going." },
+      { "id": "deeper4", "c": ["brave"], "face": "grin", "t": "The good stuff is always further down." },
+      { "id": "deeper5", "c": ["steady", "brave"], "face": "curious", "t": "New floor. Fresh map. I like this part." }
+    ] },
+    "corridor": { "p": 0.05, "say": [
+      { "id": "cor1", "c": ["timid"], "face": "uneasy", "t": "Did you hear that? ...No? Okay." },
+      { "id": "cor2", "face": "curious", "t": "These walls had labels once. Somebody cared about this place." },
+      { "id": "cor3", "c": ["steady", "brave"], "face": "neutral", "t": "Left looked the same as right. I'm keeping notes." },
+      { "id": "cor4", "face": "yawn", "t": "Quiet stretch. I don't mind quiet." },
+      { "id": "cor5", "near": "warm", "face": "relieved", "t": "It's less creepy with you in front. Don't let it go to your head." },
+      { "id": "cor6", "near": "shy", "face": "neutral", "t": "...You walk fast." },
+      { "id": "cor7", "c": ["brave"], "face": "grin", "t": "Bet there's something behind one of these walls." }
+    ] },
+    "sensed": { "p": 0.9, "say": [
+      { "id": "sen1", "face": "focused", "t": "Wait. That wall's hollow. Right there." },
+      { "id": "sen2", "face": "curious", "t": "My scan's bouncing wrong off that wall. Try it." },
+      { "id": "sen3", "c": ["timid"], "face": "uneasy", "t": "There's a space behind that. I don't know if I want to know." }
+    ] },
+    "secret": { "p": 0.85, "say": [
+      { "id": "sec1", "face": "grin", "t": "A hidden door. I knew this floor was too tidy." },
+      { "id": "sec2", "face": "curious", "t": "Nobody's opened this in years. Look at the dust." },
+      { "id": "sec3", "c": ["timid"], "face": "uneasy", "t": "Hidden usually means hidden for a reason... you first." }
+    ] },
+    "trap_warn": { "p": 1, "say": [
+      { "id": "tw1", "face": "focused", "t": "Stop. Floor plate, right ahead of you." },
+      { "id": "tw2", "face": "worried", "t": "Careful, there's a tripwire there. Step around." },
+      { "id": "tw3", "c": ["brave"], "face": "grin", "t": "Trap ahead. Cute. Go around it." }
+    ] },
+    "trap_hit": { "p": 0.9, "say": [
+      { "id": "th1", "face": "worried", "t": "Hey! Are you okay? Let me see." },
+      { "id": "th2", "c": ["steady", "brave"], "face": "pout", "t": "I'd have seen that one if you'd slowed down." },
+      { "id": "th3", "c": ["timid"], "face": "scared", "t": "Don't do that! ...Does it hurt?" }
+    ] },
+    "fight_start": { "p": 0.7, "say": [
+      { "id": "fs1", "c": ["timid"], "face": "scared", "t": "It's moving. It's definitely moving." },
+      { "id": "fs2", "c": ["timid"], "face": "uneasy", "t": "I'm right behind you. Strategically." },
+      { "id": "fs3", "c": ["steady"], "face": "focused", "t": "Company. I've got your back." },
+      { "id": "fs4", "c": ["steady"], "face": "focused", "t": "Old machine, bad temper. We can take it." },
+      { "id": "fs5", "c": ["brave"], "face": "grin", "t": "Oh good, something to do." },
+      { "id": "fs6", "c": ["brave"], "face": "focused", "t": "Mine's the one on the left. Kidding. Maybe." }
+    ] },
+    "fight_big": { "p": 1, "say": [
+      { "id": "fb1", "c": ["timid"], "face": "scared", "t": "That one is big. That one is very big." },
+      { "id": "fb2", "c": ["steady"], "face": "focused", "t": "That's what's been humming. Stay sharp." },
+      { "id": "fb3", "c": ["brave"], "face": "grin", "t": "There you are. Let's see what you guard." }
+    ] },
+    "fight_won": { "p": 0.6, "say": [
+      { "id": "fw1", "face": "proud", "t": "Done. That went well." },
+      { "id": "fw2", "c": ["timid"], "face": "relieved", "t": "It stopped. Good. I wasn't worried." },
+      { "id": "fw3", "c": ["brave"], "face": "grin", "t": "Too easy. Next." },
+      { "id": "fw4", "near": "warm", "face": "proud", "t": "We're getting good at this, you and me." },
+      { "id": "fw5", "near": "shy", "face": "neutral", "t": "...Nice work." }
+    ] },
+    "fight_hard": { "p": 0.95, "say": [
+      { "id": "fh1", "face": "worried", "t": "That was close. Sit a second. Please." },
+      { "id": "fh2", "c": ["timid"], "face": "scared", "t": "Can we not do that one again." },
+      { "id": "fh3", "c": ["brave"], "face": "relieved", "t": "Ha... okay. That one had teeth." }
+    ] },
+    "you_low": { "p": 0.9, "say": [
+      { "id": "yl1", "face": "worried", "t": "You're hurt. Stay behind me a moment." },
+      { "id": "yl2", "face": "worried", "t": "Hey. Eyes on me. You're still up." },
+      { "id": "yl3", "c": ["brave"], "face": "focused", "t": "Fall back, I've got this one." }
+    ] },
+    "her_low": { "p": 0.8, "say": [
+      { "id": "hl1", "face": "pout", "t": "I'm fine. A dent. Keep going." },
+      { "id": "hl2", "c": ["timid"], "face": "scared", "t": "Ow, okay, that one counted." },
+      { "id": "hl3", "c": ["brave"], "face": "grin", "t": "That all it's got?" }
+    ] },
+    "her_down": { "p": 1, "say": [
+      { "id": "hd1", "face": "pout", "t": "Sitting down. Just rebooting a little. Finish it." }
+    ] },
+    "chest": { "p": 0.6, "say": [
+      { "id": "ch1", "face": "curious", "t": "Open it, open it." },
+      { "id": "ch2", "face": "grin", "t": "Still sealed. Lucky us." },
+      { "id": "ch3", "c": ["timid"], "face": "uneasy", "t": "If something jumps out, you're on your own." }
+    ] },
+    "vault": { "p": 1, "say": [
+      { "id": "va1", "face": "proud", "t": "That's what all this was guarding. Look at it." },
+      { "id": "va2", "face": "grin", "t": "The deep chest. We actually made it." }
+    ] },
+    "terminal": { "p": 0.9, "say": [
+      { "id": "te1", "face": "focused", "t": "Old terminal. Give me a second with it." },
+      { "id": "te2", "face": "grin", "t": "It still boots. Password's taped under the keys. Of course it is." }
+    ] },
+    "terminal_alone": { "p": 1, "say": [
+      { "id": "ta1", "face": "neutral", "t": "A dead screen. Somebody who speaks machine could wake it." }
+    ] },
+    "odd": { "p": 1, "say": [
+      { "id": "od1", "face": "curious", "t": "This one's still warm. It's been running all this time, alone." },
+      { "id": "od2", "face": "curious", "t": "There's writing on the casing. A name, I think. Let me copy it." }
+    ] },
+    "camp": { "p": 1, "say": [
+      { "id": "ca1", "face": "relieved", "t": "A dry corner. Sit. Five minutes." },
+      { "id": "ca2", "c": ["brave"], "face": "grin", "t": "Break time. I was just getting warmed up, though." },
+      { "id": "ca3", "c": ["timid"], "face": "relieved", "t": "Oh, good. A door that closes." }
+    ] },
+    "stairs": { "p": 0.5, "say": [
+      { "id": "st1", "face": "curious", "t": "Stairs. Down, then?" },
+      { "id": "st2", "c": ["timid"], "face": "uneasy", "t": "Further down. Right. Sure." }
+    ] },
+    "empty": { "p": 0.7, "say": [
+      { "id": "em1", "face": "yawn", "t": "Nothing left on this floor but dust." },
+      { "id": "em2", "face": "neutral", "t": "Picked clean. By us. Stairs?" }
+    ] },
+    "leave": { "p": 1, "say": [
+      { "id": "le1", "face": "relieved", "t": "Home. I want a bath and you want a meal." },
+      { "id": "le2", "c": ["brave"], "face": "grin", "t": "Same time tomorrow?" },
+      { "id": "le3", "near": "shy", "face": "neutral", "t": "That was... fine. Good, even." }
+    ] },
+    "call_start": { "p": 1, "say": [
+      { "id": "cs1", "face": "neutral", "t": "Signal's fine so far. Call if it gets weird." },
+      { "id": "cs2", "face": "pout", "t": "Don't be a hero down there. I'm not coming to carry you. ...I would. Don't make me." }
+    ] },
+    "call_wish": { "p": 1, "say": [
+      { "id": "cw1", "face": "curious", "t": "If you see a servo that isn't rusted through, bring it back?" },
+      { "id": "cw2", "face": "curious", "t": "Find me something with a label on it. I like the old labels." }
+    ] },
+    "call_deeper": { "p": 0.5, "say": [
+      { "id": "cd1", "face": "worried", "t": "You went quiet. Still there?" },
+      { "id": "cd2", "face": "neutral", "t": "Tell me what it looks like. I'm drawing the map from your voice." }
+    ] },
+    "call_back": { "p": 1, "say": [
+      { "id": "cb1", "face": "relieved", "t": "You're back. Show me everything." }
+    ] }
+  },
+  "moments": {
+    "scared": { "say": [
+      { "id": "ms1", "face": "uneasy", "t": "That last stretch... I didn't like it. Can we just sit a moment." },
+      { "id": "ms2", "face": "uneasy", "t": "I wasn't scared. I'd just like to stay here a bit." }
+    ], "offer": { "id": "reach_hand", "label": "Take her hand", "tier": "everyday", "minStage": 3, "then": { "face": "relieved", "t": "...Okay. Better." } } },
+    "worried": { "say": [
+      { "id": "mw1", "face": "worried", "t": "You scared me back there. Let me look at that properly." },
+      { "id": "mw2", "face": "pout", "t": "Next time you fall back when I say so." }
+    ], "offer": { "id": "let_her_check", "label": "Let her check you over", "tier": "everyday", "minStage": 1, "then": { "face": "relieved", "t": "Fine. You'll live. Don't do it again." } } },
+    "proud": { "say": [
+      { "id": "mp1", "face": "proud", "t": "Did you see that? We didn't even flinch." },
+      { "id": "mp2", "face": "grin", "t": "I'm writing that one down." }
+    ], "offer": { "id": "high_five", "label": "High five", "tier": "everyday", "minStage": 2, "then": { "face": "grin", "t": "Ha. Yes." } } }
+  },
+  "scenes": {
+    "knocked_out": {
+      "name": "Knocked out: she takes care of you",
+      "line": "No lost items, no lost progress. She gets you somewhere safe and patches you up.",
+      "variants": {
+        "everyday": [
+          { "id": "ko_home_fuss", "where": "home", "beats": [
+            { "face": "worried", "t": "...there you are. Don't sit up yet." },
+            { "face": "pout", "t": "You're heavy, you know. I carried you up four flights." },
+            { "face": "focused", "t": "Hold still. This stings, and you earned it." },
+            { "face": "relieved", "t": "There. Good as I can make you. Soup, then sleep. I'm not asking." }
+          ] },
+          { "id": "ko_camp_patch", "where": "camp", "beats": [
+            { "face": "worried", "t": "Hey. Hey. Look at me. Okay. Okay, good." },
+            { "face": "focused", "t": "I dragged you back to the camp. Give me your arm." },
+            { "face": "pout", "t": "You don't get to do that to me twice in one trip." },
+            { "face": "relieved", "t": "You can stand. Slowly. We go on when you say so, or we go home. Your pick." }
+          ] },
+          { "id": "ko_alone_wake", "where": "alone", "beats": [
+            { "face": "worried", "t": "You stopped answering, so I came down. Don't argue." },
+            { "face": "focused", "t": "Lean on me. One step. Another." },
+            { "face": "relieved", "t": "Home. Sit. I'll get the kit." }
+          ] }
+        ],
+        "flirty": [
+          { "id": "ko_home_lap", "where": "home", "minStage": 4, "beats": [
+            { "face": "worried", "t": "...there you are. No, stay down. Your head's on my lap, and it's staying there." },
+            { "face": "pout", "t": "Do you know what my face did when you dropped? Don't answer." },
+            { "face": "focused", "t": "Hold still. I'm being gentle. This is me being gentle." },
+            { "face": "relieved", "t": "All patched. ...A kiss on the forehead is part of the treatment. Don't look at me like that." }
+          ] }
+        ],
+        "adult": []
+      }
+    }
+  }
+}
