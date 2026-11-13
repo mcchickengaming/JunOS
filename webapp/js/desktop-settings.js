@@ -11,10 +11,10 @@ import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
 import * as Fx from './desktop/fx.js?v=10';
 import * as Moods from './desktop/moods.js?v=12';
 import * as Often from './desktop/often.js?v=2';
-import * as HerWin from './home/herwin.js?v=5';
+import * as HerWin from './home/herwin.js?v=6';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=3';
-import * as Controls from './home/controls.js?v=5';
+import * as Controls from './home/controls.js?v=7';
 import * as Stores from './home/stores.js?v=4';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new

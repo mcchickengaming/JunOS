@@ -151,7 +151,7 @@ function drawMirrors() {
   }
   // structure (which rows, which controls, which options) vs values
   const sig = JSON.stringify(rows.map(r => [r.key, r.hidden, r.title, r.controls.map(c => [c.id, c.kind, c.hidden, c.options && c.options.map(o => o.v + o.t)])]));
-  if (sig === lastSig) { patch(); return; }
+  if (sig === lastSig) { patch(); onChange(); return; }
   lastSig = sig;
   const focus = document.activeElement?.dataset?.mid;
   for (const h of hosts) h.innerHTML = '';

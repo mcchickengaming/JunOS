@@ -151,9 +151,9 @@ export function decorate(root = document) {
     r.querySelector(':scope > .what > .fnote')?.remove();
     if (!hit) { delete r.dataset.feature; delete r.dataset.more; continue; }
     r.dataset.feature = hit.f.id;
-    r.dataset.more = hit.main ? '' : '1';
-    if (!hit.main) hosts.add(r.parentElement);
-    else r.parentElement && hosts.add(r.parentElement);
+    // fold: false = its extras always show (her voice: turning it on should show its rows right away)
+    r.dataset.more = hit.main || hit.f.fold === false ? '' : '1';
+    if (r.parentElement) hosts.add(r.parentElement);
     // plain words about what depends on what
     let note = '';
     if (hit.main) {
@@ -161,6 +161,9 @@ export function decorate(root = document) {
       if (needs) note = needs;
       else if (!Stores.isOn(hit.f.id)) note = F.offNote(hit.f.id);
       else note = F.onNote(hit.f.id);
+    } else if (r.classList.contains('off')) {
+      // an extra row greyed out because its feature's main switch is off: say so
+      note = 'Works once "' + hit.f.name + '" is on.';
     }
     r.classList.toggle('paused', !!(hit.main && F.needsNote(hit.f.id, Stores.isOn)));
     if (note) {

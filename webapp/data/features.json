@@ -64,10 +64,10 @@
       "key": "desk:talk", "default": 50, "pausedBy": ["quiet"], "modes": ["desktop"], "privacy": "none", "profile": true,
       "words": ["talk", "says", "comment", "lines", "how often"], "since": "2026-11-07" },
     { "id": "voice", "name": "Her voice", "line": "She reads her replies out loud.", "section": "talk", "anchor": "at-voice", "tier": "everyday",
-      "key": "mirror:ttsChk", "more": ["mirror:siteVolume", "mirror:ttsEngineSelect", "mirror:ttsLangSelect", "mirror:ttsVoiceSelect", "mirror:ttsSpeed"], "modes": ["desktop", "windowed", "compact"], "privacy": "none", "profile": true,
+      "key": "mirror:ttsChk", "fold": false, "more": ["mirror:siteVolume", "mirror:ttsEngineSelect", "mirror:ttsLangSelect", "mirror:ttsVoiceSelect", "mirror:ttsSpeed"], "modes": ["desktop", "windowed", "compact"], "privacy": "none", "profile": true,
       "words": ["voice", "tts", "speak", "volume", "sound", "speed", "language"], "since": "2026-11-01" },
     { "id": "mic", "name": "Microphone", "line": "Talk to her out loud.", "section": "talk", "anchor": "at-mic", "tier": "everyday",
-      "key": "mirror:voiceChk", "more": ["mirror:voiceBargeChk", "mirror:voiceHearAllChk", "mirror:voiceSilence"], "modes": ["windowed"], "privacy": "pc", "profile": true,
+      "key": "mirror:voiceChk", "fold": false, "more": ["mirror:voiceBargeChk", "mirror:voiceHearAllChk", "mirror:voiceSilence"], "modes": ["windowed"], "privacy": "pc", "profile": true,
       "words": ["mic", "microphone", "speech", "listen", "voice input"], "since": "2026-11-01" },
 
     { "id": "headpat", "name": "Headpat", "line": "Press and hold on her head and move the mouse, or rub back and forth.", "section": "help", "tier": "everyday",
