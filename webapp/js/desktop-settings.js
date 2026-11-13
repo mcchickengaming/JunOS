@@ -1265,6 +1265,55 @@ async function whatsNew() {
   card.hidden = false;
 }
 
+// ---------------------------------------------------------------
+// Console helpers for the owner's own debugging (F12 > Console): find a setting by its plain
+// name and switch it. jun.find('glow')  jun.set('glow', false)  jun.set('walks around', 85)
+
+function pickFeature(q) {
+  const t = String(q || '').toLowerCase().trim();
+  const withKey = F.all().filter(f => f.key);
+  return withKey.find(f => f.key.toLowerCase() === t || f.id === t || f.name.toLowerCase() === t)
+    || withKey.find(f => f.name.toLowerCase().includes(t))
+    || F.search(t).find(f => f.key) || null;
+}
+window.jun = {
+  help() {
+    console.log('jun.find("glow")             list settings that match, with their value now');
+    console.log('jun.find()                   list every setting');
+    console.log('jun.set("glow", false)       switch one off (true = on)');
+    console.log('jun.set("walks around", 85)  how-often settings take 0 to 100');
+    console.log('jun.reset("touch")           a whole section back to how she comes');
+    return 'Names are the ones you see in Settings.';
+  },
+  find(q) {
+    const list = (q ? F.search(q) : F.all()).filter(f => f.key);
+    console.table(list.map(f => ({ name: f.name, now: Stores.peek(f.key), default: Stores.defaultOf(f.key),
+      'can set here': Stores.canWrite(f.key) ? 'yes' : 'no, click it in Settings', section: NAMES[f.section] || f.section })));
+    return list.length + ' found';
+  },
+  async set(q, value) {
+    const f = pickFeature(q);
+    if (!f) return 'No setting called "' + q + '". Try jun.find("' + q + '")';
+    if (!Stores.canWrite(f.key)) return '"' + f.name + '" can only be changed by clicking it in Settings > ' + (NAMES[f.section] || f.section);
+    const before = Stores.peek(f.key);
+    try { await Stores.write(f.key, value); } catch (e) { return 'Could not change "' + f.name + '": ' + e.message; }
+    await loadDesk();
+    buildFeedback();
+    if (current === 'comfort') drawComfort();
+    soon();
+    return '"' + f.name + '": ' + JSON.stringify(before) + ' -> ' + JSON.stringify(Stores.peek(f.key));
+  },
+  async reset(sec) {
+    if (!SECTIONS.includes(sec)) return 'Sections: ' + SECTIONS.join(', ');
+    const n = await Stores.resetSection(sec);
+    await loadDesk();
+    buildFeedback();
+    soon();
+    return n + ' setting(s) back to default in ' + NAMES[sec];
+  },
+};
+console.info('Jun: type jun.help() for the settings commands.');
+
 // her window's settings (mirrors), her bond and memories, the account: js/home/herwin.js
 HerWin.wire();
 HerWin.setOnChange(() => { soon(); if (searchBox.value.trim()) runSearch(); });

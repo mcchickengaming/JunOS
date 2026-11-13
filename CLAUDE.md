@@ -292,7 +292,9 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   is one more row.
   The settings window opens at 820×760 (fitted to the screen) so the sidebar shows on the left.
   **F12 / Ctrl+Shift+I** in any of her windows opens its developer tools in their own window (main.js
-  `web-contents-created`), for the owner's own debugging (Console = errors).
+  `web-contents-created`), for the owner's own debugging (Console = errors). Settings window Console helpers (desktop-settings.js
+  `window.jun`): `jun.help()`, `jun.find('glow')`, `jun.set('glow', false)`, `jun.set('walks around', 85)`,
+  `jun.reset('touch')`, by the plain names from the registry (desk/fx/feature/local/comfort keys; mirrors: click only).
   **Step 3 (Nov 12):** tray and Jun menu = quick actions only (main.js `quickItems()`: quiet mode, her size, her spots,
   Save Jun now…, Get the latest update; plus show/hide, modes, Settings…, close). Everything else is in Settings.
   **Step 4 (Nov 12):** Simple / Everything layer (header pick), "More settings (N)" folds for a group's extra rows (one
