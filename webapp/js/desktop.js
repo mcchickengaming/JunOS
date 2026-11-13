@@ -25,13 +25,14 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=94';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
-import * as Body from './desktop/body.js?v=42';
+import * as Body from './desktop/body.js?v=43';
 import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=9';
-import * as Moods from './desktop/moods.js?v=11';
+import * as Fx from './desktop/fx.js?v=10';
+import * as Moods from './desktop/moods.js?v=12';
 import * as FeelBody from './desktop/feelbody.js?v=5';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 import * as Often from './desktop/often.js?v=2';
+import * as Gate from './core/gate.js?v=2';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -48,7 +49,7 @@ const shadow = document.getElementById('shadow');
 const emoteEl = document.getElementById('emote');
 const note = document.getElementById('note');
 
-// her colors: Jun menu > Customize colors (desktop-settings.html) keeps
+// her colors: Settings > Visuals (desktop-settings.html) keeps
 // them in localStorage, the same origin as this page, and the storage
 // event brings a change over live
 const THEME_KEY = 'desktop.theme';
@@ -213,7 +214,7 @@ async function react(kind) {
 // what she says comes from her brain with her current feelings and
 // bond stage in it (chat_live_context), so the same hug gets a shy
 // line from a Stranger and a warm one from Devoted. how often:
-// Jun menu > On the desktop > Talks about your touches
+// Settings > Talking & voice > Talks about your touches
 
 const TOUCH_NOTES = {
   hug: 'Anon is hugging you',
@@ -653,6 +654,14 @@ function sound(kind) {
 // her mood and the hour shape how lively she is out here
 
 let pace = { speed: 1, hop: 4 };
+
+// the consent + ratings gate (js/core/gate.js): flirty spots on her (features.json tier) only
+// answer when the gate says so. his settings come from her server, cached, live from the settings
+const FLIRTY_SPOTS = { thigh: 'flirty' };
+let comfort = Gate.comfort();
+Gate.loadComfort().then(c => { comfort = c; });
+Gate.onComfort(c => { comfort = c; });
+Body.setSpotGate((kind) => !FLIRTY_SPOTS[kind] || Gate.allowed(FLIRTY_SPOTS[kind], { comfort, mode: 'desktop' }));
 // how close they are, for touches she isn't fond of yet (body.js)
 const closeness = () => (Gauges.bondStage <= 2 ? 1 : Gauges.bondStage === 3 ? 2 : 3);
 async function refreshMood() {

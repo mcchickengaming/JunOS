@@ -1,0 +1,499 @@
+{
+ "about": "Shared cases for js/core/gate.js and api/lib/gate.php (both tests run every case).",
+ "cases": [
+  {
+   "name": "everyday is always offered",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {},
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "defaults: flirty on",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 3,
+    "trust": 50
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "defaults: 18+ off",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {}
+   },
+   "show": false,
+   "her": "no",
+   "why": "adult_off"
+  },
+  {
+   "name": "unknown tier counts as 18+",
+   "item": {
+    "tier": "spicy"
+   },
+   "ctx": {
+    "comfort": {}
+   },
+   "show": false,
+   "her": "no",
+   "why": "adult_off"
+  },
+  {
+   "name": "flirty switch off",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {
+     "flirty": false
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flirty_off"
+  },
+  {
+   "name": "18+ on but never confirmed",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {
+     "adult": true
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "adult_off"
+  },
+  {
+   "name": "18+ confirmed, in her window",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {
+     "adult": true,
+     "adultConfirmed": true
+    },
+    "mode": "windowed",
+    "stage": 5,
+    "trust": 80
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "18+ stays in her window by default",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {
+     "adult": true,
+     "adultConfirmed": true
+    },
+    "mode": "desktop"
+   },
+   "show": false,
+   "her": "no",
+   "why": "mode"
+  },
+  {
+   "name": "18+ outside her window when allowed",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {
+     "adult": true,
+     "adultConfirmed": true,
+     "adultOutside": true
+    },
+    "mode": "compact",
+    "stage": 5,
+    "trust": 80
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "flirty works on the desktop",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {},
+    "mode": "desktop",
+    "stage": 4,
+    "trust": 60
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "platonic: flirty hard-locked",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "platonic",
+     "flirty": true
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flavor_lock"
+  },
+  {
+   "name": "platonic: 18+ hard-locked even when on",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "platonic",
+     "adult": true,
+     "adultConfirmed": true,
+     "adultOutside": true
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flavor_lock"
+  },
+  {
+   "name": "parent/daughter: flirty hard-locked",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "parent_daughter"
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flavor_lock"
+  },
+  {
+   "name": "parent/daughter: 18+ hard-locked",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "parent_daughter",
+     "adult": true,
+     "adultConfirmed": true,
+     "siblingsRated": true
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flavor_lock"
+  },
+  {
+   "name": "parent/daughter: everyday is fine",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "parent_daughter"
+    }
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "siblings: rated needs its own opt-in",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "siblings"
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flavor_optin"
+  },
+  {
+   "name": "siblings with the opt-in",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "siblings",
+     "siblingsRated": true
+    },
+    "stage": 3,
+    "trust": 50
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "friends open to more: flirty fine",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "friends_open"
+    },
+    "stage": 3,
+    "trust": 50
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "unknown flavor reads as romantic",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "whatever"
+    },
+    "stage": 3,
+    "trust": 50
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "an item for one flavor only",
+   "item": {
+    "tier": "everyday",
+    "flavors": [
+     "siblings"
+    ]
+   },
+   "ctx": {
+    "comfort": {}
+   },
+   "show": false,
+   "her": "no",
+   "why": "flavor"
+  },
+  {
+   "name": "an item for its own flavor",
+   "item": {
+    "tier": "everyday",
+    "flavors": [
+     "siblings",
+     "romantic"
+    ]
+   },
+   "ctx": {
+    "comfort": {}
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "a look that reads as a child pauses flirty",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {},
+    "lookAdult": false
+   },
+   "show": false,
+   "her": "no",
+   "why": "look"
+  },
+  {
+   "name": "the look check never touches everyday",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {
+    "comfort": {},
+    "lookAdult": false
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "screen share hides flirty",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {},
+    "screenShare": true
+   },
+   "show": false,
+   "her": "no",
+   "why": "screen_share"
+  },
+  {
+   "name": "screen share hides 18+",
+   "item": {
+    "tier": "adult"
+   },
+   "ctx": {
+    "comfort": {
+     "adult": true,
+     "adultConfirmed": true,
+     "adultOutside": true
+    },
+    "screenShare": true
+   },
+   "show": false,
+   "her": "no",
+   "why": "screen_share"
+  },
+  {
+   "name": "her stop signal always counts",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {
+    "stop": true
+   },
+   "show": true,
+   "her": "no",
+   "why": "stop"
+  },
+  {
+   "name": "her stop signal on a flirty moment",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {},
+    "stop": true,
+    "stage": 6,
+    "trust": 100
+   },
+   "show": true,
+   "her": "no",
+   "why": "stop"
+  },
+  {
+   "name": "not close enough yet",
+   "item": {
+    "tier": "flirty",
+    "minStage": 4
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 3,
+    "trust": 60
+   },
+   "show": true,
+   "her": "no",
+   "why": "bond"
+  },
+  {
+   "name": "just reached: she asks first",
+   "item": {
+    "tier": "flirty",
+    "minStage": 4
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60
+   },
+   "show": true,
+   "her": "ask",
+   "why": "ask"
+  },
+  {
+   "name": "past it: yes",
+   "item": {
+    "tier": "flirty",
+    "minStage": 4
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 5,
+    "trust": 60
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "low trust says no to flirty",
+   "item": {
+    "tier": "flirty"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 5,
+    "trust": 10
+   },
+   "show": true,
+   "her": "no",
+   "why": "trust"
+  },
+  {
+   "name": "low trust is fine for everyday",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {
+    "stage": 5,
+    "trust": 10
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "tense: she asks first",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {
+    "tension": 65
+   },
+   "show": true,
+   "her": "ask",
+   "why": "ask"
+  },
+  {
+   "name": "very tense: not now",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {
+    "tension": 90
+   },
+   "show": true,
+   "her": "no",
+   "why": "mood"
+  }
+ ]
+}

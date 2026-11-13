@@ -11,12 +11,12 @@
 //
 // shared by desktop.html (js/desktop.js) and the settings window's
 // Touch feedback tab, which previews with this same code. the owner's
-// picks (mAmount off/some/lots, mGlow) live in desktop.fx (fx.js), the
+// picks (mAmount 0..100, mGlow) live in desktop.fx (fx.js), the
 // colors in the theme: --mood-notready, --mood-flustered, --mood-likes,
 // --mood-loves, --mood-giggly.
 import * as Often from './often.js?v=2';
 
-import * as Fx from './fx.js?v=9';
+import * as Fx from './fx.js?v=10';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],
@@ -124,7 +124,11 @@ export function rippleFor(kind, c = ctx) {
 let anchorFn = () => null;
 let host = null;
 export function setAnchor(fn, el) { anchorFn = fn || (() => null); host = el || null; }
-const amount = () => (Fx.currentFx().mAmount || 'some');
+// how much: 0..100 (often.js MUCH). 0 = off, 50 = the old "some", 85 = the old "lots"
+const amountPct = () => Often.pct(Fx.currentFx().mAmount, 50);
+const amount = () => (amountPct() === 0 ? 'off' : 'on');
+// how busy the effects are: 1 at 50 %, ~1.54 at 85 % (the old "lots": puffs every 0.65×)
+const amountK = () => Often.mul(amountPct(), 1.8);
 
 // ---------------------------------------------------------------
 // the effects. each piece: what it is, where it goes, how it moves
@@ -454,7 +458,7 @@ function aura(feeling, power) {
   auraEl.style.setProperty('--ma-speed', String(Math.max(0.25, Number(fx.mGlowSpeed ?? 1))));
   auraEl.style.setProperty('--ma-c', colors === 'one' ? 'var(--mood-glow, #ffffff)' : COLOR[feeling]);
   const strength = Math.max(0, Number(fx.mGlowStr ?? 1));
-  auraEl.style.setProperty('--ma-o', Math.min(1, (0.24 + power * 0.4) * (amount() === 'lots' ? 1.3 : 1) * strength).toFixed(2));
+  auraEl.style.setProperty('--ma-o', Math.min(1, (0.24 + power * 0.4) * (1 + (amountK() - 1) * 0.55) * strength).toFixed(2));
 }
 
 // ---------------------------------------------------------------
@@ -514,14 +518,13 @@ function tick() {
   }
   aura(f.feeling, f.power);
   const now = Date.now();
-  const lots = amount() === 'lots';
-  const every = (1150 - f.power * 750) * (lots ? 0.65 : 1);
+  const every = (1150 - f.power * 750) / Math.max(0.15, amountK());
   // a change of heart shows right away (a giggle turning into "enough!")
   const changed = shown && shown !== f.feeling;
   if (now - lastPuff < every && !changed) return;
   lastPuff = now;
   shown = f.feeling;
-  const n = 1 + (f.power > 0.55 ? 1 : 0) + (lots && f.power > 0.8 ? 1 : 0) + (changed ? 1 : 0);
+  const n = 1 + (f.power > 0.55 ? 1 : 0) + (amountPct() >= 70 && f.power > 0.8 ? 1 : 0) + (changed ? 1 : 0);
   for (let i = 0; i < n; i++) setTimeout(() => puff(f.feeling, f.power, f.at), i * 140);
 }
 function run() { if (!loop) loop = setInterval(tick, 120); tick(); }
@@ -552,8 +555,7 @@ export function endAll() { active.clear(); demo = null; tick(); }
 export function burst(feeling, power = 0.7, where = null) {
   if (!COLOR[feeling]) return;
   if (amount() !== 'off') {
-    const lots = amount() === 'lots';
-    const n = 1 + (power > 0.5 ? 1 : 0) + (lots ? 1 : 0);
+    const n = 1 + (power > 0.5 ? 1 : 0) + (amountPct() >= 70 ? 1 : 0);
     for (let i = 0; i < n; i++) setTimeout(() => puff(feeling, power, where), i * 150);
   }
   // a short moment (glow, her body) when nothing longer is going on

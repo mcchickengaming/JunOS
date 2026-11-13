@@ -79,7 +79,16 @@
   .btn.armed { border-color: #f66; color: #ffb3b3; }
   .privacy-frame { width: 100%; height: 420px; border: 1px solid var(--border); border-radius: 10px; background: #fff; margin: 0 0 6px; }
   @media (max-width: 520px) { .mirror-row.wide { flex-wrap: wrap; } .mirror-row.wide .mirror-ctl { max-width: 100%; width: 100%; } }
-  .row.off { opacity: .55; }
+  .row.off, .row.paused { opacity: .55; }
+  /* the registry's layers: in Simple, extra rows wait behind "More settings" (js/home/controls.js) */
+  body.layer-simple .row[data-more="1"] { display: none; }
+  body.layer-simple .folds-open > .row[data-more="1"], body.layer-simple .folds-one > .row[data-more="1"] { display: flex; }
+  .more-btn { margin: 2px 0 10px; font-size: 12.5px; }
+  .fnote { display: block; margin-top: 3px; font-size: 12px; color: var(--accent); }
+  #layerPick { flex: 0 0 auto; padding: 6px 8px; }
+  .new-card { margin: 0 16px 8px; border-color: var(--accent); }
+  .new-card > b { display: block; margin-bottom: 4px; }
+  #comfortMsg.err { color: #ff8a8a; }
   .often { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
   .often-line { display: flex; align-items: center; gap: 6px; }
   .often input[type=range] { width: 120px; }
@@ -170,7 +179,10 @@
 <header>
   <h1>Settings</h1>
   <input type="search" id="setSearch" placeholder="Search all settings" aria-label="Search all settings" autocomplete="off">
+  <select id="layerPick" class="btn" aria-label="How many settings to show" title="Simple keeps the extras behind &quot;More settings&quot;">
+    <option value="simple">Simple</option><option value="all">Everything</option></select>
 </header>
+<div class="card new-card" id="newCard" hidden></div>
 <div class="home">
 <nav aria-label="Settings sections">
   <button type="button" data-tab="her"><i>💗</i><span>Her</span></button>
@@ -178,6 +190,7 @@
   <button type="button" data-tab="touch"><i>✋</i><span>Touch &amp; feelings</span></button>
   <button type="button" data-tab="desktop"><i>🖥️</i><span>On the desktop</span></button>
   <button type="button" data-tab="visuals"><i>🎨</i><span>Visuals</span></button>
+  <button type="button" data-tab="comfort" title="Comfort &amp; ratings"><i>🤍</i><span>Comfort</span></button>
   <button type="button" data-tab="saves"><i>💾</i><span>Saves &amp; updates</span></button>
   <button type="button" data-tab="account" title="Account &amp; advanced"><i>🔐</i><span>Account</span></button>
   <button type="button" data-tab="help" class="nav-help"><i>❓</i><span>How to play</span></button>
@@ -260,6 +273,7 @@
   <div data-mirror="voice"></div>
   <h2 id="at-mic">Microphone</h2>
   <div data-mirror="mic"></div>
+  <p><button type="button" class="btn danger" data-reset="talk">Reset this section</button></p>
 </section>
 
 
@@ -276,10 +290,10 @@
   <div id="alphaRows"></div>
   <div class="row"><div class="what"><b>Text outline</b><span>A dark edge around the letters.</span></div>
     <select id="outline" class="btn"><option value="none">None</option><option value="soft">Soft</option><option value="strong">Strong</option></select></div>
-  <div class="row"><div class="what"><b>Fade the chat bar</b><span>Almost invisible until your mouse is on it or you're typing.</span></div>
+  <div class="row" data-fkey="theme:fade"><div class="what"><b>Fade the chat bar</b><span>Almost invisible until your mouse is on it or you're typing.</span></div>
     <input type="checkbox" id="fadeChat"></div>
   <h2>Shadow</h2>
-  <div class="row"><div class="what"><b>Shadow under her feet</b><span>How dark it is.</span></div><input type="range" id="shadowRange" min="0" max="0.8" step="0.02"></div>
+  <div class="row" data-fkey="theme:--shadow-alpha"><div class="what"><b>Shadow under her feet</b><span>How dark it is.</span></div><input type="range" id="shadowRange" min="0" max="0.8" step="0.02"></div>
   <p><button type="button" class="btn danger" id="resetColors">Reset all colors</button></p>
 </section>
 
@@ -307,11 +321,15 @@
   <div id="iconRows"></div>
   <p class="hint">All her icons. Click one to see it. She picks them herself, by her mood, the hour and how close you are.</p>
   <div id="gallery"></div>
-  <p><button type="button" class="btn danger" id="resetFx">Reset touch feedback</button></p>
+  <p><button type="button" class="btn danger" data-reset="touch">Reset this section</button></p>
 </section>
 
 <section id="tab-desktop" hidden>
   <p class="hint">Jun out on your desktop: how big she is, how she acts out there, her spots, and her window.</p>
+  <h2 id="at-presets">Start from a style</h2>
+  <p class="hint">A few settings at once (how lively she is, sounds, how much she shows her feelings). You can change anything after.</p>
+  <div id="presetRows"></div>
+  <p class="hint" id="presetMsg" role="status"></p>
   <p class="hint" id="deskNote" hidden>Open this from the Jun desktop app to change these.</p>
   <h2 id="at-size">Her size</h2>
   <p class="hint">How tall she stands on your desktop, as a share of your screen's height, so she looks the same size on any monitor.</p>
@@ -341,8 +359,21 @@
   <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
   <h2 id="at-window">Her window</h2>
   <div id="windowRows"></div>
+  <p><button type="button" class="btn danger" data-reset="desktop">Reset this section</button></p>
 </section>
 
+<section id="tab-comfort" hidden>
+  <p class="hint">What you two are to each other, and how far things can go. Your choices; she always has her say too.</p>
+  <h2 id="at-flavor">You two</h2>
+  <p class="hint">Your bond is how close you are. This is what kind of close.</p>
+  <div id="flavorRows"></div>
+  <h2 id="at-ratings">Ratings</h2>
+  <div id="ratingRows"></div>
+  <p class="hint" id="comfortMsg" role="status"></p>
+  <h3 class="sub">Always</h3>
+  <p class="hint">Anything flirty or 18+ hides while you share your screen. Her stop signal always counts.
+    If her look ever reads as a child, flirty and 18+ pause until it reads adult again.</p>
+</section>
 <section id="tab-saves" hidden>
   <p class="hint">A save keeps everything that makes her her: chats, memories, bond, touches, moods and her desktop settings.
     You can always go back to one.</p>
@@ -370,6 +401,7 @@
   <div class="row"><div class="what"><b>Get the latest update</b><span>Jun checks GitHub for new changes, saves herself, updates and restarts.
     If anything goes wrong she tells you and stays as she is.</span></div>
     <button type="button" class="btn" id="updateNow">Check now</button></div>
+  <div id="newFeatRows"></div>
   <h2>Good to know</h2>
   <p class="hint">Her memories are locked with your password. Going back to an old save brings back the password you had then.</p>
   <p class="hint">The game art and her brain (the model files) aren't in a save, they come back from your game copy and the download.
@@ -460,6 +492,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=36"></script>
+<script type="module" src="js/desktop-settings.js?v=38"></script>
 </body>
 </html>

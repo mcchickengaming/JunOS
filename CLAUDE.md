@@ -289,7 +289,15 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   home (capture-phase click in home-bridge.js); a plain browser/phone keeps the drawer. Settings > Dates became
   **"Do something together"** (`#togetherDrawer` in index.html, `js/app/together.js`, sidebar button next to
   Achievements): rows have `data-group` (out/play/in), buttons still wired by main.js `wireDatesPanel`; a new activity
-  is one more row. Next: tray/Jun menu trimmed to quick actions, then polish.
+  is one more row.
+  **Step 3 (Nov 12):** tray and Jun menu = quick actions only (main.js `quickItems()`: quiet mode, her size, her spots,
+  Save Jun now…, Get the latest update; plus show/hide, modes, Settings…, close). Everything else is in Settings.
+  **Step 4 (Nov 12):** Simple / Everything layer (header pick), "More settings (N)" folds for a group's extra rows (one
+  extra just shows), a "Reset this section" per section (talk, touch, desktop; click twice; via the registry), the same
+  standard rows everywhere (js/home/controls.js), How she feels "How much" is now a percent (`mAmount` 0..100, old
+  off/some/lots read as 0/50/85, moods.js `amountK()`), presets ("Start from a style" in On the desktop: The natural
+  her, Cozy, Quiet worker, Playful; one-click Undo), the new-features policy (Saves & updates) and the what's-new card.
+  New section **Comfort & ratings** (`comfort`, see the gate below).
 
 - **Renderer layer + Inochi2D renderer** (Fable week step 2, Nov 12; spike, NOT wired into her pages yet):
   `webapp/js/rig/rig.js` is the one place that knows what her params drive. A rig = `{ kind, view, params, core,
@@ -307,6 +315,40 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   glitch, "Run the checks" (11 checks for design sheet §7, incl. Jun's own params.js/anim.js/geometry.js on the new rig).
   Node tests: `.github/scripts/js/rig.test.mjs`. Licenses: NOTICE section 8. No puppets in git (example puppets are
   CC BY 4.0, credit seagetch if ever shown).
+
+## Foundations (#31, Nov 12): registry, settings framework, the one gate
+- **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`
+  `features_registry()`): every feature once: `id`, `name`, `line`, `section` (+ `anchor`, or `where` for
+  `elsewhere`), `tier` (everyday / flirty / adult), `key` = its main setting as `kind:name` (stores listed in the json:
+  fx, desk, size, app, mirror, theme, comfort, local, feature, env, server), `more` = its extra settings (shown under
+  "More settings" in Simple), `default` (desk/comfort/fx defaults are tested against the code), `needs` (what it depends
+  on, for "Off, this also pauses…" / "Paused: needs … on."), `modes` + `fallback`, `privacy` (none / pc / chats),
+  `profile` (goes in a shared profile, #18), `words` (search), `since` (date). `presets`: bundles of `desk:`/`fx:`
+  values. A NEW feature: add its entry first; if it has no store of its own, give it `key: "feature:<id>"` and ask
+  `Features.isOn(id)` (honors the new-features policy: surprise me / ask me / keep off). Per-mode values:
+  `Features.valueFor(key, base, mode)` (no UI yet; for compact #28 and later). Tests:
+  `.github/scripts/js/features.test.mjs` (keys exist in FX_DEFAULTS / main.js DEFAULTS.desk / the gate, needs have no
+  loops, presets valid).
+- **Settings framework** `js/home/controls.js` (row, switchCtl, choiceCtl with `decide` for a "she decides" option,
+  sliderCtl, oftenCtl, buttonCtl; `decorate(root)` = the registry pass over the page: tags rows by `data-fkey`, a
+  `data-fx` control, or `data-key`) and `js/home/stores.js` (`peek/write/defaultOf/canWrite` for any key,
+  `resetSection`, `applyPreset`/`undoPreset`). New rows: build them with Controls and pass the registry key as the
+  4th argument of `row()`.
+- **The one consent + ratings gate** `js/core/gate.js` = `api/lib/gate.php` (same rules, same cases:
+  `.github/scripts/gate-cases.json`, run by `gate.test.php` and features.test.mjs, which also compares the constants).
+  `check(item, ctx)` → `{ show, her: yes/ask/no, why, words }`: item `{ tier, flavors?, minStage?, minTrust? }`, ctx
+  `{ comfort, mode, screenShare, lookAdult, stage, trust, tension, stop }`. Order: flavor fit → hard flavor locks
+  (`LOCKED`: platonic and parent_daughter never flirty/adult, in code, never from a file) → siblings opt-in →
+  Flirty switch → 18+ (on + confirmed) → the adult-look check (`lookAdult`, from the look itself; the creator #14 plugs
+  it in) → screen share (hides flirty + adult; senses #3 fill it) → 18+ windowed-only unless `adultOutside`; then her
+  say: stop signal → bond → trust (flirty/adult need ≥ `TUNE.trustNo`) → tension (ask/no) → just-reached stage = ask.
+  Unknown tiers count as adult, unknown flavors as romantic. `canTag(flavor, tier)` for the makers. His settings:
+  migration 032 `comfort` (in the factory-reset list), `api/comfort.php` (GET/PUT; 18+ needs `confirmAdult: true`
+  the first time), cached in localStorage `jun.comfort` for the pages (`Gate.comfort()`, `loadComfort`, `saveComfort`,
+  `onComfort`). Her prompt: `comfort_context` (after quirks) tells her what they are to each other when it isn't
+  romantic, and "keep it sweet" when Flirty is off. First users: her thigh on the desktop is a flirty spot
+  (desktop.js `FLIRTY_SPOTS` → body.js `setSpotGate`; not allowed = just her body). Rated content itself is never
+  Claude's: the gate and the tags are the system, the owner makes the 18+ content in the makers.
 
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings

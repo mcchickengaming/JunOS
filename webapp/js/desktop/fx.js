@@ -16,8 +16,9 @@ export const FX_DEFAULTS = {
   rShape: 'circle', rMotion: 'expand', rSize: 1, rSpeed: 1, rRings: 1, rWidth: 2, rHerPick: true,
   lBox: 'rounded', lFont: 'arial', lSize: 12, lAnim: 'pop', lBorder: 1, lAlpha: 1,
   eAscii: 50, eAnim: 'mix',
-  // how she feels about a touch (desktop/moods.js): off / some / lots, and the glow around her
-  mAmount: 'some', mGlow: true, mTsun: true, mComfort: true,
+  // how she feels about a touch (desktop/moods.js): how much, 0..100 (often.js; old 'off'/'some'/'lots' read
+  // as 0/50/85), and the glow around her
+  mAmount: 50, mGlow: true, mTsun: true, mComfort: true,
   // anime tsundere lines ("b-baka"): auto = once she's picked the habit up (lib/quirks.php), on, off
   mAnime: 'auto',
   // the glow (moods.js aura): strength and size ×, softness 0..1, shape, movement, speed ×, layer, color, fade s

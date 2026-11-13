@@ -8,10 +8,17 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
-import * as Fx from './desktop/fx.js?v=9';
-import * as Moods from './desktop/moods.js?v=11';
+import * as Fx from './desktop/fx.js?v=10';
+import * as Moods from './desktop/moods.js?v=12';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=5';
+import * as F from './core/features.js?v=2';
+import * as Gate from './core/gate.js?v=2';
+import * as Controls from './home/controls.js?v=3';
+import * as Stores from './home/stores.js?v=2';
+
+// the feature registry (data/features.json): search words, layers, notes, resets, what's new
+await F.load();
 
 const D = window.junDesktop || null;
 const THEME_KEY = 'desktop.theme';
@@ -23,7 +30,7 @@ const GROUPS = [
   ['Speech card', 'Where her lines appear.', [['Name tag', '--card-name', '#15142e'], ['Text box', '--card', '#191233']]],
   ['Thought bubbles', 'The ♪ ? ! ♥ over her head, and her thinking cloud.', [['Bubble', '--bubble', '#191233'], ['Outline', '--bubble-edge', '#ec0054']]],
   ['Touch glow', 'The soft glow where your mouse is on her.', [['Glow', '--glow', '#ec0054']]],
-  ['Touch spot outlines', 'The outlines from Jun menu > On the desktop > Show touch spots.', [['Outline', '--spot-outline', '#ff78be']]],
+  ['Touch spot outlines', 'The outlines from Touch & feelings > Show touch spots.', [['Outline', '--spot-outline', '#ff78be']]],
 ];
 
 function readTheme() {
@@ -37,7 +44,7 @@ function writeTheme(t) {
 // the settings home: one section at a time, picked in the sidebar.
 // old tab names (openSettings('spots'), #feedback...) still land in the right place
 
-const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'account', 'help'];
+const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'comfort', 'saves', 'account', 'help'];
 const OLD_TABS = { colors: ['visuals'], feedback: ['touch'], spots: ['desktop', 'at-spots'], size: ['desktop', 'at-size'] };
 const tabs = [...document.querySelectorAll('nav button')];
 let current = 'help';
@@ -55,6 +62,8 @@ function show(tab, anchor) {
   if (tab === 'her') { HerWin.hello(); HerWin.loadHer(); }
   if (tab === 'account') HerWin.loadAccount();
   if (tab === 'saves') setTimeout(loadSaves);
+  if (tab === 'comfort') loadComfort();
+  soon();
   const el = anchor && document.getElementById(anchor);
   if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 60);
   else window.scrollTo(0, 0);
@@ -67,18 +76,17 @@ window.addEventListener('hashchange', () => { clearSearch(); show(decodeURICompo
 // ---------------------------------------------------------------
 // colors
 
-function row(title, hint, control) {
-  const r = document.createElement('div');
-  r.className = 'row';
-  const what = document.createElement('div');
-  what.className = 'what';
-  const b = document.createElement('b');
-  b.textContent = title;
-  const s = document.createElement('span');
-  s.textContent = hint;
-  what.append(b, s);
-  r.append(what, control);
-  return r;
+// every row is a standard one (js/home/controls.js); the 4th argument is its registry key
+const row = Controls.row;
+// "how often" / "how much": steps + percent
+const oftenControl = Controls.oftenCtl;
+
+// the registry pass over the page (Simple/Everything, More folds, plain-words notes), once
+// after a burst of changes
+let soonT = 0;
+function soon() {
+  if (soonT) return;
+  soonT = requestAnimationFrame(() => { soonT = 0; Controls.decorate(document.querySelector('main')); });
 }
 
 function buildColors() {
@@ -125,6 +133,7 @@ function buildAlphas() {
   host.innerHTML = '';
   const theme = readTheme();
   for (const [label, hint, key] of ALPHAS) {
+    const fkey = 'theme:' + key;
     const wrap = document.createElement('div');
     wrap.style.display = 'flex';
     wrap.style.alignItems = 'center';
@@ -145,7 +154,7 @@ function buildAlphas() {
       pct.textContent = Math.round(range.value * 100) + '%';
     });
     wrap.append(range, pct);
-    host.appendChild(row(label, hint, wrap));
+    host.appendChild(row(label, hint, wrap, fkey));
   }
   const outline = document.getElementById('outline');
   outline.value = theme.outline || 'none';
@@ -382,7 +391,7 @@ const FEEL_NAME = Object.fromEntries(Moods.FEELINGS.map(([k, n]) => [k, n.toLowe
 let pvMoodTimers = [];
 // her feelings' captions are long: centered over the little head
 function pvMoodLabel(text) {
-  if (Fx.readFx().mAmount === 'off') text = 'Turned off: pick Some or Lots under How much';
+  if (Often.pct(Fx.readFx().mAmount) === 0) text = 'Turned off: turn up How much';
   pvShowLabel(text, preview.getBoundingClientRect().width / 2, 44);
 }
 function pvMoodStop() { pvMoodTimers.forEach(clearTimeout); pvMoodTimers = []; Moods.endAll(); }
@@ -480,6 +489,7 @@ function setFx(key, value, what) {
   Fx.writeFx(f);
   Fx.applyFx(f);
   changed(what);
+  soon();
 }
 
 function selectOf(list, key, what) {
@@ -492,6 +502,7 @@ function selectOf(list, key, what) {
     sel.appendChild(o);
   }
   sel.value = Fx.readFx()[key];
+  sel.dataset.fx = key;
   sel.addEventListener('change', () => setFx(key, sel.value, what));
   return sel;
 }
@@ -500,6 +511,7 @@ function rangeOf(key, min, max, step, what, fmt) {
   wrap.style.display = 'flex';
   wrap.style.alignItems = 'center';
   wrap.style.gap = '8px';
+  wrap.dataset.fx = key;
   const r = document.createElement('input');
   r.type = 'range';
   r.min = String(min);
@@ -518,6 +530,7 @@ function checkOf(key, what) {
   const c = document.createElement('input');
   c.type = 'checkbox';
   c.checked = !!Fx.readFx()[key];
+  c.dataset.fx = key;
   c.addEventListener('change', () => setFx(key, c.checked, what));
   return c;
 }
@@ -532,6 +545,12 @@ function colorsOf(label, slots, what) {
   }, 'ds-swatch');
 }
 const times = (v) => '×' + v.toFixed(1);
+// a how-often / how-much fx setting (steps + percent)
+function fxOften(key, list, what) {
+  const c = oftenControl(Fx.readFx()[key], list, (p) => setFx(key, p, what));
+  c.dataset.fx = key;
+  return c;
+}
 
 function buildFeedback() {
   const rip = document.getElementById('rippleRows');
@@ -543,15 +562,16 @@ function buildFeedback() {
     row('Speed', 'Higher is quicker.', rangeOf('rSpeed', 0.4, 2.5, 0.1, 'ripple', times)),
     row('Rings', 'How many go out, one after another (for a burst: more pieces).', rangeOf('rRings', 1, 4, 1, 'ripple', (v) => String(v))),
     row('Line', 'How thick the line is.', rangeOf('rWidth', 1, 5, 0.5, 'ripple', (v) => v + 'px')),
-    row('Color', 'Right-click to go back to her accent color.', colorsOf('Ripple', [['Ripple', '--ripple']], 'ripple')),
+    row('Color', 'Right-click to go back to her accent color.', colorsOf('Ripple', [['Ripple', '--ripple']], 'ripple'), 'theme:--ripple'),
     row('Let her pick', 'Now and then she changes the ripple to show how she takes a touch: shaky when it\'s one she isn\'t ready for, a burst of hearts for a hug once you\'re close.', checkOf('rHerPick', 'ripple')),
   );
   const mood = document.getElementById('moodRows');
   mood.innerHTML = '';
   mood.append(
-    row('How much', 'Off, some, or lots of little effects.', selectOf(Moods.AMOUNTS, 'mAmount', 'mood')),
+    row('How much', 'From none at all to all the way. Normal is how she comes.',
+      fxOften('mAmount', Often.MUCH, 'mood')),
     row('Colors', 'One for each feeling. Right-click a color to go back to the default.',
-      colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood')),
+      colorsOf('Feelings', Moods.FEELINGS.map(([k, name]) => [name, '--mood-' + k]), 'mood'), 'theme:--mood-likes'),
     row('Tsundere moments', 'As friends she won\'t admit she loves a touch: the hearts leak out while she hides them. '
       + 'Once you\'re close she sometimes gives up hiding. From partners on, nothing to hide.', checkOf('mTsun', 'mood')),
     row('Comforted when she\'s down', 'A warm touch while she\'s upset or scared comforts her (friends and up).', checkOf('mComfort', 'mood')),
@@ -604,7 +624,7 @@ function buildFeedback() {
       selectOf(Moods.GLOW_MOVES, 'mGlowMove', 'glow')),
     row('Speed', 'How fast it moves.', rangeOf('mGlowSpeed', 0.25, 3, 0.05, 'glow', times)),
     row('Color', 'Each feeling\'s color (above), one color of your own, or a rainbow.', selectOf(Moods.GLOW_COLORS, 'mGlowColor', 'glow')),
-    row('Your color', 'Used when Color is "One color".', colorsOf('Glow', [['Glow', '--mood-glow']], 'glow')),
+    row('Your color', 'Used when Color is "One color".', colorsOf('Glow', [['Glow', '--mood-glow']], 'glow'), 'theme:--mood-glow'),
     row('In front or behind', 'Behind her it glows round her; in front it tints her too.', selectOf(Moods.GLOW_LAYERS, 'mGlowLayer', 'glow')),
     row('Fade out', 'How slowly it fades after a touch.', rangeOf('mGlowFade', 0.1, 3, 0.1, 'glow', (v) => v.toFixed(1) + ' s')),
     glowBtns,
@@ -619,12 +639,12 @@ function buildFeedback() {
     row('Animation', 'How a quick label shows up.', selectOf(Fx.LABEL_ANIMS, 'lAnim', 'label')),
     row('Border', 'How thick the edge is. 0 for none.', rangeOf('lBorder', 0, 4, 1, 'label', (v) => v + 'px')),
     row('See-through', 'How solid the box is.', rangeOf('lAlpha', 0, 1, 0.05, 'label', (v) => Math.round(v * 100) + '%')),
-    row('Colors', 'Box, edge and text. Right-click a color to go back to the default.', colorsOf('Labels', [['Box', '--label'], ['Edge', '--label-edge'], ['Text', '--label-ink']], 'label')),
+    row('Colors', 'Box, edge and text. Right-click a color to go back to the default.', colorsOf('Labels', [['Box', '--label'], ['Edge', '--label-edge'], ['Text', '--label-ink']], 'label'), 'theme:--label'),
   );
   const ico = document.getElementById('iconRows');
   ico.innerHTML = '';
   ico.append(
-    row('Robot faces', 'Her ASCII faces (^_^ >_< [ERR]): she knows she\'s an android and finds it funny.', oftenControl(Fx.readFx().eAscii, Often.OFTEN, (p) => setFx('eAscii', p, 'icon'))),
+    row('Robot faces', 'Her ASCII faces (^_^ >_< [ERR]): she knows she\'s an android and finds it funny.', fxOften('eAscii', Often.OFTEN, 'icon')),
     row('How they appear', 'Pop, bounce, wobble, drop in or spin. A mix keeps her from moving the same way every time.', selectOf(Fx.ICON_ANIMS, 'eAnim', 'icon')),
   );
   const gal = document.getElementById('gallery');
@@ -646,10 +666,13 @@ function buildFeedback() {
     }
     gal.append(h, g);
   }
+  soon();
 }
 buildFeedback();
 previewTheme();
-document.getElementById('resetFx').addEventListener('click', () => {
+// the touch section's reset: every touch feedback pick and its colors (the section reset
+// button does this plus the touch switches, through the registry)
+function resetTouchFeedback() {
   Fx.writeFx({});
   Fx.applyFx({});
   const t = readTheme();
@@ -657,7 +680,7 @@ document.getElementById('resetFx').addEventListener('click', () => {
   writeTheme(t);
   previewTheme();
   buildFeedback();
-});
+}
 
 // ---------------------------------------------------------------
 // her size: a share of the screen's height (desktop/main.js setSize).
@@ -878,47 +901,6 @@ $('saveKeep').addEventListener('change', () => D?.saves && savesCall('keep', $('
 $('updateNow').addEventListener('click', () => D?.saves && savesCall('update'));
 D?.onSavesChanged?.(() => { if (!$('tab-saves').hidden) loadSaves(); });
 
-// "how often" / "how much": the named steps in a dropdown AND a slider for any percent (desktop/often.js).
-// onChange(percent) runs when he picks a step or lets go of the slider
-function oftenControl(value, list, onChange, disabled) {
-  const wrap = document.createElement('div');
-  wrap.className = 'often';
-  const sel = document.createElement('select');
-  sel.className = 'btn';
-  const own = document.createElement('option');
-  own.value = 'own';
-  sel.appendChild(own);
-  for (const [v, name] of list) {
-    const o = document.createElement('option');
-    o.value = String(v); o.textContent = name;
-    sel.appendChild(o);
-  }
-  const line = document.createElement('div');
-  line.className = 'often-line';
-  const r = document.createElement('input');
-  r.type = 'range'; r.min = '0'; r.max = '100'; r.step = '1';
-  r.setAttribute('aria-label', 'Percent');
-  const out = document.createElement('span');
-  out.className = 'pct';
-  line.append(r, out);
-  wrap.append(sel, line);
-  const draw = (p) => {
-    p = Math.round(Often.pct(p));
-    r.value = String(p);
-    out.textContent = p + '%';
-    const step = list.some(([v]) => v === p);
-    own.hidden = step;
-    own.textContent = 'Your own (' + p + '%)';
-    sel.value = step ? String(p) : 'own';
-  };
-  draw(value);
-  sel.disabled = r.disabled = !!disabled;
-  sel.addEventListener('change', () => { if (sel.value === 'own') return; draw(Number(sel.value)); onChange(Number(sel.value)); });
-  r.addEventListener('input', () => draw(Number(r.value)));
-  r.addEventListener('change', () => onChange(Number(r.value)));
-  return wrap;
-}
-
 // ---------------------------------------------------------------
 // "On the desktop" switches (they used to live only in the tray and Jun menu; the menus still have
 // the quick ones). kept in desktop.json by the app, through junDesktop.desk()
@@ -952,6 +934,7 @@ const DESK_ROWS = {
 async function deskCall(action, key, value) {
   if (!D?.desk) return;
   deskState = await D.desk(action, key, value);
+  Stores.setDesk(deskState);
   drawDesk();
 }
 function deskControl(key) {
@@ -999,20 +982,23 @@ function drawDesk() {
   }
   const note = document.getElementById('deskNote');
   if (note) note.hidden = !!deskState;
+  drawPresets();
+  soon();
   if (searchBox.value.trim()) runSearch();
 }
 async function loadDesk() {
   deskState = D?.desk ? await D.desk('get').catch(() => null) : null;
+  Stores.setDesk(deskState);
   drawDesk();
 }
-D?.onDeskChanged?.((st) => { deskState = st; drawDesk(); });
+D?.onDeskChanged?.((st) => { deskState = st; Stores.setDesk(st); drawDesk(); });
 
 // ---------------------------------------------------------------
 // search over every setting: rows and headings in every section. a hit opens its section and
 // scrolls to it, so nothing has to move around to be found
 
 const searchBox = document.getElementById('setSearch');
-const NAMES = { her: 'Her', talk: 'Talking & voice', touch: 'Touch & feelings', desktop: 'On the desktop', visuals: 'Visuals', saves: 'Saves & updates', account: 'Account & advanced', help: 'How to play' };
+const NAMES = { her: 'Her', talk: 'Talking & voice', touch: 'Touch & feelings', desktop: 'On the desktop', visuals: 'Visuals', comfort: 'Comfort & ratings', saves: 'Saves & updates', account: 'Account & advanced', help: 'How to play' };
 const norm = (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
 function runSearch() {
   const q = norm(searchBox.value);
@@ -1034,13 +1020,23 @@ function runSearch() {
       const title = (isRow ? el.querySelector('.what b')?.textContent : el.textContent || '').trim();
       if (!title) continue;
       const under = isRow ? [h2, h3].filter(Boolean).join(' › ') : (el.tagName === 'H3' ? h2 : '');
-      const text = norm(title + ' ' + (isRow ? el.querySelector('.what span')?.textContent || '' : '') + ' ' + under);
+      const text = norm(title + ' ' + (isRow ? el.querySelector('.what span')?.textContent || '' : '') + ' ' + under
+        + ' ' + (isRow ? Controls.wordsOfRow(el) : ''));
       if (!words.every(w => text.includes(w))) continue;
       const t = norm(title);
       // a title that says it ranks first, then whole sections/headings, then the rest
       const rank = words.every(w => t.includes(w)) ? (isRow ? 0 : 1) : 2;
-      hits.push({ id, el, title, where: NAMES[id] + (under ? ' › ' + under : ''), rank, n: hits.length });
+      hits.push({ id, el, title, where: NAMES[id] + (under ? ' › ' + under : ''), rank, n: hits.length, feature: isRow ? el.dataset.feature : '' });
     }
+  }
+  // features with no row of their own here (touches, her window's things): from the registry
+  const found = new Set(hits.map(h => h.feature).filter(Boolean));
+  for (const f of F.search(q)) {
+    if (found.has(f.id)) continue;
+    if (f.section !== 'elsewhere' && document.querySelector('#tab-' + f.section + ' .row[data-feature="' + f.id + '"]')) continue;
+    const t = norm(f.name);
+    hits.push({ id: f.section === 'elsewhere' ? '' : f.section, el: null, title: f.name, line: f.line, anchor: f.anchor,
+      where: f.where || (NAMES[f.section] || ''), rank: words.every(w => t.includes(w)) ? 0 : 3, n: hits.length });
   }
   hits.sort((a, b) => a.rank - b.rank || a.n - b.n);
   for (const h of hits.slice(0, 40)) {
@@ -1055,15 +1051,19 @@ function runSearch() {
     const b = document.createElement('b');
     b.textContent = h.title;
     what.append(where, b);
+    if (h.line) { const l = document.createElement('span'); l.textContent = h.line; what.appendChild(l); }
     r.appendChild(what);
     const go = () => {
+      if (!h.id) return; // somewhere else (her window): the line says where
       clearSearch();
-      show(h.id);
+      show(h.id, h.el ? null : h.anchor);
+      if (!h.el) return;
       // some sections redraw their rows when they open, so find it again by its title
       setTimeout(() => {
         let el = h.el;
         if (!el.isConnected) el = [...document.querySelectorAll('#tab-' + h.id + ' .row')].find(x => x.querySelector('.what b')?.textContent.trim() === h.title) || null;
         if (!el) return;
+        Controls.reveal(el);
         el.scrollIntoView({ block: 'center' });
         if (el.matches('.row')) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
       }, 150);
@@ -1098,10 +1098,180 @@ window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); searchBox.focus(); searchBox.select(); }
 });
 
+// ---------------------------------------------------------------
+// Simple / Everything (the registry's layers): Simple keeps the extras behind "More settings"
+
+const layerPick = document.getElementById('layerPick');
+layerPick.value = F.layer();
+layerPick.addEventListener('change', () => { F.setLayer(layerPick.value); soon(); });
+
+// ---------------------------------------------------------------
+// presets: bundles of settings to start from. one click undoes the last one
+
+function drawPresets() {
+  const host = document.getElementById('presetRows');
+  if (!host) return;
+  host.innerHTML = '';
+  const box = document.createElement('div');
+  box.className = 'adds';
+  for (const p of F.presets()) {
+    const b = Controls.buttonCtl(p.name, async () => {
+      await Stores.applyPreset(p);
+      presetMsg('Now: ' + p.name + '. ' + p.line);
+      await loadDesk();
+      buildFeedback();
+      drawPresets();
+    }, { disabled: !deskState });
+    b.title = p.line;
+    box.appendChild(b);
+  }
+  host.appendChild(box);
+  const u = Stores.undoInfo();
+  if (u) host.appendChild(Controls.buttonCtl('Undo "' + u.name + '"', async () => {
+    await Stores.undoPreset();
+    presetMsg('Back to how you had it.');
+    await loadDesk();
+    buildFeedback();
+    drawPresets();
+  }));
+}
+function presetMsg(t) { const m = document.getElementById('presetMsg'); if (m) m.textContent = t; }
+
+// ---------------------------------------------------------------
+// a reset per section: back to how she comes (only the settings this page can change)
+
+for (const b of document.querySelectorAll('[data-reset]')) {
+  b.addEventListener('click', async () => {
+    if (!b.classList.contains('armed')) {
+      b.classList.add('armed');
+      b.dataset.text = b.textContent;
+      b.textContent = 'Click again to reset';
+      setTimeout(() => { b.classList.remove('armed'); b.textContent = b.dataset.text; }, 3000);
+      return;
+    }
+    b.classList.remove('armed');
+    b.textContent = b.dataset.text;
+    await Stores.resetSection(b.dataset.reset);
+    if (b.dataset.reset === 'touch') resetTouchFeedback();
+    await loadDesk();
+    buildFeedback();
+  });
+}
+
+// ---------------------------------------------------------------
+// Comfort & ratings: what you are to each other, Flirty, 18+. his choices, kept on her server;
+// every feature asks the one gate (js/core/gate.js), nothing here does its own check
+
+let comfortMsgT = 0;
+function comfortMsg(t, err) {
+  const m = document.getElementById('comfortMsg');
+  if (!m) return;
+  m.textContent = t;
+  m.classList.toggle('err', !!err);
+  clearTimeout(comfortMsgT);
+  comfortMsgT = setTimeout(() => { m.textContent = ''; }, 4000);
+}
+async function setComfort(patch) {
+  try { await Gate.saveComfort(patch); } catch (e) {
+    comfortMsg(e.message === 'confirm_adult' ? 'Confirm you\'re 18 or older first.' : 'Couldn\'t save that. Is she running?', true);
+  }
+  drawComfort();
+}
+async function loadComfort() {
+  drawComfort();
+  await Gate.loadComfort();
+  drawComfort();
+}
+Gate.onComfort(() => { if (current === 'comfort') drawComfort(); });
+
+function drawComfort() {
+  const c = Gate.comfort();
+  const fl = Gate.FLAVORS.find(f => f[0] === c.flavor) || Gate.FLAVORS[0];
+  const flavorHost = document.getElementById('flavorRows');
+  flavorHost.innerHTML = '';
+  flavorHost.append(
+    row('What you are to each other', fl[2],
+      Controls.choiceCtl(Gate.FLAVORS.map(f => [f[0], f[1]]), c.flavor, (v) => setComfort({ flavor: v })), 'comfort:flavor'),
+    row('Keep it where it is', 'She won\'t bring up becoming something more. You can still change it here.',
+      Controls.switchCtl(c.flavorLock, (v) => setComfort({ flavorLock: v })), 'comfort:flavorLock'),
+  );
+  if (c.flavor === 'siblings') {
+    flavorHost.append(row('Flirty and 18+ as siblings', 'Off by default. Made by you in the makers; both adults, always.',
+      Controls.switchCtl(c.siblingsRated, (v) => setComfort({ siblingsRated: v })), 'comfort:siblingsRated'));
+  }
+
+  const host = document.getElementById('ratingRows');
+  host.innerHTML = '';
+  const locked = (tier) => {
+    const r = Gate.check({ tier }, { comfort: { ...c, flirty: true, adult: true, adultConfirmed: true, adultOutside: true }, mode: 'windowed', stage: 6, trust: 100 });
+    return r.show ? '' : r.words;
+  };
+  const flirtyLock = locked('flirty');
+  const fr = row('Flirty moments', flirtyLock || 'Teasing, butt swats, long kisses, thigh squeezes. Always with her say, by your bond.',
+    Controls.switchCtl(c.flirty && !flirtyLock, (v) => setComfort({ flirty: v }), !!flirtyLock), 'comfort:flirty');
+  if (flirtyLock) fr.classList.add('off');
+  host.appendChild(fr);
+
+  const adultLock = locked('adult');
+  const adultCtl = document.createElement('div');
+  adultCtl.className = 'adds';
+  if (!c.adult && !c.adultConfirmed && !adultLock) {
+    // the first time: he says he's 18 or older, plainly, with one more click
+    adultCtl.appendChild(Controls.buttonCtl('Turn on…', (e) => {
+      const b = e.currentTarget;
+      b.replaceWith(Controls.buttonCtl('I\'m 18 or older, turn it on', () => setComfort({ adult: true, confirmAdult: true }), { accent: true }));
+    }));
+  } else {
+    adultCtl.appendChild(Controls.switchCtl(c.adult && !adultLock, (v) => setComfort({ adult: v }), !!adultLock));
+  }
+  const ar = row('18+', adultLock || (c.adultConfirmed ? 'Made in the makers, by you or in packs you add.' : 'Made in the makers, by you or in packs you add. Off until you confirm you\'re 18 or older.'), adultCtl, 'comfort:adult');
+  if (adultLock) ar.classList.add('off');
+  host.appendChild(ar);
+  if (c.adult && !adultLock) {
+    host.appendChild(row('18+ outside her window', 'Off: 18+ stays in her window, never on the desktop or in compact.',
+      Controls.switchCtl(c.adultOutside, (v) => setComfort({ adultOutside: v })), 'comfort:adultOutside'));
+  }
+  soon();
+}
+
+// ---------------------------------------------------------------
+// new things after an update: surprise me / ask me / keep them off, and the "what's new" card
+
+function drawNewPolicy() {
+  const host = document.getElementById('newFeatRows');
+  if (!host) return;
+  host.innerHTML = '';
+  host.appendChild(row('New things after an update', 'When an update brings something new for her: on as she comes, a short card first, or kept off.',
+    Controls.choiceCtl(F.POLICIES, F.policy(), (v) => { F.setPolicy(v); }), 'local:jun.features.policy'));
+}
+async function whatsNew() {
+  F.firstRun();
+  const fresh = F.unseen();
+  const card = document.getElementById('newCard');
+  if (!fresh.length || !card) return;
+  const pol = F.policy();
+  // keep them off: switch off what can be switched off here, and say so
+  if (pol === 'off') for (const f of fresh) if (f.key && Stores.canWrite(f.key)) await Stores.write(f.key, typeof Stores.defaultOf(f.key) === 'number' ? 0 : false);
+  card.innerHTML = '';
+  const h = document.createElement('b');
+  h.textContent = pol === 'off' ? 'New, and kept off for now' : pol === 'ask' ? 'New for her. Want these?' : 'New for her';
+  card.appendChild(h);
+  for (const f of fresh) {
+    const ctl = pol === 'ask' && f.key && Stores.canWrite(f.key) && F.kindOf(f.key) === 'feature'
+      ? Controls.switchCtl(Stores.isOn(f.id), (v) => Stores.write(f.key, v)) : null;
+    card.appendChild(row(f.name, f.line, ctl));
+  }
+  card.appendChild(Controls.buttonCtl('Got it', () => { F.markSeen(fresh.map(f => f.id)); card.hidden = true; }, { accent: true }));
+  card.hidden = false;
+}
+
 // her window's settings (mirrors), her bond and memories, the account: js/home/herwin.js
 HerWin.wire();
-HerWin.setOnChange(() => { if (searchBox.value.trim()) runSearch(); });
+HerWin.setOnChange(() => { soon(); if (searchBox.value.trim()) runSearch(); });
 HerWin.startMirrors();
 HerWin.loadAccount();
 loadDesk();
+drawNewPolicy();
+Gate.loadComfort();
+whatsNew();
 show(decodeURIComponent(location.hash.slice(1)) || 'help');

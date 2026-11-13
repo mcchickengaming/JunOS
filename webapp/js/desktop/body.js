@@ -655,6 +655,11 @@ export function spotCircle(kind, side = 1) {
   return { x: a.x + (c.pair ? side : 1) * c.dx * u, y: a.y + c.dy * u, r, rx: r * (c.w || 1) };
 }
 
+// which spots may answer at all: desktop.js asks the consent + ratings gate (js/core/gate.js),
+// e.g. her thigh is a flirty spot. a spot that may not is just her body (click = chat, drag = carry)
+let spotAllowed = () => true;
+export function setSpotGate(fn) { spotAllowed = typeof fn === 'function' ? fn : () => true; }
+
 export function regionAt(x, y) {
   const a = anchor();
   if (!a) return null;
@@ -672,6 +677,7 @@ export function regionAt(x, y) {
       if (d <= 1 && (!best || d < best.d)) best = { d, kind, side };
     }
   }
+  if (best && !spotAllowed(best.kind)) best = null;
   if (best) {
     const side = best.kind === 'hand' ? (best.side < 0 ? 'left' : 'right') : best.kind === 'head' ? 0 : best.side;
     return { kind: best.kind, side };
