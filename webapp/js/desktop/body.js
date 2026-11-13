@@ -1263,6 +1263,11 @@ const MOVE_MS = { lookAround: 2600, stretch: 2400, yawn: 2300, rest: 7500, sway:
 // the thought icon that goes with a move, if any
 const MOVE_EMOTE = { lookAround: 'question', yawn: 'dots', rest: 'dots', sway: 'note', wave: 'heart', lookAway: 'dots' };
 
+// core feel (#27): her needs add to the pool (sleepy → yawns, playful → sways), and the repeat
+// watcher picks from it so she doesn't do the same move again and again. desktop.js sets it
+let idleHook = null;
+export function setIdleHook(h) { idleHook = h || null; }
+
 export function idleMove() {
   if (asleep || walkDir || carried || patting() || performance.now() < busyMove) return null;
   // what she feels like doing depends on her mood and the hour
@@ -1274,7 +1279,8 @@ export function idleMove() {
   if (mood === 'nervous' || mood === 'scared') pool.push('lookAround', 'lookAround', 'ears', 'lookAway');
   if (part === 'night') pool.push('yawn', 'yawn', 'yawn', 'rest', 'rest');
   if (part === 'morning') pool.push('stretch', 'stretch');
-  const kind = pool[Math.floor(Math.random() * pool.length)];
+  if (idleHook?.extras) pool.push(...idleHook.extras().filter(k => k !== 'wave' || friendly));
+  const kind = (idleHook?.pick && idleHook.pick(pool)) || pool[Math.floor(Math.random() * pool.length)];
   play(kind);
   return kind;
 }

@@ -13,7 +13,7 @@
 
 import * as Auth from './core/auth.js?v=1';
 import { api, apiJson } from './core/api.js?v=1';
-import * as ChatAPI from './core/chat-api.js?v=8';
+import * as ChatAPI from './core/chat-api.js?v=9';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
@@ -25,14 +25,16 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=94';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
-import * as Body from './desktop/body.js?v=44';
-import * as TouchLog from './core/touch-log.js?v=1';
-import * as Fx from './desktop/fx.js?v=10';
-import * as Moods from './desktop/moods.js?v=12';
+import * as Body from './desktop/body.js?v=45';
+import * as TouchLog from './core/touch-log.js?v=2';
+import * as Fx from './desktop/fx.js?v=11';
+import * as Moods from './desktop/moods.js?v=14';
 import * as FeelBody from './desktop/feelbody.js?v=5';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 import * as Often from './desktop/often.js?v=2';
 import * as Gate from './core/gate.js?v=3';
+import * as Features from './core/features.js?v=3';
+import * as Feel from './core/feel/feel.js?v=2';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -74,6 +76,11 @@ Moods.setAnchor(() => (ready ? Live2D.faceAnchor() : null), document.body);
 // ...and in her body: ears, tail, eyes, blush, a soft lean (desktop/feelbody.js)
 FeelBody.setPrefs(Fx.currentFx());
 Moods.setBody(FeelBody);
+// core feel (#27): her needs, getting tired of things, the repeat watcher and the reaction
+// composer. Every touch Moods sees goes to it; her idle moves and thought icons ask it too
+Feel.configure({ isOn: (id) => Features.isOn(id) });
+Moods.setFeel(Feel);
+Body.setIdleHook({ extras: () => Feel.idleExtras(), pick: (pool) => Feel.Repeat.pick('idle', pool) });
 FeelBody.setOnAway((ms) => Body.busyFor(ms));
 // where his hand is, so she leans away from it, not from where it pressed
 window.addEventListener('pointermove', (e) => Moods.setPointer(e.clientX, e.clientY), { capture: true, passive: true });
@@ -169,6 +176,8 @@ function speak(raw, fallback) {
     .replace(/\[\s*A(?:CTIONS?)?\s*:[^\]]*\]/gi, '')
     .replace(/\s+/g, ' ').replace(/^[\s,.;:]+/, '').trim();
   const line = Names.apply(spoken) || fallback;
+  // the repeat watcher remembers it, so her next desktop line isn't the same one
+  if (line) Feel.Repeat.note('line', line.slice(0, 160));
   // a touch reaction with nothing back from her brain: she just doesn't say anything
   return line ? say(line) : Promise.resolve();
 }
@@ -196,18 +205,42 @@ async function ask(content, { ephemeral, fallback }) {
 
 // one short in-character line about what just happened on the
 // desktop. never two in a row
-async function react(kind) {
+async function react(kind, extraNote = null) {
   if (!ready || busy) return;
   // quiet mode: she keeps her thoughts to herself
   if (settings.quiet) return;
   if (kind !== 'inside' && Date.now() - lastReactAt < 20000) return;
   lastReactAt = Date.now();
-  const touch = TOUCH_NOTES[kind];
-  const note = touch
+  const touch = TOUCH_NOTES[kind] || extraNote;
+  let note = touch
     ? `${OOC}${touch}, with his mouse cursor, while you're out on his desktop. React out loud in one short line, in character, the way you honestly feel about him and about this right now. If his touches today show he has been doing this a lot, you can notice that. No narration.)`
     : NOTES[kind];
+  // the repeat watcher: her last few lines out here, so this one is new
+  const lately = Feel.switches().repeat ? Feel.Repeat.recent('line', 3) : [];
+  if (lately.length) note = note.replace(/\)$/, ` Say something different from what you said just now: ${lately.map(l => '"' + l + '"').join(', ')}.)`);
   await ask(note, { ephemeral: true, fallback: touch ? '' : FALLBACK[kind] });
 }
+
+// ---------------------------------------------------------------
+// core feel: she's had plenty / enough of something. a playful "that's enough for now", never a
+// punishment: a look, a pout icon, now and then a line. it wears off by itself (2-3 hours)
+Feel.onChange((ev) => {
+  if (ev.type !== 'tired' || !ready) return;
+  const words = ev.words || 'that';
+  if (ev.state === 'plenty') {
+    if (Math.random() < 0.4) showEmote(Feel.Repeat.pick('emote', ['dots', 'a_flat', 'sweat']));
+    return;
+  }
+  // enough (or a little sore): she shows it
+  Body.play(Feel.Repeat.pick('reaction', ['lookAway', 'ears', 'lookAway']));
+  showEmote(Feel.Repeat.pick('emote', ['hmph', 'a_flat', 'dots', 'a_err']));
+  Moods.burst('flustered', 0.55);
+  if (settings.quiet || Math.random() > 0.45 * Often.mul(settings.talk)) return;
+  const what = ev.state === 'sore'
+    ? `Anon has given you so many ${words} that you're a little sore now`
+    : `Anon has given you so many ${words} that you've had enough of that for now and would like something else for a while`;
+  react('tired:' + ev.kind, `${what} (playful, never upset, you'll be fine in a while)`);
+});
 
 // ---------------------------------------------------------------
 // she says something about a touch now and then, never every time.
@@ -1363,7 +1396,7 @@ const endPress = (e) => {
     if (dozing) wake(true);
     D?.stopWalk();
     actionLabel(POKE_LABEL[p.region.kind] || 'Poke', e.clientX, e.clientY);
-    if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); Moods.burst('notready', 0.95); }
+    if (Body.poke(p.region)) { actionLabel('Too many pokes!', e.clientX, e.clientY - 22); react('poked'); Moods.burst('notready', 0.95); Feel.poke(p.region.kind); }
     else { maybeSay(POKE_TALK[p.region.kind]); Moods.poke(p.region.kind, { x: e.clientX, y: e.clientY }); }
     touched(p.region.kind);
     TouchLog.tap(POKE_KIND[p.region.kind]);
@@ -1464,7 +1497,7 @@ D?.onWalk(({ state, dir, speed, edge, kind }) => {
   if (state === 'landed' && MODE === 'stepout') {
     // not every single time he moves her, that gets old
     drops++;
-    if (thrown) react('thrown');
+    if (thrown) { Feel.toss(); react('thrown'); }
     else if (drops === 1 || Math.random() < 0.3) react('dropped');
   }
   thrown = false;
@@ -1475,6 +1508,7 @@ function doze() {
   if (dozing || busy) return;
   dozing = true;
   dozeAt = Date.now();
+  Feel.resting(true);
   D?.stopWalk();
   closeTalk();
   Body.setAsleep(true);
@@ -1489,6 +1523,7 @@ function doze() {
 function wake(withLine) {
   if (!dozing) return;
   dozing = false;
+  Feel.resting(false);
   zzz.hidden = true;
   Body.setAsleep(false);
   Live2D.stopLoop('ParamBodyY');
@@ -1545,7 +1580,8 @@ function scheduleMoves() {
         if (close >= 3 && Math.random() < 0.3) pool.push('a_love');
         if (mood === 'nervous' || mood === 'scared') pool.push('sweat', 'sweat', 'a_fluster', 'a_shock');
         if (mood === 'upset') pool.push('dots', 'anger', 'hmph', 'a_flat', 'a_cry');
-        showEmote(Fx.pickFromPool(pool));
+        pool.push(...Feel.thoughtExtras());
+        showEmote(Fx.pickFromPool(pool, (list) => Feel.Repeat.pick('thought', list)));
       } else {
         Body.idleMove();
       }

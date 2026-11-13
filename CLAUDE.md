@@ -57,6 +57,8 @@ php .github/scripts/migrations.test.php
 php .github/scripts/bond.test.php
 php .github/scripts/touch.test.php
 php .github/scripts/quirks.test.php
+php .github/scripts/feel.test.php
+node --test .github/scripts/js/*.test.mjs
 ```
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
 temp sqlite, real migrations, stubbed app functions) and a step in `.github/workflows/ci.yml`.
@@ -326,6 +328,34 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   glitch, "Run the checks" (11 checks for design sheet §7, incl. Jun's own params.js/anim.js/geometry.js on the new rig).
   Node tests: `.github/scripts/js/rig.test.mjs`. Licenses: NOTICE section 8. No puppets in git (example puppets are
   CC BY 4.0, credit seagetch if ever shown).
+
+- **Core feel, part 1** (#27, Nov 13, Fable week step 4, built on Opus; the full composer is Fable's next):
+  `webapp/js/core/feel/`, one shared inside state for every window (localStorage `jun.feel`, lazy: values are kept with
+  the time they were true and moved forward when read, nothing ticks, so she keeps living with no window open).
+  `feel.js` is the one door (events in: `touchBegin/End/Kind/Move` from moods.js, `held`, `poke`, `combo`, `message`
+  from chat-api.js, `toss`, `resting`; out: `compose`, `idleExtras`, `thoughtExtras`, `forChat`, `snapshot`, `onChange`
+  for "she's had plenty/enough"). `store.js` (shared state, `hash01` seeded per install), `tune.js` (EVERY number,
+  `DEFAULTS` + feel-lab overrides in `jun.feel.tune`), `kinds.js` (touch kinds: moods.js hold names, `poke.<spot>`,
+  `combo.<id>`, toss/carry/fetch; words = api/lib/feel.php `FEEL_KIND_WORDS`, a test keeps them equal), `needs.js`
+  (attention, affection, play, rest, stimulation 0..1; her own pace per need; rest by the hour, she sleeps through
+  quiet nights; missing him levels off at `awayCap`), `tired.js` (load per kind + a share on related kinds, halves
+  every 40 min; states fresh/enjoying/plenty/enough/sore, sore only for kinds in `setSoreKinds` (none yet: the Flirty
+  butt swat, via the gate); `factor` = power left; her own favorites `fav()` seeded + weekly drift + mood/needs nudge;
+  `crossed()` once per crossing), `repeat.js` (the repeat watcher: `note/penalty/pick` per channel line/emote/idle/
+  thought/reaction/piece, `build(id, ms)` opens a moment where `okBuild` items pass), `shape.js` (session phase:
+  away/greeting/warmup/peak/winddown/afterglow from the history), `compose.js` (THE REACTION COMPOSER: contract in
+  its header; the body is a simple baseline, Fable replaces it). moods.js `setFeel(Feel)`: every hold/rub feeling
+  (each 120 ms tick), poke and combo goes through `compose()`, and begin/end/move tell feel. Desktop: idle moves
+  (body.js `setIdleHook`) and thought icons (fx.js `pickFromPool(pool, picker)`) get her needs' extras and are
+  picked by the repeat watcher; her desktop lines are remembered and her next touch line is told not to repeat them;
+  "had enough" = a look away, a pout icon, a flustered puff and now and then a playful line. Her prompt: chat-api.js
+  sends `feel` (`forChat()`), `api/lib/feel.php` `feel_context` turns it into a few lines in words after the comfort
+  block (`JUN_FEEL`, default on). Settings > Touch & feelings > Inside her (`#insideRows`, `buildInside()`):
+  feature:needs / tiring / favorites / repeat, local `jun.feel.tirePct` (0..100, 50 natural), a live "Right now" line,
+  "Open the feel lab". **Feel lab** `webapp/feel-lab.html` + `js/feel-lab.js` (opens from Settings in its own window,
+  main.js allows only that url): needs (settable), phase, tired table, favorites, repeat memory, history, a dry-run
+  "try a touch" (moods.js vs the composer, with the composer's `why`), every TUNE number live. Console: `jun.feel()`,
+  `jun.lab()`. Factory reset clears `jun.feel`. Tests: `.github/scripts/js/feel.test.mjs`, `.github/scripts/feel.test.php`.
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

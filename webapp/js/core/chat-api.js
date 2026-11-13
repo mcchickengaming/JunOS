@@ -1,5 +1,6 @@
 import { api, apiJson } from './api.js?v=1';
-import * as TouchLog from './touch-log.js?v=1';
+import * as TouchLog from './touch-log.js?v=2';
+import * as Feel from './feel/feel.js?v=2';
 
 export async function listModels() {
   const r = await api('models.php');
@@ -10,6 +11,11 @@ export async function listModels() {
 export function chat({ messages, model, reasoning, think, outfit_context, mod_items, conversation_id, idle, ephemeral, client_time, audio, voice, hear_all, invite, tts, regenerate, frames, watch }, { onToken, onThinking, onDone, onError, onDebug, onStats, onToolStatus, onOutfit, onGo, onSilence, onFled, onRestart }) {
   const ctrl = new AbortController();
 
+  // his own message counts toward her needs (attention) and the session (core feel #27)
+  if (!idle && !ephemeral && !regenerate && !watch) { try { Feel.message(); } catch (e) { /* never in the way of a chat */ } }
+  let feel = null;
+  try { feel = Feel.forChat(); } catch (e) { feel = null; }
+
   (async () => {
     try {
       const res = await apiJson('chat.php',
@@ -17,7 +23,10 @@ export function chat({ messages, model, reasoning, think, outfit_context, mod_it
           tz: -new Date().getTimezoneOffset(),
           // his touches since the last turn, and what his hands are doing
           // right now, so this reply already knows (lib/touch.php)
-          touches: TouchLog.takeBatch(), touch_now: TouchLog.now() },
+          touches: TouchLog.takeBatch(), touch_now: TouchLog.now(),
+          // how she is inside right now (needs, what she's had plenty of, the session), in words
+          // on the server (lib/feel.php)
+          feel },
         { signal: ctrl.signal });
       if (!res.ok || !res.body) {
         const error = new Error(`http ${res.status}`);

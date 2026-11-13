@@ -8,14 +8,15 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
-import * as Fx from './desktop/fx.js?v=10';
-import * as Moods from './desktop/moods.js?v=12';
+import * as Fx from './desktop/fx.js?v=11';
+import * as Moods from './desktop/moods.js?v=14';
 import * as Often from './desktop/often.js?v=2';
-import * as HerWin from './home/herwin.js?v=7';
+import * as HerWin from './home/herwin.js?v=8';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=3';
-import * as Controls from './home/controls.js?v=8';
-import * as Stores from './home/stores.js?v=5';
+import * as Controls from './home/controls.js?v=9';
+import * as Stores from './home/stores.js?v=6';
+import * as Feel from './core/feel/feel.js?v=2';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -552,6 +553,44 @@ function fxOften(key, list, what) {
   return c;
 }
 
+// core feel (#27): her needs, getting tired of things, her own favorites, the repeat watcher, and
+// the feel lab. Plain switches (feature:<id>) + how quickly she's had enough (local, 0..100)
+function buildInside() {
+  const host = document.getElementById('insideRows');
+  if (!host) return;
+  host.innerHTML = '';
+  const sw = (id) => Controls.switchCtl(F.isOn(id), async (v) => { await Stores.write('feature:' + id, v); Feel.refresh(); buildInside(); soon(); });
+  const pace = Often.pct(localStorage.getItem(Feel.PACE_KEY), 50);
+  host.append(
+    Controls.row('Her needs', 'She wants attention, affection, play, rest and something new now and then. It shapes what she does on her own and colors what she says.', sw('needs'), 'feature:needs'),
+    Controls.row('Getting tired of things', 'The same touch over and over gives less, then she\'s had enough for a while (playfully). Fresh again in a couple of hours.', sw('tiring'), 'feature:tiring'),
+    Controls.row('How quickly she\'s had enough', 'Normal is how she comes.',
+      Controls.oftenCtl(pace, Often.MUCH, (v) => { try { localStorage.setItem(Feel.PACE_KEY, String(v)); } catch (e) {} Feel.refresh(); }, !F.isOn('tiring')), 'local:jun.feel.tirePct'),
+    Controls.row('Her own favorites', 'She has touches she likes best, her own, drifting over the weeks. What works best depends on her mood.', sw('favorites'), 'feature:favorites'),
+    Controls.row('She mixes it up', 'She avoids doing, showing or saying the same thing twice in a row.', sw('repeat'), 'feature:repeat'),
+    Controls.row('Feel lab', 'How she is inside, live. Try a touch without touching her, tune any number. For tuning only.',
+      Controls.buttonCtl('Open the feel lab', () => window.open('feel-lab.html', 'feellab'))),
+  );
+  drawInsideNow();
+}
+// one short line on how she is right now (settings may say it more exactly than she would)
+function drawInsideNow() {
+  const el = document.getElementById('insideNow');
+  if (!el) return;
+  let s;
+  try { s = Feel.snapshot(); } catch (e) { el.textContent = ''; return; }
+  const bits = [];
+  if (s.switches.needs) {
+    const wants = Feel.Needs.NEEDS.filter(k => s.needs[k] >= 0.5).sort((a, b) => s.needs[b] - s.needs[a]).slice(0, 2);
+    for (const k of wants) bits.push('she ' + Feel.Needs.words(k, s.needs[k]));
+  }
+  const tired = s.tired.filter(x => x.state === 'plenty' || x.state === 'enough' || x.state === 'sore').slice(0, 2);
+  const TIRED_WORDS = { plenty: 'had plenty of', enough: 'had enough of', sore: 'a little sore after all the' };
+  for (const x of tired) bits.push('she\'s ' + TIRED_WORDS[x.state] + ' ' + (Feel.Kinds.wordsOf(x.kind) || 'that') + ' for now');
+  el.textContent = 'Right now: ' + (bits.length ? bits.join(', ') + '.' : 'she\'s content.');
+}
+setInterval(() => { if (current === 'touch' && !document.hidden) drawInsideNow(); }, 5000);
+
 function buildFeedback() {
   const rip = document.getElementById('rippleRows');
   rip.innerHTML = '';
@@ -630,6 +669,7 @@ function buildFeedback() {
     glowBtns,
   );
   buildMoodBtns();
+  buildInside();
   const lab = document.getElementById('labelRows');
   lab.innerHTML = '';
   lab.append(
@@ -1311,8 +1351,17 @@ window.jun = {
     console.log('jun.changed()                every setting you changed from how she comes');
     console.log('jun.state()                  a quick check-up: what is connected, what is on');
     console.log('jun.reset("touch")           a whole section back to how she comes');
+    console.log('jun.feel()                   how she is inside right now (needs, tired of, session, what she just did)');
+    console.log('jun.lab()                    open the feel lab');
     return 'Names are the ones you see in Settings. Her window\'s settings (voice, mic...) work while her window is open.';
   },
+  feel() {
+    const s = Feel.snapshot();
+    console.table(Object.fromEntries(Feel.Needs.NEEDS.map(k => [k, { now: Math.round(s.needs[k] * 100) / 100, words: Feel.Needs.words(k, s.needs[k]) || 'content' }])));
+    if (s.tired.length) console.table(s.tired.map(x => ({ touch: Feel.Kinds.wordsOf(x.kind) || x.kind, state: x.state, load: +x.load.toFixed(2), favorite: +x.fav.toFixed(2), 'power left': Math.round(x.factor * 100) + '%' })));
+    return { phase: s.phase, strongestWant: s.top, mood: s.mood, switches: s.switches, justDid: s.repeat };
+  },
+  lab() { window.open('feel-lab.html', 'feellab'); return 'Opening the feel lab…'; },
   find(q) {
     const list = (q ? F.search(q) : F.all()).filter(f => f.key);
     console.table(list.map(f => ({ name: f.name, now: Stores.peek(f.key), default: Stores.defaultOf(f.key),

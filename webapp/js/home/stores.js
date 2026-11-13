@@ -2,7 +2,7 @@
 // "stores"), so resets, presets and the new-features card work the same for every feature,
 // wherever it happens to be stored. Settings stay where they always were.
 
-import * as Fx from '../desktop/fx.js?v=10';
+import * as Fx from '../desktop/fx.js?v=11';
 import * as F from '../core/features.js?v=3';
 import * as Gate from '../core/gate.js?v=3';
 

@@ -924,7 +924,10 @@ function openSettings(tab) {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
   settingsWin.setMenu(null);
-  settingsWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  // the feel lab (core feel #27) opens in its own window from Settings; nothing else does
+  settingsWin.webContents.setWindowOpenHandler(({ url }) => (url.startsWith(ORIGIN + '/feel-lab.html')
+    ? { action: 'allow', overrideBrowserWindowOptions: { width: 1100, height: 860, autoHideMenuBar: true, title: 'Feel lab' } }
+    : { action: 'deny' }));
   settingsWin.loadURL(`${JUN_URL}/desktop-settings.html#${encodeURIComponent(tab || 'help')}`);
   settingsWin.once('ready-to-show', () => settingsWin && settingsWin.show());
   settingsWin.on('closed', () => { settingsWin = null; });

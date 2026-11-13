@@ -443,6 +443,8 @@ function wireAccount() {
     const r = await fetch('api/auth.php?action=factory_reset', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
     if (!r || !r.ok) { $('resetDesc').textContent = 'Factory reset failed. Nothing was erased.'; return; }
     forgetLocal();
+    // her inside state (core feel: needs, what she's tired of, her favorites) starts over too
+    try { localStorage.removeItem('jun.feel'); } catch (e) {}
     post({ type: 'reload' });
     location.reload();
   });

@@ -203,6 +203,9 @@ function chat_live_context(array $req, array $user, string $lastUserMsg, string 
     $comfortBlock = comfort_context((int)$user['id']);
     if ($comfortBlock !== '') $contextParts[] = $comfortBlock;
 
+    $feelBlock = feel_context($req['feel'] ?? null);
+    if ($feelBlock !== '') $contextParts[] = $feelBlock;
+
     $feelingsBlock = "## YOUR FEELINGS TOWARD ANON RIGHT NOW - highest priority for this reply\n"
         . relationship_directives($rel);
     $contextParts[] = $feelingsBlock;

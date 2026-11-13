@@ -162,6 +162,9 @@ jobs:
       - name: Quirks
         run: php .github/scripts/quirks.test.php
 
+      - name: Core feel (her prompt lines)
+        run: php .github/scripts/feel.test.php
+
       - name: Consent + ratings gate
         run: php .github/scripts/gate.test.php
 

@@ -1,24 +1,24 @@
-import { IDLE_AFTER_REPLY_MS, TYPING_POLL_MS, consolidating, reportActivity, resetIdleNudge, runPassNow, scheduleIdleNudge, showConsolidatingBubble, syncConsolidationStatus } from './consolidation.js?v=133';
+import { IDLE_AFTER_REPLY_MS, TYPING_POLL_MS, consolidating, reportActivity, resetIdleNudge, runPassNow, scheduleIdleNudge, showConsolidatingBubble, syncConsolidationStatus } from './consolidation.js?v=134';
 import { chatInput, devNoIdleChk, missingParamsEl, modelSelect, narrowSidebarQuery, reasoningSelect, sendBtn, siteVolumeInput, stageEl, thinkChk } from './dom.js?v=77';
 import { faceBubble, hideFaceBubble, latestAssistantReply, restartFaceBubbleHide, scheduleFaceBubblePosition, setLatestAssistantReply } from './face-bubble.js?v=96';
 import { logAction, logMissing, setStageStatus } from './logging.js?v=78';
 import { loadMood } from './mood.js?v=99';
-import { applyRoleGates, setSiteVolume, syncThinkToggle, updateSiteVolumeLabel, wireNameSettings } from './settings.js?v=138';
-import { loadConversation, refreshSidebar, setSidebarOpen } from './sidebar.js?v=133';
+import { applyRoleGates, setSiteVolume, syncThinkToggle, updateSiteVolumeLabel, wireNameSettings } from './settings.js?v=139';
+import { loadConversation, refreshSidebar, setSidebarOpen } from './sidebar.js?v=134';
 import { escapeHtml, mealNow } from '../core/util.js?v=1';
-import { wireTts } from './wire-tts.js?v=137';
-import { wireVoice } from './wire-voice.js?v=138';
+import { wireTts } from './wire-tts.js?v=138';
+import { wireVoice } from './wire-voice.js?v=139';
 import { WELCOME_TIERS, fetchWelcome, playWelcome, previewWelcome } from './welcome.js?v=107';
 import * as Names from '../core/names.js?v=1';
 import * as AwayNotify from './away-notify.js?v=5';
 import * as Prefs from '../core/prefs.js?v=7';
 import * as ui from '../core/ui.js?v=1';
-import * as ChatAPI from '../core/chat-api.js?v=8';
+import * as ChatAPI from '../core/chat-api.js?v=9';
 import * as MobileViewport from '../core/viewport.js?v=1';
 import * as Actions from '../live2d/actions.js?v=104';
 import * as Live2D from '../live2d/live2d.js?v=94';
 import * as Snapshot from '../desktop/snapshot.js?v=5';
-import * as ModelTouch from '../live2d/touch.js?v=108';
+import * as ModelTouch from '../live2d/touch.js?v=109';
 import * as Outfit from '../outfit/outfit.js?v=104';
 import { playIntro } from '../wardrobe/reactions.js?v=95';
 import * as BootFX from './boot-fx.js?v=2';
@@ -27,11 +27,11 @@ import * as History from './history.js?v=2';
 import { startSkybox } from '../trip/skybox.js?v=2';
 import * as TripLoader from '../trip/trip-loader.js?v=1';
 import { DevHud, abortFn, currentConversationId, setDevHud } from './session.js?v=1';
-import { rerenderBubbleStream, sendMessage, sendTouchEvent } from './chat.js?v=61';
+import { rerenderBubbleStream, sendMessage, sendTouchEvent } from './chat.js?v=62';
 import { setComposerText } from './composer.js?v=3';
 import * as Achievements from '../achievements/achievements.js?v=8';
 import * as Together from './together.js?v=2';
-import * as HomeBridge from './home-bridge.js?v=3';
+import * as HomeBridge from './home-bridge.js?v=4';
 
 // the one app global left, on purpose. it's a console handle,
 // Welcome.preview('panicked') replays that welcome scene
@@ -145,7 +145,7 @@ export async function boot(me) {
     .then(r => r.ok ? r.json() : null).catch(() => null);
 
   // devhud.js owns Ctrl+Shift+D, so only admins get that module
-  if (currentUser?.role === 'admin') setDevHud(await import('./devhud.js?v=114'));
+  if (currentUser?.role === 'admin') setDevHud(await import('./devhud.js?v=115'));
   startSkybox();
   // marked is a global and app.js's loadScripts only brings it in
   // side by side with this module. at module scope it's not there

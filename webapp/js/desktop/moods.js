@@ -16,7 +16,7 @@
 // --mood-loves, --mood-giggly.
 import * as Often from './often.js?v=2';
 
-import * as Fx from './fx.js?v=10';
+import * as Fx from './fx.js?v=11';
 
 export const FEELINGS = [
   ['notready', 'Not ready', '#7cc4ff'],
@@ -61,7 +61,18 @@ const POKES = {
 
 // her bond stage (1 Stranger ... 6 Devoted) and mood (core/mood-tier.js)
 let ctx = { stage: 3, mood: 'neutral' };
-export function setContext(c) { ctx = { ...ctx, ...c }; }
+export function setContext(c) { ctx = { ...ctx, ...c }; if (feel && c.mood) feel.setMood(c.mood); }
+
+// core feel (#27, js/core/feel/feel.js; desktop.js sets it): every touch is told to it (her needs,
+// getting tired of things, the session), and every feeling goes through its reaction composer, so
+// the same touch never plays out the same twice. No feel (the settings preview, tests) = the
+// tables below on their own
+let feel = null;
+export function setFeel(f) { feel = f || null; }
+function composed(kind, how, ms, seed, base, c = ctx) {
+  if (!base || !feel) return base;
+  try { return feel.compose({ kind, how, ms, seed, base, ctx: c }) || base; } catch (e) { console.warn('composer', e); return base; }
+}
 const closeOf = (stage) => (stage <= 2 ? 1 : stage === 3 ? 2 : 3);
 const STAGE_POWER = [0.2, 0.3, 0.42, 0.55, 0.68, 0.8];
 
@@ -480,8 +491,9 @@ function strongest() {
   for (const [slot, s] of active) {
     // a rub is only going on while the mouse keeps moving (it may have
     // left her window, where no more moves arrive)
-    if (s.stale && now - s.seen > s.stale) { active.delete(slot); continue; }
-    const f = feelingFor(s.kind, 'hold', Date.now() - s.t0, ctx, s.seed);
+    if (s.stale && now - s.seen > s.stale) { active.delete(slot); feel?.touchEnd(slot); continue; }
+    const ms = Date.now() - s.t0;
+    const f = composed(s.kind, 'hold', ms, s.seed, feelingFor(s.kind, 'hold', ms, ctx, s.seed));
     if (f && (!best || f.power > best.power)) best = { ...f, at: s.at };
   }
   return best;
@@ -535,8 +547,9 @@ export function begin(slot, kind, t0 = Date.now(), at = null, stale = 0) {
   const s = active.get(slot);
   // the same hand going on (a rub crossing from her head to an ear):
   // the same touch, it keeps its length
-  if (s) { s.kind = kind; s.seen = Date.now(); if (at) s.at = at; return; }
+  if (s) { s.kind = kind; s.seen = Date.now(); if (at) s.at = at; feel?.touchKind(slot, kind); return; }
   active.set(slot, { kind, t0, at, stale, seen: Date.now(), seed: Math.random() });
+  feel?.touchBegin(slot, kind, t0);
   run();
 }
 // a hand left in place (desktop.js "two hands") takes its touch along
@@ -546,10 +559,11 @@ export function move(from, to) {
   active.delete(from);
   s.stale = 0; // the hand left in place keeps going on its own
   active.set(to, s);
+  feel?.touchMove(from, to);
 }
 export function at(slot, x, y) { const s = active.get(slot); if (s) { s.at = { x, y }; s.seen = Date.now(); } }
-export function end(slot) { active.delete(slot); }
-export function endAll() { active.clear(); demo = null; tick(); }
+export function end(slot) { if (active.delete(slot)) feel?.touchEnd(slot); }
+export function endAll() { for (const slot of active.keys()) feel?.touchEnd(slot); active.clear(); demo = null; tick(); }
 
 // a single moment: a poke, a combo, "she wriggled free"
 export function burst(feeling, power = 0.7, where = null) {
@@ -565,8 +579,10 @@ export function burst(feeling, power = 0.7, where = null) {
   }
 }
 export function poke(kind, where = null) {
-  const f = feelingFor(kind, 'poke', 0, ctx, Math.random());
+  const seed = Math.random();
+  const f = composed(kind, 'poke', 0, seed, feelingFor(kind, 'poke', 0, ctx, seed));
   if (f) burst(f.feeling, f.power, where);
+  feel?.poke(kind);
   return f;
 }
 // a combo is a big moment: the feeling it fits, strong
@@ -576,8 +592,10 @@ export function combo(id) {
     : close >= 3 ? 'loves' : close === 2 ? 'likes' : 'flustered';
   f = byMood(f, close, ctx.mood, 'hug');
   f = tsundere(f, ctx.stage, 0, Math.random(), ctx);
-  burst(f, 0.95);
-  return f;
+  const r = composed('combo.' + id, 'combo', 0, Math.random(), { feeling: f, power: 0.95 });
+  burst(r.feeling, r.power);
+  feel?.combo(id);
+  return r.feeling;
 }
 
 // the settings window's preview: a feeling for a while, its power going

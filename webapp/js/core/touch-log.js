@@ -78,7 +78,7 @@ export function flush(keepalive = false) {
 }
 
 // closing the window: whatever's in hand still counts
-window.addEventListener('pagehide', () => {
+globalThis.window?.addEventListener('pagehide', () => {
   for (const slot of Object.keys(slots)) end(slot);
   flush(true);
 });

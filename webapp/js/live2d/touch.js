@@ -1,6 +1,6 @@
 import * as Actions from './actions.js?v=104';
 import * as Live2D from './live2d.js?v=94';
-import * as TouchLog from '../core/touch-log.js?v=1';
+import * as TouchLog from '../core/touch-log.js?v=2';
 
 // her touch tally (core/touch-log.js): the same kinds her desktop counts
 const TALLY_KIND = { head: 'headpat', face: 'cheekrub', hand: 'hand' };

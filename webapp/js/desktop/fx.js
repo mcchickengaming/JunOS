@@ -371,14 +371,16 @@ export function pickEmote(kind, ctx = {}) {
   return pick;
 }
 // for her own idle thoughts: pick from a pool, but not the last one
-export function pickFromPool(pool) {
+// picker: core feel's repeat watcher (desktop.js), which weighs down icons she just showed
+export function pickFromPool(pool, picker) {
   const asciiW = Often.mul(fx.eAscii);
   // 'hearts' is the burst-of-hearts effect, not an icon of its own
   let p = pool.filter(k => k === 'hearts' || (EMOTES[k] && (EMOTES[k][1] !== 'ascii' || asciiW > 0)));
   if (asciiW > 1) p = p.concat(p.filter(k => EMOTES[k]?.[1] === 'ascii'));
   const fresh = p.filter(k => k !== lastIcon);
   const from = fresh.length ? fresh : p;
-  return from.length ? from[Math.floor(Math.random() * from.length)] : 'dots';
+  if (!from.length) return 'dots';
+  return (picker && picker(from)) || from[Math.floor(Math.random() * from.length)];
 }
 
 const ICON_MIX = ['pop', 'pop', 'bounce', 'wobble', 'drop', 'spin'];
