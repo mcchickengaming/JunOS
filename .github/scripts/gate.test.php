@@ -32,11 +32,11 @@ foreach ($cases as $c) {
 
 echo "tagging\n";
 $eq('platonic can\'t tag flirty', gate_can_tag('platonic', 'flirty'), false);
-$eq('parent/daughter can\'t tag 18+', gate_can_tag('parent_daughter', 'adult'), false);
+$eq('platonic can\'t tag 18+', gate_can_tag('platonic', 'adult'), false);
 $eq('romantic can tag 18+', gate_can_tag('romantic', 'adult'), true);
 $eq('siblings can tag flirty (owner\'s makers)', gate_can_tag('siblings', 'flirty'), true);
 $eq('unknown flavor can\'t tag rated', gate_can_tag('???', 'flirty'), false);
-$eq('anyone can tag everyday', gate_can_tag('parent_daughter', 'everyday'), true);
+$eq('anyone can tag everyday', gate_can_tag('platonic', 'everyday'), true);
 
 echo "comfort settings\n";
 db()->exec("INSERT INTO users (id, email, password_hash, created_at, adult_consent_at) VALUES (1, 'a@b.c', 'x', 0, 0)");
@@ -62,10 +62,10 @@ comfort_set(1, ['flavor' => 'romantic']);
 $eq('romantic + flirty on: nothing', comfort_context(1), '');
 comfort_set(1, ['flirty' => false]);
 $eq('flirty off line', str_contains(comfort_context(1), 'not flirty'), true);
-comfort_set(1, ['flavor' => 'parent_daughter']);
+comfort_set(1, ['flavor' => 'platonic']);
 $ctx = comfort_context(1);
-$eq('parent/daughter line', str_contains($ctx, 'grown-up daughter'), true);
 $eq('no double flirty line for a locked flavor', str_contains($ctx, 'Keep it sweet'), false);
+$eq('a removed flavor is refused', comfort_set(1, ['flavor' => 'parent_daughter']), ['error' => 'invalid_flavor']);
 
 echo "registry\n";
 features_registry(__DIR__ . '/../../webapp/data/features.json');

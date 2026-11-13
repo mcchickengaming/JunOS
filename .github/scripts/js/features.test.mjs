@@ -132,7 +132,7 @@ test('the js gate passes every shared case', () => {
 
 test('hard locks: no file or setting can open them', () => {
   for (const tier of ['flirty', 'adult']) {
-    for (const flavor of ['platonic', 'parent_daughter']) {
+    for (const flavor of ['platonic']) {
       const all = { flavor, flirty: true, adult: true, adultConfirmed: true, adultOutside: true, siblingsRated: true };
       assert.equal(G.check({ tier }, { comfort: all, mode: 'windowed', stage: 6, trust: 100 }).show, false, flavor + ' ' + tier);
       assert.equal(G.canTag(flavor, tier), false);

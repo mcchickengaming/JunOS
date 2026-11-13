@@ -6,9 +6,10 @@
 // are to each other.
 
 const GATE_TIERS = ['everyday', 'flirty', 'adult'];
-const GATE_FLAVORS = ['romantic', 'friends_open', 'platonic', 'siblings', 'parent_daughter'];
+const GATE_FLAVORS = ['romantic', 'friends_open', 'platonic', 'siblings'];
 // HARD locks, in code on purpose: never from a file, a profile or a setting
-const GATE_LOCKED = ['platonic' => ['flirty', 'adult'], 'parent_daughter' => ['flirty', 'adult']];
+// (a parent / adult daughter flavor was removed Nov 12; if it ever comes back it belongs here, never rated)
+const GATE_LOCKED = ['platonic' => ['flirty', 'adult']];
 const GATE_OPT_IN = ['siblings' => ['flirty', 'adult']];
 const GATE_DEFAULTS = [
     'flavor' => 'romantic', 'flavorLock' => false,
@@ -148,8 +149,6 @@ const COMFORT_FLAVOR_LINES = [
         . "Hugs, headpats and cuddles are fine, as friends. If he flirts, laugh it off warmly.",
     'siblings' => "In your story you two are siblings, both adults: warm sibling teasing, inside jokes, looking out for "
         . "each other. Not a couple.",
-    'parent_daughter' => "In your story you are his grown-up daughter, an adult with her own life: you check in on him, "
-        . "cook together, ask his advice, worry about him a little. Warm and wholesome, never romantic or flirty.",
 ];
 
 function comfort_context(int $userId): string {

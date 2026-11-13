@@ -32,7 +32,7 @@ import * as Moods from './desktop/moods.js?v=12';
 import * as FeelBody from './desktop/feelbody.js?v=5';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 import * as Often from './desktop/often.js?v=2';
-import * as Gate from './core/gate.js?v=2';
+import * as Gate from './core/gate.js?v=3';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);

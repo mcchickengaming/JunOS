@@ -178,51 +178,6 @@
    "why": "flavor_lock"
   },
   {
-   "name": "parent/daughter: flirty hard-locked",
-   "item": {
-    "tier": "flirty"
-   },
-   "ctx": {
-    "comfort": {
-     "flavor": "parent_daughter"
-    }
-   },
-   "show": false,
-   "her": "no",
-   "why": "flavor_lock"
-  },
-  {
-   "name": "parent/daughter: 18+ hard-locked",
-   "item": {
-    "tier": "adult"
-   },
-   "ctx": {
-    "comfort": {
-     "flavor": "parent_daughter",
-     "adult": true,
-     "adultConfirmed": true,
-     "siblingsRated": true
-    }
-   },
-   "show": false,
-   "her": "no",
-   "why": "flavor_lock"
-  },
-  {
-   "name": "parent/daughter: everyday is fine",
-   "item": {
-    "tier": "everyday"
-   },
-   "ctx": {
-    "comfort": {
-     "flavor": "parent_daughter"
-    }
-   },
-   "show": true,
-   "her": "yes",
-   "why": "ok"
-  },
-  {
    "name": "siblings: rated needs its own opt-in",
    "item": {
     "tier": "flirty"
@@ -494,6 +449,20 @@
    "show": true,
    "her": "no",
    "why": "mood"
+  },
+  {
+   "name": "a removed flavor reads as romantic",
+   "item": {
+    "tier": "everyday"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "parent_daughter"
+    }
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
   }
  ]
 }

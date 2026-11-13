@@ -13,9 +13,9 @@ import * as Moods from './desktop/moods.js?v=12';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=5';
 import * as F from './core/features.js?v=2';
-import * as Gate from './core/gate.js?v=2';
-import * as Controls from './home/controls.js?v=3';
-import * as Stores from './home/stores.js?v=2';
+import * as Gate from './core/gate.js?v=3';
+import * as Controls from './home/controls.js?v=4';
+import * as Stores from './home/stores.js?v=3';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();

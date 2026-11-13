@@ -19,13 +19,13 @@ export const FLAVORS = [
   ['friends_open', 'Friends, open to more', 'No romance and no "I love you", but flirty moments are fine with her say.'],
   ['platonic', 'Best friends', 'Hugs, headpats and cuddles as friends. Never flirty.'],
   ['siblings', 'Family: siblings', 'Two adult siblings. Warm teasing and looking out for each other.'],
-  ['parent_daughter', 'Family: parent and grown daughter', 'Warm and wholesome: she checks in, cooks with you, asks your advice.'],
 ];
 export const FLAVOR_IDS = FLAVORS.map(f => f[0]);
 
 // HARD locks, in code on purpose: never from a file, a profile or a setting.
-// (parent / adult daughter: owner's call Nov 11, Claude declined a rated version)
-export const LOCKED = Object.freeze({ platonic: ['flirty', 'adult'], parent_daughter: ['flirty', 'adult'] });
+// (a parent / adult daughter flavor was removed Nov 12, owner's call; if it ever comes back it
+// belongs here, never rated: Claude declined a rated version on Nov 11)
+export const LOCKED = Object.freeze({ platonic: ['flirty', 'adult'] });
 // flavors where rated tiers need their own opt-in (off by default)
 export const OPT_IN = Object.freeze({ siblings: ['flirty', 'adult'] });
 

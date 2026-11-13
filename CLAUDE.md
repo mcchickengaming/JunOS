@@ -339,7 +339,8 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   `.github/scripts/gate-cases.json`, run by `gate.test.php` and features.test.mjs, which also compares the constants).
   `check(item, ctx)` → `{ show, her: yes/ask/no, why, words }`: item `{ tier, flavors?, minStage?, minTrust? }`, ctx
   `{ comfort, mode, screenShare, lookAdult, stage, trust, tension, stop }`. Order: flavor fit → hard flavor locks
-  (`LOCKED`: platonic and parent_daughter never flirty/adult, in code, never from a file) → siblings opt-in →
+  (`LOCKED`: platonic never flirty/adult, in code, never from a file; a parent / adult daughter flavor was
+  removed Nov 12, owner's call: if it ever returns, it goes in `LOCKED`, never rated) → siblings opt-in →
   Flirty switch → 18+ (on + confirmed) → the adult-look check (`lookAdult`, from the look itself; the creator #14 plugs
   it in) → screen share (hides flirty + adult; senses #3 fill it) → 18+ windowed-only unless `adultOutside`; then her
   say: stop signal → bond → trust (flirty/adult need ≥ `TUNE.trustNo`) → tension (ask/no) → just-reached stage = ask.
