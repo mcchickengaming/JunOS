@@ -2,8 +2,8 @@
 // through the reaction composer, and every number of core feel to tune live. A plain dev panel;
 // the diegetic version (her console, #19) comes later and can show the same snapshot().
 
-import * as Feel from './core/feel/feel.js?v=2';
-import * as Moods from './desktop/moods.js?v=14';
+import * as Feel from './core/feel/feel.js?v=3';
+import * as Moods from './desktop/moods.js?v=15';
 
 const { Needs, Tired, Repeat, Session, Tune, Kinds, Store } = Feel;
 const $ = (id) => document.getElementById(id);
@@ -58,7 +58,8 @@ function drawNow(s) {
   ];
   $('now').innerHTML = rows.map(([k, v]) => `<b>${esc(k)}</b><span>${esc(v)}</span>`).join('');
   const sw = s.switches;
-  $('switches').innerHTML = [['needs', 'Her needs'], ['tiring', 'Getting tired'], ['favorites', 'Favorites'], ['repeat', 'Mixes it up']]
+  $('switches').innerHTML = [['needs', 'Her needs'], ['tiring', 'Getting tired'], ['favorites', 'Favorites'], ['repeat', 'Mixes it up'],
+    ['manner', 'Gentle or rough'], ['anticipate', 'Sees your hand']]
     .map(([k, name]) => `<span class="chip">${esc(name)}: ${sw[k] ? 'on' : 'off'}</span>`).join('')
     + `<span class="chip">How quickly she's had enough: ${sw.pace}%</span>`;
 }
@@ -112,10 +113,13 @@ function fillTry() {
 $('tStage').innerHTML = STAGES.map((n, i) => `<option value="${i + 1}"${i === 3 ? ' selected' : ''}>${n}</option>`).join('');
 $('tMood').innerHTML = MOODS.map(m => `<option>${m}</option>`).join('');
 $('tHow').addEventListener('change', () => { fillTry(); tryIt(); });
-for (const id of ['tKind', 'tMs', 'tStage', 'tMood']) $(id).addEventListener('input', tryIt);
+$('tPhase').innerHTML += Session.PHASES.filter(p => p !== 'away').map(p => `<option value="${p}">${esc(Session.PHASE_WORDS[p])}</option>`).join('');
+for (const id of ['tKind', 'tMs', 'tStage', 'tMood', 'tManner', 'tMannerMs', 'tMoment', 'tPhase', 'aSpeed']) $(id).addEventListener('input', tryIt);
 fillTry();
 
-const SEED = 0.5;
+let SEED = 0.5;
+$('reroll').addEventListener('click', () => { SEED = Math.random(); tryIt(); });
+const SPOT_OF = { footrub: 'feet', feettickle: 'feet', thighsquish: 'thigh', tailrub: 'tail', tailgrab: 'tail', hug: 'body' };
 function tryIt() {
   const how = $('tHow').value, kind = $('tKind').value;
   const ms = how === 'poke' ? 0 : Number($('tMs').value);
@@ -125,9 +129,34 @@ function tryIt() {
   const show = (f) => (f ? `<b>${esc(FEEL_NAMES[f.feeling] || f.feeling)}</b>, power ${n2(f.power)}` : 'No feeling about this one.');
   $('rBase').innerHTML = show(base);
   const ck = how === 'poke' ? 'poke.' + kind : kind;
-  const comp = base ? Feel.compose({ kind: ck, how, ms, seed: SEED, base, ctx }) : null;
+  // how it's done, and what just happened: "what if", or as it really is
+  const pace = $('tManner').value, forMs = Number($('tMannerMs').value);
+  $('tManner').disabled = $('tMannerMs').disabled = how === 'poke';
+  $('tMannerOut').textContent = (forMs / 1000).toFixed(1) + ' s';
+  const manner = how === 'poke' ? null : Feel.Manner.named(pace, forMs);
+  const mom = $('tMoment').value, ph = $('tPhase').value;
+  const force = mom || ph ? { ...(mom ? { moment: mom === 'none' ? [] : [mom] } : {}), ...(ph ? { phase: ph } : {}) } : null;
+  // dry: only look. nothing here is remembered or counts toward her state
+  const comp = base ? Feel.compose({ kind: ck, how, ms, seed: SEED, base, ctx, manner, force, dry: true }) : null;
   $('rComp').innerHTML = show(comp) + (comp ? ` · ${esc(Tired.STATE_WORDS[comp.tired])}` : '');
   $('rWhy').innerHTML = (comp?.why?.length ? comp.why : ['nothing changed it']).map(w => `<li>${esc(w)}</li>`).join('');
+  const pieces = comp?.pieces ? Object.entries(comp.pieces).map(([p, k]) => `${esc(p)} ×${n2(k)}`).join(', ') : 'as usual';
+  $('rStyle').innerHTML = comp ? [
+    ['Her body shows it', comp.variant === 'plain' ? 'her usual way' : comp.variant],
+    ['If she says something', Feel.Compose.LINE_WORDS[comp.line] || comp.line],
+    ['Tempo of her effects', comp.tempo > 1.05 ? `calmer (×${n2(comp.tempo)})` : comp.tempo < 0.95 ? `quicker (×${n2(comp.tempo)})` : 'as usual'],
+    ['Effect pieces', pieces],
+    ['Her own ripple', comp.ripple ? Object.values(comp.ripple).join(' + ') : 'yours, this time'],
+    ['Moment', comp.moment.length ? comp.moment.join(', ') : 'nothing special'],
+  ].map(([k, v]) => `<div><span class="note">${esc(k)}:</span> <b>${esc(v)}</b></div>`).join('') : '';
+  // the hand coming at this spot (dry: the cooldown and her "not every time" are left out)
+  const fast = $('aSpeed').value === 'fast';
+  const ap = Feel.Approach.decide({
+    spot: SPOT_OF[kind] || kind, dist: 0.1, closing: fast ? Feel.Tune.TUNE.approach.fast * 1.3 : Feel.Tune.TUNE.approach.minClosing * 2, side: 1,
+    ctx, needs: Feel.switches().needs ? Feel.Needs.levels() : {}, dry: true, rand: () => (SEED * 7.31) % 1,
+  });
+  $('rApproach').innerHTML = !Feel.switches().anticipate ? 'Switched off.' : ap ? `<b>${esc(Feel.Approach.TYPE_WORDS[ap.type])}</b>, power ${n2(ap.power)}` : 'Nothing this time.';
+  $('rApproachWhy').innerHTML = (ap?.why || []).slice(1).map(w => `<li>${esc(w)}</li>`).join('');
 }
 $('doIt').addEventListener('click', () => {
   const how = $('tHow').value, kind = $('tKind').value;

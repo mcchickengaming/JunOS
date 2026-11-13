@@ -13,7 +13,7 @@
 
 import * as Auth from './core/auth.js?v=1';
 import { api, apiJson } from './core/api.js?v=1';
-import * as ChatAPI from './core/chat-api.js?v=9';
+import * as ChatAPI from './core/chat-api.js?v=10';
 import * as Names from './core/names.js?v=1';
 import * as Prefs from './core/prefs.js?v=7';
 import { moodTier, daypart } from './core/mood-tier.js?v=2';
@@ -25,16 +25,16 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=94';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
-import * as Body from './desktop/body.js?v=45';
+import * as Body from './desktop/body.js?v=46';
 import * as TouchLog from './core/touch-log.js?v=2';
 import * as Fx from './desktop/fx.js?v=11';
-import * as Moods from './desktop/moods.js?v=14';
-import * as FeelBody from './desktop/feelbody.js?v=5';
+import * as Moods from './desktop/moods.js?v=15';
+import * as FeelBody from './desktop/feelbody.js?v=6';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 import * as Often from './desktop/often.js?v=2';
 import * as Gate from './core/gate.js?v=3';
 import * as Features from './core/features.js?v=3';
-import * as Feel from './core/feel/feel.js?v=2';
+import * as Feel from './core/feel/feel.js?v=3';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -216,6 +216,10 @@ async function react(kind, extraNote = null) {
     ? `${OOC}${touch}, with his mouse cursor, while you're out on his desktop. React out loud in one short line, in character, the way you honestly feel about him and about this right now. If his touches today show he has been doing this a lot, you can notice that. No narration.)`
     : NOTES[kind];
   // the repeat watcher: her last few lines out here, so this one is new
+  // the tone, from how she just took this touch (the reaction composer's line type): a tone,
+  // never the words
+  const hint = touch && !extraNote ? Feel.lineHint() : null;
+  if (hint) note = note.replace(/\)$/, ` Right now you're ${hint.words}.)`);
   const lately = Feel.switches().repeat ? Feel.Repeat.recent('line', 3) : [];
   if (lately.length) note = note.replace(/\)$/, ` Say something different from what you said just now: ${lately.map(l => '"' + l + '"').join(', ')}.)`);
   await ask(note, { ephemeral: true, fallback: touch ? '' : FALLBACK[kind] });
@@ -856,11 +860,37 @@ function watchWaveBack(x, y) {
   }
 }
 
+// core feel: she sees his hand coming. when the cursor closes in on one of her spots she notices
+// before the touch lands: her eyes go to the hand, then a lean in, a perk of the ears, a small
+// flinch, or guarding a spot she's had enough of (core/feel/approach.js decides, by bond, mood,
+// her favorites and how much she's had; feelbody.js shows it). only her body, so it's instant
+let hand = null; // { x, y, t, dist } the last look at where his hand is
+function seeHandComing(x, y) {
+  const now = performance.now();
+  if (hand && now - hand.t < 40) return;
+  const spot = Body.nearestSpot(x, y);
+  if (!spot) { hand = null; return; }
+  const was = hand;
+  hand = { x, y, t: now, dist: spot.dist };
+  if (!was || now - was.t > 400 || spot.dist <= 0) return;
+  // how fast it's closing in, in her heights a second
+  const closing = ((was.dist - spot.dist) / spot.unit) / ((now - was.t) / 1000);
+  const side = Math.sign(x - spot.faceX) || 1;
+  const a = Feel.approach({
+    spot: spot.kind, dist: spot.dist / spot.unit, closing, side, ctx: { stage: Gauges.bondStage },
+    busy: dozing || calibrating || !!pin || walking || thrown,
+  });
+  if (!a) return;
+  if (a.type !== 'guard') Body.lookAtPoint(x, y, 900);
+  FeelBody.approach(a.type, a.power, a.side);
+}
+
 window.addEventListener('mousemove', (e) => {
   lastX = e.clientX;
   lastY = e.clientY;
   if (press) return;
   const onUi = overUi(e.target);
+  if (ready && !onUi && !wasRubbing) seeHandComing(e.clientX, e.clientY);
   const region = ready && !onUi ? Body.regionAt(e.clientX, e.clientY) : null;
   if (ready) watchWaveBack(e.clientX, e.clientY);
   const rub = ready && !onUi ? Body.pointerMove(e.clientX, e.clientY) : null;

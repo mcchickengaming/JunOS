@@ -6,8 +6,8 @@
 // intensity or teasing ("kiss me, kiss me"). Items tagged okBuild ("OK to repeat while building
 // up") pass freely while that moment is open: build(id, ms) opens it, it closes by itself.
 
-import * as Store from './store.js?v=2';
-import { TUNE } from './tune.js?v=2';
+import * as Store from './store.js?v=3';
+import { TUNE } from './tune.js?v=3';
 
 let enabled = true;
 export function setEnabled(on) { enabled = !!on; }

@@ -12,10 +12,10 @@
 // and lands better (the composer uses fav()). So no single touch is "the best" for every Jun or
 // every moment.
 //
-// The math here is the baseline; the composer (compose.js) decides what it means for a reaction.
+// The composer (compose.js) decides what all of this means for a reaction.
 
-import * as Store from './store.js?v=2';
-import { TUNE } from './tune.js?v=2';
+import * as Store from './store.js?v=3';
+import { TUNE } from './tune.js?v=3';
 import * as K from './kinds.js?v=2';
 
 export const STATES = ['fresh', 'enjoying', 'plenty', 'enough', 'sore'];
@@ -39,10 +39,22 @@ function decayed(e, t) { return e ? e.load * Math.pow(0.5, Math.max(0, t - e.at)
 // the raw load on a kind now
 export function loadOf(kind, t = Store.now()) { return decayed(Store.get().tired[kind], t); }
 
-function lastKind(s) {
-  for (let i = s.hist.length - 1; i >= 0; i--) if (s.hist[i][1] === 'touch') return s.hist[i][2];
-  return null;
+// how many times in a row the last touches were this kind (0 = the last one was something else)
+function streak(s, kind) {
+  let n = 0;
+  for (let i = s.hist.length - 1; i >= 0 && n < 8; i--) {
+    if (s.hist[i][1] !== 'touch') continue;
+    if (s.hist[i][2] !== kind) break;
+    n++;
+  }
+  return n;
 }
+
+// what he's given her these days (fades over days): it shifts her favorites a little, so what
+// works best keeps moving ("no meta")
+const useHalfMs = () => Math.max(0.1, TUNE.tired.useHalfLifeDays) * 24 * 3600e3;
+function usedNow(e, t) { return e ? e.n * Math.pow(0.5, Math.max(0, t - e.at) / useHalfMs()) : 0; }
+export function usedOf(kind, t = Store.now()) { return usedNow((Store.get().use || {})[kind], t); }
 
 // a touch happened: amount in "load" (feel.js works it out: seconds × rate, or a poke's bit)
 export function add(kind, amount) {
@@ -52,9 +64,14 @@ export function add(kind, amount) {
   const k = Math.max(0, opts.pace) / 50;
   if (k === 0) return;
   Store.change(s => {
-    const inARow = lastKind(s) === kind ? TUNE.tired.inARow : 0;
+    // the same touch again right away weighs a little more, more each time (up to a few times)
+    // (feel.js writes the touch into her history first, so the streak counts this one too)
+    const inARow = TUNE.tired.inARow * Math.min(Math.max(1, TUNE.tired.inARowMax), Math.max(0, streak(s, kind) - 1));
     const put = (kd, a) => { s.tired[kd] = { load: decayed(s.tired[kd], t) + a, at: t }; };
     put(kind, (amount + inARow) * k);
+    if (!s.use) s.use = {};
+    s.use[kind] = { n: usedNow(s.use[kind], t) + amount, at: t };
+    for (const [kd, e] of Object.entries(s.use)) if (usedNow(e, t) < 0.02) delete s.use[kd];
     for (const o of K.sameGroup(kind)) put(o, amount * k * TUNE.tired.share);
     // forget kinds that are back to fresh (keeps the save small)
     for (const [kd, e] of Object.entries(s.tired)) if (decayed(e, t) < 0.01) delete s.tired[kd];
@@ -72,6 +89,8 @@ export function fav(kind, ctx = {}) {
   const w = Math.floor(weeks), f = weeks - w, ease = f * f * (3 - 2 * f);
   const n = Store.hash01('drift', kind, w) * (1 - ease) + Store.hash01('drift', kind, w + 1) * ease;
   let v = base * (1 + T.favDrift * (2 * n - 1));
+  // a lot of it these days = a little less keen; not in days = she misses it
+  if (T.favMiss) v *= 1 + T.favMiss * (1 - 2 * Math.min(1, usedOf(kind) / Math.max(0.01, T.useFull)));
   // what works best depends on her mood and what she needs right now
   const m = ctx.mood, nd = ctx.needs || {};
   if (m === 'happy' && K.isPlay(kind)) v *= 1.1;
@@ -90,9 +109,11 @@ export function effective(kind, ctx = {}) {
   if (!opts.tiring) return 0;
   return (loadOf(kind) + Math.max(0, ctx.pending || 0) * (Math.max(0, opts.pace) / 50)) / fav(kind, ctx);
 }
-// the load a hold/rub of ms milliseconds leaves (feel.js adds it when the touch ends)
-export function loadFor(kind, ms) {
-  return (Math.max(0, ms) / 1000) * TUNE.tired.perSec * (TUNE.tired.rate[kind] ?? 1);
+// the load a hold/rub of ms milliseconds leaves (feel.js adds it when the touch ends).
+// rough: the share of it that was fast and scrubby (0..1), which wears on her quicker
+export function loadFor(kind, ms, rough = 0) {
+  return (Math.max(0, ms) / 1000) * TUNE.tired.perSec * (TUNE.tired.rate[kind] ?? 1)
+    * (1 + TUNE.tired.roughLoad * Math.max(0, Math.min(1, rough || 0)));
 }
 export function state(kind, ctx = {}) {
   const e = effective(kind, ctx), T = TUNE.tired;
@@ -102,12 +123,22 @@ export function state(kind, ctx = {}) {
   if (e >= T.enjoying) return 'enjoying';
   return 'fresh';
 }
-// how much of a touch's power is left: 1 while it's fresh, down to the floor at "enough"
+// how much of a touch's power is left. One smooth curve, no steps: a little MORE as she gets
+// into it (most at "enjoying"), easing down to the floor at "enough", then settling slowly
+// toward a deeper floor far past it, so a very long session keeps fading gently instead of
+// hitting a wall
+const smooth = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
 export function factor(kind, ctx = {}) {
-  const e = effective(kind, ctx), T = TUNE.tired;
-  if (e <= T.enjoying) return 1;
-  if (e >= T.enough) return T.floor;
-  return 1 - (1 - T.floor) * ((e - T.enjoying) / (T.enough - T.enjoying));
+  return factorAt(effective(kind, ctx));
+}
+export function factorAt(e) {
+  const T = TUNE.tired;
+  if (!(e > 0)) return 1;
+  const peak = 1 + Math.max(0, T.warmUp);
+  if (e <= T.enjoying) return 1 + (peak - 1) * smooth(e / Math.max(1e-6, T.enjoying));
+  if (e <= T.enough) return peak - (peak - T.floor) * smooth((e - T.enjoying) / Math.max(1e-6, T.enough - T.enjoying));
+  const deep = Math.min(T.floor, T.floorDeep);
+  return deep + (T.floor - deep) * Math.exp(-(e - T.enough) / Math.max(1e-6, T.enough));
 }
 
 // did she just cross into "plenty" / "enough" / "sore" for this kind? (once per crossing; back to
@@ -133,4 +164,4 @@ export function list(ctx = {}) {
   return out.sort((a, b) => b.load / b.fav - a.load / a.fav);
 }
 // for the lab: forget all of it
-export function clear() { Store.change(s => { s.tired = {}; s.marks = {}; }); }
+export function clear() { Store.change(s => { s.tired = {}; s.marks = {}; s.use = {}; }); }

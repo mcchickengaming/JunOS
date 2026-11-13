@@ -69,9 +69,12 @@ export function setContext(c) { ctx = { ...ctx, ...c }; if (feel && c.mood) feel
 // tables below on their own
 let feel = null;
 export function setFeel(f) { feel = f || null; }
-function composed(kind, how, ms, seed, base, c = ctx) {
+// The composer's answer also says HOW it plays out (which way her body shows it, which effect
+// pieces are likelier, the tempo, her own ripple): tick/burst/puff below and feelbody.js follow it.
+// extra: { manner (how the rub is being done), dry (only look), slot }
+function composed(kind, how, ms, seed, base, c = ctx, extra = null) {
   if (!base || !feel) return base;
-  try { return feel.compose({ kind, how, ms, seed, base, ctx: c }) || base; } catch (e) { console.warn('composer', e); return base; }
+  try { return feel.compose({ kind, how, ms, seed, base, ctx: c, ...(extra || {}) }) || base; } catch (e) { console.warn('composer', e); return base; }
 }
 const closeOf = (stage) => (stage <= 2 ? 1 : stage === 3 ? 2 : 3);
 const STAGE_POWER = [0.2, 0.3, 0.42, 0.55, 0.68, 0.8];
@@ -123,7 +126,10 @@ export function feelingFor(kind, how = 'hold', ms = 0, c = ctx, seed = 0.5) {
 export function rippleFor(kind, c = ctx) {
   if (!Fx.currentFx().rHerPick || amount() === 'off') return null;
   const f = feelingFor(kind, 'poke', 0, c);
-  if (!f || Math.random() > 0.25) return null;
+  if (!f) return null;
+  // the composer picks it (how she takes the touch right now, not just the touch's table)
+  if (feel) return composed('poke.' + kind, 'poke', 0, Math.random(), f, c, { dry: true }).ripple || null;
+  if (Math.random() > 0.25) return null;
   return { notready: { motion: 'shaky' }, flustered: { motion: 'wavy' }, loves: { shape: 'heart' },
     giggly: { shape: 'star', motion: 'burst' }, secret: { shape: 'heart', motion: 'wavy' }, likes: null, comforted: null }[f.feeling];
 }
@@ -281,11 +287,17 @@ function pickText(list, key) {
   lastText[key] = t;
   return t;
 }
-function choosePiece(feeling, power) {
+// bias: the composer's { piece: × } for this moment (calm = more glow dots, a surprise = more "!")
+function choosePiece(feeling, power, bias = null) {
   const asciiW = Often.mul(Fx.currentFx().eAscii);
-  let list = PIECES[feeling].map(([p, w]) => [p, p === 'ascii' ? w * asciiW * 0.5 : w]).filter(x => x[1] > 0);
+  let list = PIECES[feeling].map(([p, w]) => [p, (p === 'ascii' ? w * asciiW * 0.5 : w) * (bias?.[p] ?? 1)]).filter(x => x[1] > 0);
   // the big heart ring is for a strong moment
   if (power < 0.6) list = list.filter(x => x[0] !== 'heartring');
+  // core feel: the repeat watcher picks, so the pieces she just showed are pushed down
+  if (feel?.Repeat && list.length) {
+    const got = feel.Repeat.pick('piece', list.map(([p, w]) => ({ id: feeling + '.' + p, w })));
+    if (got) return got.slice(feeling.length + 1);
+  }
   // never the same piece twice in a row
   const fresh = list.filter(x => x[0] !== lastPiece[feeling]);
   const p = pickW(fresh.length ? fresh : list);
@@ -316,7 +328,7 @@ function put({ text, svg, cls = '', x, y, size, anim, ms, dx = 0, dy = 0, rot = 
 // one puff of a feeling: a piece (or a pair, like the blush on both
 // cheeks) around her head, or near the touch for the ones that can be
 // anywhere. s = size factor from the power
-function puff(feeling, power, at) {
+function puff(feeling, power, at, bias = null) {
   const a = anchorFn();
   if (!a) return;
   const k = Fx.scale();
@@ -330,7 +342,7 @@ function puff(feeling, power, at) {
   const near = at && Math.hypot(at.x - a.x, at.y - a.y) > hw * 0.9 && Math.random() < 0.55
     ? { x: at.x + rnd(-14, 14) * k, y: at.y - rnd(4, 18) * k }
     : { x: a.x + side * hw * rnd(0.35, 0.75), y: a.y - hw * rnd(0.1, 0.55) };
-  const p = choosePiece(feeling, power);
+  const p = choosePiece(feeling, power, bias);
   switch (p) {
     case 'drop':
       put({ svg: SVG.drop, x: a.x + side * hw * rnd(0.42, 0.6), y: headTop + hw * rnd(0.05, 0.3), size: size * 0.9, anim: 'mp-fall', ms: 1100, dy: 26 * k, color });
@@ -484,8 +496,9 @@ function strongest() {
   if (demo) {
     const t = Date.now() - demo.t0;
     if (t > demo.ms) { demo = null; return null; }
-    return { feeling: demo.feeling, power: demo.from + (demo.to - demo.from) * Math.min(1, t / demo.ms), at: demo.at || null };
+    return { ...(demo.style || {}), feeling: demo.feeling, power: demo.from + (demo.to - demo.from) * Math.min(1, t / demo.ms), at: demo.at || null };
   }
+  const unit = feel ? anchorFn()?.modelH : 0;
   let best = null;
   const now = Date.now();
   for (const [slot, s] of active) {
@@ -493,14 +506,19 @@ function strongest() {
     // left her window, where no more moves arrive)
     if (s.stale && now - s.seen > s.stale) { active.delete(slot); feel?.touchEnd(slot); continue; }
     const ms = Date.now() - s.t0;
-    const f = composed(s.kind, 'hold', ms, s.seed, feelingFor(s.kind, 'hold', ms, ctx, s.seed));
+    // how it's being done: the hand's speed, steadiness and area (core/feel/manner.js)
+    const manner = s.track && unit ? s.track.read(now, unit) : null;
+    if (manner) feel.touchManner(slot, manner);
+    const f = composed(s.kind, 'hold', ms, s.seed, feelingFor(s.kind, 'hold', ms, ctx, s.seed), ctx, { manner, slot });
     if (f && (!best || f.power > best.power)) best = { ...f, at: s.at };
   }
   return best;
 }
 // her body showing the feeling (desktop/feelbody.js, set by desktop.js;
 // the settings window has no rig, so none there): show() every tick,
-// after() once when it ends, with the side his hand was on
+// after() once when it ends, with the side his hand was on. both get
+// the composer's reaction (which way she shows it: its variant), and
+// onset() runs the instant a touch lands: something to see right away
 let body = null;
 export function setBody(b) { body = b; }
 let felt = null; // { feeling, power, at } the body is showing
@@ -518,8 +536,8 @@ function tick() {
   const any = strongest();
   // the body follows its own switch, the effects their amount
   if (body) {
-    if (any) { body.show(any.feeling, any.power); felt = any; }
-    else if (felt) { body.after(felt.feeling, felt.power, sideOf(felt.at)); felt = null; }
+    if (any) { body.show(any.feeling, any.power, undefined, any); felt = any; }
+    else if (felt) { body.after(felt.feeling, felt.power, sideOf(felt.at), felt); felt = null; }
   }
   const f = amount() === 'off' ? null : any;
   if (!f) {
@@ -530,14 +548,15 @@ function tick() {
   }
   aura(f.feeling, f.power);
   const now = Date.now();
-  const every = (1150 - f.power * 750) / Math.max(0.15, amountK());
+  // the composer's tempo: calmer when it's slow and gentle or winding down, quicker when lively
+  const every = (1150 - f.power * 750) / Math.max(0.15, amountK()) * (f.tempo || 1);
   // a change of heart shows right away (a giggle turning into "enough!")
   const changed = shown && shown !== f.feeling;
   if (now - lastPuff < every && !changed) return;
   lastPuff = now;
   shown = f.feeling;
   const n = 1 + (f.power > 0.55 ? 1 : 0) + (amountPct() >= 70 && f.power > 0.8 ? 1 : 0) + (changed ? 1 : 0);
-  for (let i = 0; i < n; i++) setTimeout(() => puff(f.feeling, f.power, f.at), i * 140);
+  for (let i = 0; i < n; i++) setTimeout(() => puff(f.feeling, f.power, f.at, f.pieces), i * 140);
 }
 function run() { if (!loop) loop = setInterval(tick, 120); tick(); }
 
@@ -547,10 +566,14 @@ export function begin(slot, kind, t0 = Date.now(), at = null, stale = 0) {
   const s = active.get(slot);
   // the same hand going on (a rub crossing from her head to an ear):
   // the same touch, it keeps its length
-  if (s) { s.kind = kind; s.seen = Date.now(); if (at) s.at = at; feel?.touchKind(slot, kind); return; }
-  active.set(slot, { kind, t0, at, stale, seen: Date.now(), seed: Math.random() });
+  if (s) { s.kind = kind; s.seen = Date.now(); if (at) { s.at = at; s.track?.add(at.x, at.y, s.seen); } feel?.touchKind(slot, kind); return; }
+  const track = feel?.Manner ? feel.Manner.tracker() : null;
+  if (track && at) track.add(at.x, at.y, Date.now());
+  active.set(slot, { kind, t0, at, stale, seen: Date.now(), seed: Math.random(), track });
   feel?.touchBegin(slot, kind, t0);
   run();
+  // the instant it lands: her eyes, an ear, a blink (before any effect or word)
+  if (body?.onset && felt) body.onset(sideOf(at), felt);
 }
 // a hand left in place (desktop.js "two hands") takes its touch along
 export function move(from, to) {
@@ -561,27 +584,29 @@ export function move(from, to) {
   active.set(to, s);
   feel?.touchMove(from, to);
 }
-export function at(slot, x, y) { const s = active.get(slot); if (s) { s.at = { x, y }; s.seen = Date.now(); } }
+export function at(slot, x, y) { const s = active.get(slot); if (s) { s.at = { x, y }; s.seen = Date.now(); s.track?.add(x, y, s.seen); } }
 export function end(slot) { if (active.delete(slot)) feel?.touchEnd(slot); }
 export function endAll() { for (const slot of active.keys()) feel?.touchEnd(slot); active.clear(); demo = null; tick(); }
 
 // a single moment: a poke, a combo, "she wriggled free"
-export function burst(feeling, power = 0.7, where = null) {
+// style: the composer's reaction (pieces, delay, variant), when there is one
+export function burst(feeling, power = 0.7, where = null, style = null) {
   if (!COLOR[feeling]) return;
   if (amount() !== 'off') {
     const n = 1 + (power > 0.5 ? 1 : 0) + (amountPct() >= 70 ? 1 : 0);
-    for (let i = 0; i < n; i++) setTimeout(() => puff(feeling, power, where), i * 150);
+    for (let i = 0; i < n; i++) setTimeout(() => puff(feeling, power, where, style?.pieces), (style?.delay || 0) + i * 150);
   }
   // a short moment (glow, her body) when nothing longer is going on
   if (!active.size && !demo) {
-    demo = { feeling, from: power, to: power, t0: Date.now(), ms: 900, at: where };
+    demo = { feeling, from: power, to: power, t0: Date.now(), ms: 900, at: where, style };
     run();
+    if (body?.onset && felt) body.onset(sideOf(where), felt);
   }
 }
 export function poke(kind, where = null) {
   const seed = Math.random();
-  const f = composed(kind, 'poke', 0, seed, feelingFor(kind, 'poke', 0, ctx, seed));
-  if (f) burst(f.feeling, f.power, where);
+  const f = composed('poke.' + kind, 'poke', 0, seed, feelingFor(kind, 'poke', 0, ctx, seed));
+  if (f) burst(f.feeling, f.power, where, f);
   feel?.poke(kind);
   return f;
 }
@@ -593,7 +618,7 @@ export function combo(id) {
   f = byMood(f, close, ctx.mood, 'hug');
   f = tsundere(f, ctx.stage, 0, Math.random(), ctx);
   const r = composed('combo.' + id, 'combo', 0, Math.random(), { feeling: f, power: 0.95 });
-  burst(r.feeling, r.power);
+  burst(r.feeling, r.power, null, r);
   feel?.combo(id);
   return r.feeling;
 }

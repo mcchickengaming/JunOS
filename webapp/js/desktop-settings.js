@@ -9,14 +9,14 @@
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
 import * as Fx from './desktop/fx.js?v=11';
-import * as Moods from './desktop/moods.js?v=14';
+import * as Moods from './desktop/moods.js?v=15';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=8';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=3';
 import * as Controls from './home/controls.js?v=9';
 import * as Stores from './home/stores.js?v=6';
-import * as Feel from './core/feel/feel.js?v=2';
+import * as Feel from './core/feel/feel.js?v=3';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -567,7 +567,9 @@ function buildInside() {
     Controls.row('How quickly she\'s had enough', 'Normal is how she comes.',
       Controls.oftenCtl(pace, Often.MUCH, (v) => { try { localStorage.setItem(Feel.PACE_KEY, String(v)); } catch (e) {} Feel.refresh(); }, !F.isOn('tiring')), 'local:jun.feel.tirePct'),
     Controls.row('Her own favorites', 'She has touches she likes best, her own, drifting over the weeks. What works best depends on her mood.', sw('favorites'), 'feature:favorites'),
-    Controls.row('She mixes it up', 'She avoids doing, showing or saying the same thing twice in a row.', sw('repeat'), 'feature:repeat'),
+    Controls.row('She mixes it up', 'She avoids doing, showing or saying the same thing twice in a row, and takes the same touch in different ways.', sw('repeat'), 'feature:repeat'),
+    Controls.row('Gentle or rough matters', 'A slow, steady rub melts her. A fast, scrubby one tickles. Too rough for too long gets a pout.', sw('manner'), 'feature:manner'),
+    Controls.row('She sees your hand coming', 'Before a touch lands she notices: her eyes follow, then a lean in, a perk of the ears or a small flinch.', sw('anticipate'), 'feature:anticipate'),
     Controls.row('Feel lab', 'How she is inside, live. Try a touch without touching her, tune any number. For tuning only.',
       Controls.buttonCtl('Open the feel lab', () => window.open('feel-lab.html', 'feellab'))),
   );

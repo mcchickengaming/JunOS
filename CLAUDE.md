@@ -329,7 +329,7 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   Node tests: `.github/scripts/js/rig.test.mjs`. Licenses: NOTICE section 8. No puppets in git (example puppets are
   CC BY 4.0, credit seagetch if ever shown).
 
-- **Core feel, part 1** (#27, Nov 13, Fable week step 4, built on Opus; the full composer is Fable's next):
+- **Core feel, part 1** (#27, Nov 13, Fable week step 4, built on Opus; part 2, the full composer, is the next entry):
   `webapp/js/core/feel/`, one shared inside state for every window (localStorage `jun.feel`, lazy: values are kept with
   the time they were true and moved forward when read, nothing ticks, so she keeps living with no window open).
   `feel.js` is the one door (events in: `touchBegin/End/Kind/Move` from moods.js, `held`, `poke`, `combo`, `message`
@@ -356,6 +356,36 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   main.js allows only that url): needs (settable), phase, tired table, favorites, repeat memory, history, a dry-run
   "try a touch" (moods.js vs the composer, with the composer's `why`), every TUNE number live. Console: `jun.feel()`,
   `jun.lab()`. Factory reset clears `jun.feel`. Tests: `.github/scripts/js/feel.test.mjs`, `.github/scripts/feel.test.php`.
+
+- **Core feel, part 2: the reaction composer** (#27, Nov 13, on Fable). `core/feel/compose.js` keeps part 1's contract
+  and adds, in layers that each write a plain reason into `why`: had (tired.js) → favorite → needs → **manner** → **moment**
+  → **variety**. The reaction now also says HOW IT PLAYS OUT: `manner`, `moment` (tags: change, combo, surprise, insist,
+  toomuch, melt, rough + the phase), `variant` (which way her body shows the feeling: `VARIANTS`, played by feelbody.js
+  `show(feeling, power, now, style)`; its `KNOWN_VARIANTS` is kept equal by a test), `line` (tease / shy / comfort /
+  excited / pout / curious: `Feel.lineHint()` gives desktop.js `react()` the TONE of her next touch line, never words),
+  `pieces` (× per effect piece, moods.js `choosePiece` + the repeat watcher's `piece` channel), `ripple` (moods.js
+  `rippleFor`), `tempo` (× on the puff interval), `delay` (a poke's shy beat). A hold keeps its picks while it goes on
+  (`planFor(seed)`); pokes and combos pick fresh; `dry: true` only looks (lab, ripples) and `force` is the lab's "what if".
+  **How it's done** `manner.js`: `tracker()` per hand in moods.js (fed by `begin`/`at`), `read(t, herHeightPx)` → pace
+  still / gentle / even / rough in HER HEIGHTS a second, so it holds at any size. Gentle = more power, calmer, and after
+  `meltAfterMs` at Close+ she melts (likes → loves, variant `melt`); rough = giggly, tires her quicker
+  (`Feel.touchManner` → `Tired.loadFor(kind, ms, roughShare)`), and past `tooMuchMs` a pout (flustered; not ready at
+  Stranger/Familiar). Tickles like it quick. **What just happened** `whatJustHappened()` reads her history: a change of
+  touch (another group, only as it begins), a combo's glow, a surprise (quiet for minutes, and she did NOT see the hand
+  coming), again right after "enough" (`insist` → a sure pout), and the phase (greeting, peak, wind-down, afterglow).
+  **She sees his hand coming** `approach.js` `decide()`: desktop.js `seeHandComing` measures the cursor against
+  `Body.nearestSpot` (distance and closing speed in her heights), `Feel.approach` decides notice / perk / leanin / flinch /
+  blink / brace / guard by bond, mood, favorites, needs and tiredness (cooldown, not every time, never during a touch),
+  feelbody.js `approach()` plays it; `onset()` is the instant a touch lands (eyes / blink / ear, a start on a surprise),
+  called synchronously from moods.js `begin`/`burst`, so something shows before any timer or word. **Curves** (tired.js):
+  `factorAt` is one smooth curve (a small warm-up bump at "enjoying", easing to `floor` at "enough", settling to
+  `floorDeep`), the same touch in a row weighs more each time (`inARowMax`), and favorites shift with what he's given her
+  these days (`s.use`, `favMiss`, fades over days). Fixed on the way: pokes reached the composer without their `poke.`
+  kind (she never tired of them there), and "in a row" always counted. Numbers: tune.js `manner` / `moment` / `variety` /
+  `approach` + the new `tired` ones; body numbers in feelbody.js TUNE (`v*`, `onset*`, `ap*`). Switches (Inside her):
+  `feature:manner`, `feature:anticipate`; the variety follows `feature:repeat`. Feel lab "Try a touch": how it's done,
+  what just happened, time together, "How it plays out", "Your hand coming". Tests: the second half of `feel.test.mjs`.
+  NOT yet seen on the real rig (no rig in the cloud): the body variants, onset and approach numbers are first guesses.
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

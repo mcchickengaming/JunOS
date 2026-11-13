@@ -28,6 +28,7 @@ const fresh = () => ({
   hist: [],        // the last events: [at, type, kind, ms]
   repeat: {},      // repeat.js: channel -> [[id, at]...] (only the channels worth keeping)
   marks: {},       // one-off flags: kind -> the state she last told about (tired.js)
+  use: {},         // what he's given her these days: kind -> { n, at } (tired.js, fades over days)
 });
 
 let cache = null, cacheAt = 0, dirty = false, saveT = null;

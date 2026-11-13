@@ -656,6 +656,25 @@ export function spotCircle(kind, side = 1) {
   return { x: a.x + (c.pair ? side : 1) * c.dx * u, y: a.y + c.dy * u, r, rx: r * (c.w || 1) };
 }
 
+// the spot his hand is nearest to, and how far outside it (px; 0 = on it). core feel uses it to
+// let her see the hand coming (desktop.js → core/feel/approach.js). null when there's no rig
+export function nearestSpot(x, y) {
+  const a = anchor();
+  if (!a) return null;
+  let best = null;
+  for (const [kind, c] of Object.entries(touchSpots())) {
+    if (c.off) continue;
+    for (const side of c.pair ? [1, -1] : [1]) {
+      const p = spotCircle(kind, side);
+      if (!p) continue;
+      const d = Math.hypot((x - p.x) / p.rx, (y - p.y) / p.r);
+      const dist = Math.max(0, d - 1) * Math.min(p.r, p.rx);
+      if (!best || dist < best.dist) best = { kind, side, dist, x: p.x, y: p.y };
+    }
+  }
+  return best && { ...best, unit: a.modelH, faceX: a.x };
+}
+
 // which rubs may happen: desktop.js asks the consent + ratings gate (js/core/gate.js), e.g. a
 // thigh rub is flirty (owner, Nov 12: only the rub; the poke and the squish are everyday). a rub
 // that may not happen is just the mouse passing over her

@@ -32,23 +32,77 @@ export const DEFAULTS = {
     // some touches tire faster (tickles) or slower (a hug)
     rate: { side: 2.0, feettickle: 2.2, tailgrab: 1.4, thighsquish: 1.3, hug: 0.6, hand: 0.6, head: 0.8 },
     poke: 0.08, combo: 0.22, toss: 0.18,
-    // the same touch again right away weighs a little more
-    inARow: 0.05,
+    // the same touch again right away weighs a little more (and more each time, see inARowMax)
+    inARow: 0.03,
     // related touches share part of it (a head rub and an ear rub)
     share: 0.3,
     // the load halves every this many minutes: about 2-3 hours back to fresh
     halfLifeMin: 40,
     // where the states start (her favorites push these up)
     enjoying: 0.35, plenty: 0.85, enough: 1.35, sore: 1.8,
-    // how much power is left at "enough" and past it
-    floor: 0.45,
+    // how much power is left at "enough", and where it settles far past it (it eases down, no cliff)
+    floor: 0.45, floorDeep: 0.3,
+    // getting into it: a touch gives a little MORE as she warms to it, most right at "enjoying"
+    warmUp: 0.06,
+    // the same touch again and again in a row weighs more each time, up to this many times
+    inARowMax: 3,
+    // a fast, scrubby rub wears on her quicker: up to this much more load when it's all rough
+    roughLoad: 0.6,
     // her favorites: each touch gets her own weight in this range, drifting week to week
     favLow: 0.75, favHigh: 1.35, favDrift: 0.15,
+    // what he's given her a lot of these days she's a little less keen on, and what she hasn't had
+    // in days she misses: up to ± this much. useFull = this much load over the last days is "a lot",
+    // and it fades with this half-life (days)
+    favMiss: 0.08, useFull: 6, useHalfLifeDays: 3,
+  },
+  // how it's done: a rub's speed, steadiness and area (manner.js). Speeds and sizes are in
+  // "her heights" (1 = as tall as she is on screen), so they hold at any size
+  manner: {
+    windowMs: 1200,     // how far back a rub is looked at
+    minMs: 350,         // this much of it before she can tell how it's done
+    stillSpeed: 0.04,   // slower than this (her heights a second) = a hand resting on her
+    gentleSpeed: 0.55,  // up to this = slow and gentle
+    roughSpeed: 1.5,    // from this = fast and scrubby
+    roughTurns: 5,      // ...or this many changes of direction a second
+    steadyMin: 0.45,    // gentle also needs it this steady (0 jerky .. 1 even)
+    tooMuchMs: 3500,    // this long of rough in one go = too much: a pout
+    tooMuchLowBondMs: 1400, // sooner when she barely knows him
+    meltAfterMs: 2500,  // this long of slow and gentle and she melts (Close and up)
+    gentlePower: 0.1, roughPlayPower: 0.08, tooMuchPower: 0.75,
+  },
+  // what just happened, and how the time together is going
+  moment: {
+    changeWithinSec: 90, changePower: 0.06,      // a change of touch is a little fresh air
+    comboGlowSec: 8, comboPower: 0.1,            // still glowing from a combo
+    surpriseAfterMin: 4, surprisePower: 0.08,    // nothing for this long, then a sudden poke
+    sawItComingMs: 1800,                         // she noticed the hand: no surprise
+    insistSec: 180,                              // doing it again this soon after "enough"
+    greetingPower: 0.12, greetingFullAwayH: 6,   // glad he's back: more the longer he was away
+    peakPower: 0.05, windDownTempo: 1.25, afterglowTempo: 1.35, afterglowPower: 0.05,
+    favLovesAt: 1.2,                             // a favorite this strong can tip likes → loves
+    wantedPower: 0.1, sleepyPlay: 0.85,
+  },
+  // variety: how she plays a reaction out
+  variety: {
+    plainChance: 0.45,   // how often a reaction is just her usual way (the rest: one of her other ways)
+    rippleChance: 0.25,  // "let her pick": how often she changes the ripple
+    tempoSpread: 0.15,   // each touch runs a little quicker or calmer than the last, ± this
+    pokeDelayMs: 90,     // a shy or surprised beat before a poke's effects, up to this
+  },
+  // she sees his hand coming (approach.js)
+  approach: {
+    near: 0.3,          // within this far of a spot (her heights) she can notice
+    minClosing: 0.25,   // the hand has to be coming closer at least this fast (her heights a second)
+    fast: 2.2,          // from this speed it's sudden: a flinch or a blink
+    everyMs: 2600,      // at most one of these in this long
+    afterTouchMs: 1500, // and not right after a touch ended
+    chance: 0.8,        // she doesn't notice every single time
+    leanInChance: 0.6,  // how often a welcome hand gets a lean in (the rest: her eyes and an ear)
   },
   repeat: {
     keep: 24,
     // how long something counts as "just did that", in seconds, per kind of thing
-    forget: { line: 1800, emote: 180, idle: 300, piece: 20, reaction: 120, thought: 240 },
+    forget: { line: 1800, emote: 180, idle: 300, piece: 20, reaction: 120, thought: 240, variant: 90, linetype: 600, approach: 45 },
     // how hard a repeat is pushed down (1 = never again while remembered)
     strength: 0.85,
   },

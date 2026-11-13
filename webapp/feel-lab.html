@@ -101,10 +101,26 @@
       <label for="tMs">Length</label><span><input type="range" id="tMs" min="0" max="20000" step="250" value="3000"> <span id="tMsOut"></span></span>
       <label for="tStage">Bond</label><select id="tStage"></select>
       <label for="tMood">Mood</label><select id="tMood"></select>
+      <label for="tManner">How it's done</label><span><select id="tManner">
+        <option value="none">A hand resting on her</option><option value="gentle">Slow and gentle</option>
+        <option value="even">An easy rub</option><option value="rough">Fast and scrubby</option></select>
+        for <input type="range" id="tMannerMs" min="0" max="8000" step="250" value="1000"> <span id="tMannerOut"></span></span>
+      <label for="tMoment">What just happened</label><select id="tMoment">
+        <option value="">As it really is right now</option><option value="none">Nothing special</option>
+        <option value="change">A change of touch</option><option value="combo">Right after a combo</option>
+        <option value="surprise">Out of nowhere</option><option value="insist">Again, right after she said enough</option></select>
+      <label for="tPhase">Time together</label><select id="tPhase"><option value="">As it really is right now</option></select>
     </div>
     <div class="result">
       <div><h3>The touch's own feeling (moods.js)</h3><div id="rBase"></div></div>
       <div><h3>After the composer (her state now)</h3><div id="rComp"></div><ul id="rWhy"></ul></div>
+    </div>
+    <div class="result">
+      <div><h3>How it plays out</h3><div id="rStyle"></div>
+        <p class="note">Her body's way and tone are picked per touch, so they change from one try to the next in real use; here the same seed gives the same pick. <button type="button" id="reroll">Another touch</button></p></div>
+      <div><h3>Your hand coming (before the touch)</h3>
+        <div class="try"><label for="aSpeed">The hand comes</label><select id="aSpeed"><option value="slow">Slowly</option><option value="fast">Fast</option></select></div>
+        <div id="rApproach"></div><ul id="rApproachWhy"></ul></div>
     </div>
     <div class="btns"><button type="button" id="doIt">Do it for real (counts toward her state)</button></div>
   </section>
@@ -118,6 +134,6 @@
     </div>
   </section>
 </main>
-<script type="module" src="js/feel-lab.js?v=3"></script>
+<script type="module" src="js/feel-lab.js?v=4"></script>
 </body>
 </html>
