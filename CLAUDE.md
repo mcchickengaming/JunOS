@@ -61,6 +61,33 @@ php .github/scripts/quirks.test.php
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
 temp sqlite, real migrations, stubbed app functions) and a step in `.github/workflows/ci.yml`.
 
+## Definition of done (the polish bar, agreed Nov 11; the owner adds items over time)
+A feature is done only when ALL of these are true. Check them off in the chat before saying it's finished.
+1. **Registry entry** in `webapp/data/features.json` FIRST (see "Feature registry" below): plain name, one line,
+   section, tier, default, depends on, modes + fallback, privacy kind, where it's stored, profiles, search words.
+2. **Defaults tuned to a natural Jun**: someone who never opens Settings gets the full, natural experience. Not 50% by
+   habit.
+3. **Settings rows** built from the standard controls (`webapp/js/home/controls.js`): switch, how-often (often.js,
+   steps + %, plus "As she feels" where she does it on her own), choice (+ "she decides" where it fits), color (closet
+   picker), size, slider. Nothing one-off. Text clean, short, calm; her name as the player set it, never a hard "Jun".
+4. **How to play** entry if the player has to know how to use it.
+5. **Colors + sizing**: every visible piece recolorable with the closet picker, see-through where it fits, scales with
+   her size (`--fx-k`).
+6. **Modes + fallback**: works in desktop / windowed / compact, or says what happens in the others.
+7. **Her reactions to it**: she notices, feels something, shows it (body, icons, now-and-then lines), varied.
+8. **Words, not numbers**: she talks like a person; exact numbers only when remarkable.
+9. **Repeat-watcher tags** on lines/reactions (once the repeat watcher exists, #27): "OK to repeat while building up".
+10. **Rated content goes through the gate** (`webapp/js/core/gate.js` / `webapp/api/lib/gate.php`): every
+    interaction, line pack or scene has a tier (everyday / flirty / adult) and asks the gate. No feature does its own
+    check. Claude never writes adult-tier content.
+11. **Save points + profiles include it**: settings live under runtime\state, desktop.json or the app's storage, and
+    the registry entry says where (`store`).
+12. **Opt-out that never breaks her**: turning it off is safe; anything that depends on it is listed in `needs` so the
+    settings can say it in plain words; storylines take another path.
+13. **Tests** (`.github/scripts/<feature>.test.php` / `.github/scripts/js/<feature>.test.mjs`) + a CI step, and the
+    "Before every push" checks pass.
+14. **Docs**: a line in "Fork features so far" here and "Shipped" in the project's roadmap.
+
 ## Fork features so far
 - **Bond stages** (`webapp/api/lib/bond.php`, migration 028): Stranger → Familiar → Friend → Close → Partner →
   Devoted. XP from his messages, outings, daily return and warm replies; daily cap; never lost. Stage-ups are
