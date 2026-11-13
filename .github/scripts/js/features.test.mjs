@@ -45,7 +45,7 @@ test('every entry is complete and unique', () => {
 });
 
 test('needs point at real features, no loops', () => {
-  for (const f of REG.features) for (const n of f.needs || []) assert.ok(F.get(n), f.id + ' needs ' + n);
+  for (const f of REG.features) for (const n of [...(f.needs || []), ...(f.pausedBy || [])]) assert.ok(F.get(n), f.id + ' needs ' + n);
   const visit = (id, path) => {
     assert.ok(!path.includes(id), 'loop: ' + [...path, id].join(' > '));
     for (const n of F.get(id).needs || []) visit(n, [...path, id]);
@@ -90,6 +90,9 @@ test('notes in plain words', () => {
   assert.equal(F.offNote('walk'), '');
   assert.equal(F.needsNote('glow', () => false), 'Paused: needs "How she feels" on.');
   assert.equal(F.needsNote('glow', () => true), '');
+  assert.equal(F.needsNote('walk', (id) => id === 'quiet'), 'Paused while "Quiet mode on the desktop" is on.');
+  assert.equal(F.needsNote('walk', () => false), '');
+  assert.match(F.onNote('quiet'), /^On, this pauses /);
   assert.ok(F.search('wag').some(f => f.id === 'her_body'));
   assert.ok(F.search('nsfw').some(f => f.id === 'adult'));
   assert.deepEqual(F.ofKey('fx:mGlowStr'), { f: F.get('glow'), main: false });

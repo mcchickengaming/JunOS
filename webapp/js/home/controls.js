@@ -9,8 +9,8 @@
 // their control (data-fx), or by data-key (desk switches, mirrored rows).
 
 import * as Often from '../desktop/often.js?v=2';
-import * as F from '../core/features.js?v=2';
-import * as Stores from './stores.js?v=3';
+import * as F from '../core/features.js?v=3';
+import * as Stores from './stores.js?v=4';
 
 export function row(title, hint, control, fkey) {
   const r = document.createElement('div');
@@ -160,6 +160,7 @@ export function decorate(root = document) {
       const needs = F.needsNote(hit.f.id, Stores.isOn);
       if (needs) note = needs;
       else if (!Stores.isOn(hit.f.id)) note = F.offNote(hit.f.id);
+      else note = F.onNote(hit.f.id);
     }
     r.classList.toggle('paused', !!(hit.main && F.needsNote(hit.f.id, Stores.isOn)));
     if (note) {

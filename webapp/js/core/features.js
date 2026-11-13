@@ -59,6 +59,10 @@ export function isOffValue(v) {
 export function dependents(id) {
   return reg.features.filter(f => (f.needs || []).includes(id));
 }
+// the features this one pauses while it's ON (their pausedBy)
+export function pauses(id) {
+  return reg.features.filter(f => (f.pausedBy || []).includes(id));
+}
 const listWords = (names) => names.length <= 1 ? (names[0] || '') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
 
 // "Turning this off also pauses: Tsundere moments and Comforted when she's down."
@@ -66,11 +70,18 @@ export function offNote(id) {
   const d = dependents(id).map(f => f.name);
   return d.length ? 'Off, this also pauses ' + listWords(d) + '.' : '';
 }
-// "Needs How she feels." when something it needs is off. isOn(id) answers for the needed feature
+export function onNote(id) {
+  const d = pauses(id).map(f => f.name);
+  return d.length ? 'On, this pauses ' + listWords(d) + '.' : '';
+}
+// "Paused: needs "How she feels" on." when something it needs is off, or "Paused while "Quiet mode…" is on."
+// when something that pauses it (pausedBy) is on. isOn(id) answers for the other feature
 export function needsNote(id, isOn) {
   const f = get(id);
   const off = (f?.needs || []).map(get).filter(n => n && !isOn(n.id));
-  return off.length ? 'Paused: needs ' + listWords(off.map(n => '"' + n.name + '"')) + ' on.' : '';
+  if (off.length) return 'Paused: needs ' + listWords(off.map(n => '"' + n.name + '"')) + ' on.';
+  const by = (f?.pausedBy || []).map(get).filter(n => n && isOn(n.id));
+  return by.length ? 'Paused while ' + listWords(by.map(n => '"' + n.name + '"')) + ' is on.' : '';
 }
 
 const norm = (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();

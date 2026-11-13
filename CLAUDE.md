@@ -323,7 +323,8 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   `elsewhere`), `tier` (everyday / flirty / adult), `key` = its main setting as `kind:name` (stores listed in the json:
   fx, desk, size, app, mirror, theme, comfort, local, feature, env, server), `more` = its extra settings (shown under
   "More settings" in Simple), `default` (desk/comfort/fx defaults are tested against the code), `needs` (what it depends
-  on, for "Off, this also pauses…" / "Paused: needs … on."), `modes` + `fallback`, `privacy` (none / pc / chats),
+  on, for "Off, this also pauses…" / "Paused: needs … on."), `pausedBy` (what pauses it while ON, e.g.
+  quiet mode pauses walk + touch talk: "Paused while … is on." / "On, this pauses …"), `modes` + `fallback`, `privacy` (none / pc / chats),
   `profile` (goes in a shared profile, #18), `words` (search), `since` (date). `presets`: bundles of `desk:`/`fx:`
   values. A NEW feature: add its entry first; if it has no store of its own, give it `key: "feature:<id>"` and ask
   `Features.isOn(id)` (honors the new-features policy: surprise me / ask me / keep off). Per-mode values:

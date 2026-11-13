@@ -3,7 +3,7 @@
 // wherever it happens to be stored. Settings stay where they always were.
 
 import * as Fx from '../desktop/fx.js?v=10';
-import * as F from '../core/features.js?v=2';
+import * as F from '../core/features.js?v=3';
 import * as Gate from '../core/gate.js?v=3';
 
 const D = window.junDesktop || null;
