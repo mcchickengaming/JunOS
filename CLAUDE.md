@@ -58,6 +58,7 @@ php .github/scripts/bond.test.php
 php .github/scripts/touch.test.php
 php .github/scripts/quirks.test.php
 php .github/scripts/feel.test.php
+php .github/scripts/progress.test.php
 node --test .github/scripts/js/*.test.mjs
 ```
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
@@ -420,6 +421,37 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   step 6 (chat message / phone push), "something to show him" after hours away, going to one of her spots when ignored
   (she'd stay there: startWander keeps her seated), bond lean-in hints (#1b), more rows, her window / compact HUD loop.
   NOT seen on the real rig: `askPat`, `lightUp` and the new moves are first guesses.
+
+- **The progression service** (#31 item 8, Nov 13, on Fable): skills, xp, levels (1-99), Total Level and Mastery for her
+  AND the player. **ONE engine, on her server**: `webapp/api/lib/progress.php` (rules in its header), data in
+  `webapp/data/progress.json` (skills, activities, reward pools, buffs, story grants: a new activity is one more entry, no
+  code; `progress_validate()` is run by the test), state = one JSON blob per user (migration 034 `progress`, in the
+  factory-reset list; `progress_blank()` is its shape), every number in `PROGRESS_TUNE`. `api/progress.php`: GET (settles her
+  away practice + anything he set going; `?peek=1` only looks), POST `begin` / `finish` (her server keeps the clock, so the
+  minutes are real) / `cancel` / `going` / `master` / `story` / `opt` / `sim` / `curve`. Pages use `js/core/progress.js`
+  (`begin`, `finish`, `load`, `setGoing`, `master`, `story`, `opt`, `simulate`, `curve`, `onChange`; `feature:progress` off =
+  every call answers `{ off: true }`). `progress_grant()` is the one way anyone gains anything: xp = minutes × weight ×
+  quality × Together (×1.1 for both; alone is ×1, never less) × Mastery marks × his xp buffs; then `progress_roll()`, the one
+  reward roller: the same value a minute for every activity (no per-activity value knob, on purpose), × up to 3 with skill,
+  ± variance, Credits + drops whose sizes come from a fixed mix at every level (small often, big about 1 in 100; never a
+  ladder), from the shared pools or the activity's `signature` list (`minLevel` allowed). Buffs: `uses` ("the next 3
+  delves", by source), `until` (hours), `permanent` (big drops only, once, capped by `permCap`, a second one pays Credits),
+  `worn` (comes with its item); each keeps `from`. Away: hers by real time since the last GET (`awayDefault`, capped, xp
+  only); his only via `setGoing` jobs. Story grants once per id. Mastery at 99: xp back to 0, a mark (+3% xp, max 5), the
+  Total Level never drops. **Hard rules, tested:** the bond is never a skill and touch / chat / bond can never be a source
+  (`PROGRESS_NEVER_SOURCES`; this file never calls bond or relationship code, and bond.php / touch.php never call it); no
+  activity may ask for a bond stage or flavor; Focus is opt-in (`opt.focus`), has a daily cap and can never give a permanent
+  buff (`noPermanent`). Her prompt: `progress_context` after the feel block (`JUN_PROGRESS`, default on): what either of
+  them got better at in the last 36 h, in words (bands: new at / getting the hang of / good at / very good at / a master
+  of), never a number. Settings > Her > Skills, hers and yours (`buildSkills()`, `#skillRows`, a line in words). **Progress
+  lab** `webapp/progress-lab.html` + `js/progress-lab.js` (opens from Settings; main.js allows that url): both of them now,
+  try one for real, the curve, the time-lapse (`progress_simulate`, seeded, nothing saved), "Is it fair?", every number
+  (tried, never saved: a keeper goes into `PROGRESS_TUNE` by hand). Console: `jun.progress()`, `jun.progressLab()`. The
+  activities in the data are SAMPLES (`"sample": true`) until delves (#32), cooking and the focus timer exist; items are ids
+  only until the economy (#9). NOT built: real activities, her journal page / his field notebook, her reactions on the
+  desktop to a level-up (the `ups` and `event` drops are returned for that), courage, abilities and stats (the delve
+  framework reads `progress_effects()`), what she does while away (her simulation picks the activity later). Tests:
+  `.github/scripts/progress.test.php`, `.github/scripts/js/progress.test.mjs`.
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

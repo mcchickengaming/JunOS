@@ -1,0 +1,123 @@
+{
+  "about": "The progression service's data (foundations #31 item 8; api/lib/progress.php is the engine). Skills for her AND the player, activities, reward pools, buffs and story grants, all as data: a new activity is one more entry here, no new code. Items are ids only until the economy (#9) exists. The activities marked \"sample\" are placeholders that prove the shape; the delve framework (#32), cooking and the focus timer replace them. The bond is NOT in here and never will be: no skill, no activity source and no reward may touch it (tested).",
+  "version": 1,
+  "owners": { "player": "You", "jun": "Her" },
+  "skills": {
+    "delving":    { "name": "Delving",    "owners": ["player", "jun"], "line": "Exploring the ruins under the city." },
+    "tinkering":  { "name": "Tinkering",  "owners": ["player"], "line": "Fixing and building with parts." },
+    "crafting":   { "name": "Crafting",   "owners": ["player"], "line": "Making things from what you find." },
+    "cooking":    { "name": "Cooking",    "owners": ["player"], "line": "Meals at home." },
+    "scavenging": { "name": "Scavenging", "owners": ["player"], "line": "Finding and judging loot." },
+    "fishing":    { "name": "Fishing",    "owners": ["player"], "line": "A calm line in the water." },
+    "focus":      { "name": "Focus",      "owners": ["player"], "line": "Focus sessions with her next to you.", "optIn": true },
+    "scanning":   { "name": "Scanning",   "owners": ["jun"], "line": "Her senses: hidden doors, traps, old machine text." },
+    "hacking":    { "name": "Hacking",    "owners": ["jun"], "line": "Terminals, locks and old systems." },
+    "support":    { "name": "Support",    "owners": ["jun"], "line": "Patching you up and backing you up." },
+    "souschef":   { "name": "Sous-chef",  "owners": ["jun"], "line": "Helping in the kitchen." },
+    "mechanic":   { "name": "Assistant mechanic", "owners": ["jun"], "line": "Handing you the right tool, then doing it herself." }
+  },
+  "activities": {
+    "sample_delve": {
+      "name": "A delve (sample)", "sample": true, "source": "delve", "tier": "everyday", "minutes": 25, "together": true,
+      "skills": { "player": { "delving": 1, "scavenging": 0.3 }, "jun": { "delving": 0.5, "scanning": 0.6, "support": 0.3 } },
+      "pools": ["common"],
+      "signature": [
+        { "id": "delve_map_scrap", "kind": "item", "size": "small", "w": 3 },
+        { "id": "delve_old_servo", "kind": "item", "size": "mid", "w": 2 },
+        { "id": "event_sealed_door", "kind": "event", "size": "mid", "w": 1 },
+        { "id": "delve_greatsword", "kind": "item", "size": "big", "w": 1, "minLevel": 20 },
+        { "id": "event_lost_lab", "kind": "event", "size": "big", "w": 1 }
+      ]
+    },
+    "sample_cooking": {
+      "name": "Cooking a meal (sample)", "sample": true, "source": "cook", "tier": "everyday", "minutes": 20, "together": true,
+      "skills": { "player": { "cooking": 1 }, "jun": { "souschef": 1 } },
+      "pools": ["common"],
+      "signature": [
+        { "id": "cook_good_leftovers", "kind": "item", "size": "small", "w": 3 },
+        { "id": "well_fed", "kind": "buff", "size": "small", "w": 2 },
+        { "id": "cook_recipe_card", "kind": "item", "size": "mid", "w": 2 },
+        { "id": "event_dinner_guest", "kind": "event", "size": "mid", "w": 1 },
+        { "id": "event_royal_table", "kind": "event", "size": "big", "w": 1 },
+        { "id": "kings_favor", "kind": "buff", "size": "big", "w": 1, "minLevel": 20 }
+      ]
+    },
+    "sample_tinkering": {
+      "name": "At the workbench (sample)", "sample": true, "source": "tinker", "tier": "everyday", "minutes": 20, "together": true,
+      "skills": { "player": { "tinkering": 1, "crafting": 0.4 }, "jun": { "mechanic": 1 } },
+      "pools": ["common"],
+      "signature": [
+        { "id": "tinker_spare_gear", "kind": "item", "size": "small", "w": 3 },
+        { "id": "tinker_tuned_part", "kind": "item", "size": "mid", "w": 2 },
+        { "id": "steady_hands", "kind": "buff", "size": "mid", "w": 1 },
+        { "id": "tinker_prototype", "kind": "item", "size": "big", "w": 1 },
+        { "id": "event_mechanics_nod", "kind": "event", "size": "big", "w": 1 }
+      ]
+    },
+    "sample_fishing": {
+      "name": "Fishing (sample)", "sample": true, "source": "fish", "tier": "everyday", "minutes": 30, "together": true,
+      "skills": { "player": { "fishing": 1 }, "jun": { "scanning": 0.4 } },
+      "pools": ["common"],
+      "signature": [
+        { "id": "fish_small_catch", "kind": "item", "size": "small", "w": 3 },
+        { "id": "fish_odd_bottle", "kind": "keepsake", "size": "mid", "w": 1 },
+        { "id": "fish_fine_catch", "kind": "item", "size": "mid", "w": 2 },
+        { "id": "fish_legend", "kind": "item", "size": "big", "w": 1 },
+        { "id": "event_fishermans_tale", "kind": "event", "size": "big", "w": 1 }
+      ]
+    },
+    "sample_focus": {
+      "name": "A focus session (sample)", "sample": true, "source": "focus", "tier": "everyday", "minutes": 25, "together": true,
+      "needsOpt": "focus", "dailyCapMin": 150, "noPermanent": true,
+      "skills": { "player": { "focus": 1 }, "jun": {} },
+      "pools": ["common"],
+      "signature": [
+        { "id": "consistent_focus", "kind": "buff", "size": "small", "w": 2 },
+        { "id": "focus_sticky_note", "kind": "keepsake", "size": "mid", "w": 1 },
+        { "id": "focus_blue_light_glasses", "kind": "item", "size": "big", "w": 1 }
+      ]
+    },
+    "sample_expedition": {
+      "name": "Send the drone out (sample)", "sample": true, "source": "expedition", "tier": "everyday", "minutes": 120,
+      "setGoing": true, "together": false,
+      "skills": { "player": { "scavenging": 1, "tinkering": 0.2 }, "jun": {} },
+      "pools": ["common"],
+      "signature": [
+        { "id": "drone_salvage", "kind": "item", "size": "small", "w": 3 },
+        { "id": "drone_rare_part", "kind": "item", "size": "mid", "w": 1 }
+      ]
+    },
+    "jun_practice": {
+      "name": "She practices on her own (sample)", "sample": true, "source": "practice", "tier": "everyday", "minutes": 60,
+      "away": true, "together": false,
+      "skills": { "player": {}, "jun": { "mechanic": 0.5, "hacking": 0.5 } },
+      "pools": [], "signature": []
+    }
+  },
+  "awayDefault": "jun_practice",
+  "pools": {
+    "common": [
+      { "id": "part_common", "kind": "item", "size": "small", "w": 4 },
+      { "id": "ingredient_common", "kind": "item", "size": "small", "w": 4 },
+      { "id": "gift_small", "kind": "item", "size": "small", "w": 2 },
+      { "id": "part_good", "kind": "item", "size": "mid", "w": 3 },
+      { "id": "furniture_piece", "kind": "item", "size": "mid", "w": 2 },
+      { "id": "gift_nice", "kind": "item", "size": "mid", "w": 2 },
+      { "id": "part_rare", "kind": "item", "size": "big", "w": 2 },
+      { "id": "outfit_piece", "kind": "item", "size": "big", "w": 1 }
+    ]
+  },
+  "buffs": {
+    "consistent_focus": { "name": "Consistent Focus", "scope": "uses", "uses": 3, "of": "delve", "effect": { "accuracy": 5 } },
+    "well_fed":         { "name": "Well fed", "scope": "until", "hours": 20, "effect": { "xp": 5 } },
+    "steady_hands":     { "name": "Steady hands", "scope": "uses", "uses": 2, "of": "tinker", "effect": { "xp.tinkering": 10 } },
+    "kings_favor":      { "name": "The king's favor", "scope": "permanent", "effect": { "luck": 1 } },
+    "glasses_worn":     { "name": "Easy on the eyes", "scope": "worn", "item": "focus_blue_light_glasses", "effect": { "xp.focus": 3 } }
+  },
+  "story": {
+    "sample_generals_gift": {
+      "name": "The general's gift (sample)", "from": "A dish cooked for a military leader",
+      "give": [ { "id": "moonlight_greatsword", "kind": "item" }, { "id": "generals_medal", "kind": "keepsake" } ]
+    }
+  }
+}

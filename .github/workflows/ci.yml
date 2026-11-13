@@ -165,6 +165,9 @@ jobs:
       - name: Core feel (her prompt lines)
         run: php .github/scripts/feel.test.php
 
+      - name: Progression service (skills, hers and yours)
+        run: php .github/scripts/progress.test.php
+
       - name: Consent + ratings gate
         run: php .github/scripts/gate.test.php
 

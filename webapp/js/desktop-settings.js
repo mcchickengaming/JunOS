@@ -17,6 +17,7 @@ import * as Gate from './core/gate.js?v=3';
 import * as Controls from './home/controls.js?v=10';
 import * as Stores from './home/stores.js?v=7';
 import * as Feel from './core/feel/feel.js?v=4';
+import * as Progress from './core/progress.js?v=2';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -581,6 +582,35 @@ const Init = Feel.Initiative;
 const HOURS = Array.from({ length: 24 }, (_, h) => [h, (h % 12 || 12) + (h < 12 ? ' am' : ' pm')]);
 const WAVE_SIZES = [[0, 'Any little wiggle'], [25, 'Small'], [50, 'Normal'], [75, 'Big'], [100, 'Big sweeps only']];
 let whyOpen = false;
+// Her > Skills, hers and yours (the progression service, #31 item 8): the switch, a line in words, the lab
+function buildSkills() {
+  const host = document.getElementById('skillRows');
+  if (!host) return;
+  host.innerHTML = '';
+  host.append(
+    Controls.row('Skills', 'Off, nothing is gained and nothing is lost: everything waits as it is.',
+      Controls.switchCtl(F.isOn('progress'), async (v) => { await Stores.write('feature:progress', v); buildSkills(); soon(); }), 'feature:progress'),
+    Controls.row('Progress lab', 'Where you both stand, the level curve, and hundreds of hours played in a moment. For tuning only.',
+      Controls.buttonCtl('Open the progress lab', () => window.open('progress-lab.html', 'progresslab'))),
+  );
+  drawSkillsNow();
+}
+// in words, never a table of numbers: "You're getting the hang of cooking. She's good at hacking."
+async function drawSkillsNow() {
+  const el = document.getElementById('skillsNow');
+  if (!el) return;
+  if (!F.isOn('progress')) { el.textContent = ''; return; }
+  const j = await Progress.load({ peek: true });
+  if (!j.state) { el.textContent = ''; return; }
+  const best = (o) => Object.values(j.state.owners[o].skills).filter(k => k.level > 1).sort((a, b) => b.level - a.level)[0];
+  const you = best('player'), her = best('jun');
+  let she = 'She';
+  try { she = (localStorage.getItem('omega.names.bot') || '').trim() || 'She'; } catch (e) {}
+  const words = (k) => ({ 'a master': 'a master of', 'very good': 'very good at', good: 'good at', 'getting the hang of it': 'getting the hang of', 'new at it': 'new at' }[Progress.band(k.level)]) + ' ' + k.name.toLowerCase();
+  el.textContent = !you && !her ? 'Nothing yet: skills grow once there are things to do together (delves, cooking and more are on the way).'
+    : [you ? `You're ${words(you)}.` : '', her ? `${she} is ${words(her)}.` : ''].filter(Boolean).join(' ');
+}
+
 function buildOwnWay() {
   const host = document.getElementById('ownRows');
   if (!host) return;
@@ -743,6 +773,7 @@ function buildFeedback() {
   buildMoodBtns();
   buildInside();
   buildOwnWay();
+  buildSkills();
   const lab = document.getElementById('labelRows');
   lab.innerHTML = '';
   lab.append(
@@ -1426,6 +1457,8 @@ window.jun = {
     console.log('jun.reset("touch")           a whole section back to how she comes');
     console.log('jun.feel()                   how she is inside right now (needs, tired of, session, what she just did)');
     console.log('jun.lab()                    open the feel lab');
+    console.log('jun.progress()               skills, hers and yours: levels, Credits, buffs and the source of each');
+    console.log('jun.progressLab()            open the progress lab');
     return 'Names are the ones you see in Settings. Her window\'s settings (voice, mic...) work while her window is open.';
   },
   feel() {
@@ -1435,6 +1468,14 @@ window.jun = {
     return { phase: s.phase, strongestWant: s.top, mood: s.mood, switches: s.switches, justDid: s.repeat };
   },
   lab() { window.open('feel-lab.html', 'feellab'); return 'Opening the feel lab…'; },
+  async progress() {
+    const j = await Progress.load({ peek: true });
+    if (!j.state) return 'Her server did not answer.';
+    for (const o of ['player', 'jun']) console.table(Object.fromEntries(Object.entries(j.state.owners[o].skills).map(([id, k]) => [(o === 'jun' ? 'her ' : 'your ') + k.name, { level: k.level, xp: k.xp, 'to next': k.next ? k.next - k.into : 'top', marks: k.marks }])));
+    if (j.state.buffs.length) console.table(j.state.buffs.map(b => ({ buff: b.name, kind: b.scope, from: b.from, left: b.uses ?? (b.until ? Math.round((b.until - j.state.now) / 3600) + ' h' : 'stays') })));
+    return { on: F.isOn('progress'), yourTotal: j.state.owners.player.total, herTotal: j.state.owners.jun.total, credits: j.state.credits, running: j.state.session, setGoing: j.state.jobs };
+  },
+  progressLab() { window.open('progress-lab.html', 'progresslab'); return 'Opening the progress lab…'; },
   find(q) {
     const list = (q ? F.search(q) : F.all()).filter(f => f.key);
     console.table(list.map(f => ({ name: f.name, now: Stores.peek(f.key), default: Stores.defaultOf(f.key),
