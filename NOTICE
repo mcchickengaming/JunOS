@@ -165,3 +165,45 @@ JunBridge.LinuxFix.NOTICES.txt; it also writes these notices beside the
 extracted helper under UserData/JunBridge.LinuxFix/. Build dependencies are
 fetched by bridge/LinuxFix/build.sh; no game material is needed and the
 stock MelonLoader bootstrap is not rebuilt or distributed by this build.
+
+================================================================================
+8. Inochi2D renderer (webapp/js/rig/)
+================================================================================
+
+webapp/js/rig/inochi/ reads and draws Inochi2D puppets (.inp / .inx) in the
+browser. It is new code written for Jun OS, but its file reading, param
+interpolation, transforms, mesh groups, physics, blend modes and masks follow
+these two projects, used as the reference, and its shaders are adapted from
+Inochi2D's:
+
+  Inochi2D (https://github.com/Inochi2D/inochi2d)
+  Copyright (c) 2020-2024, Inochi2D Project. BSD 2-Clause License.
+
+  Inox2D (https://github.com/Inochi2D/inox2d)
+  Copyright (c) 2022, Speykious and Inochi2D Project. BSD 2-Clause License.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE.
+
+No Inochi2D puppets are included. Inochi2D's example puppets (Aka, Midori, by
+seagetch) are CC BY 4.0: if one is ever shipped or shown publicly, credit
+seagetch and link https://creativecommons.org/licenses/by/4.0/ . The rig lab
+shows a puppet's own artist and license line when it has one.

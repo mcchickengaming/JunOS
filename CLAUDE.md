@@ -264,6 +264,23 @@ temp sqlite, real migrations, stubbed app functions) and a step in `.github/work
   Achievements): rows have `data-group` (out/play/in), buttons still wired by main.js `wireDatesPanel`; a new activity
   is one more row. Next: tray/Jun menu trimmed to quick actions, then polish.
 
+- **Renderer layer + Inochi2D renderer** (Fable week step 2, Nov 12; spike, NOT wired into her pages yet):
+  `webapp/js/rig/rig.js` is the one place that knows what her params drive. A rig = `{ kind, view, params, core,
+  update(ms), parts, active }`; `live2dRig(model, raw)` wraps today's rig with nothing copied, `inochiRig(view, { map })`
+  wraps an Inochi2D puppet, `linkRigs([main, closeup])` gives two rigs one set of numbers, `plugIntoJun(rig, state)`
+  points live2d/state.js at it so params.js/anim.js/geometry.js drive it unchanged. For Inochi, `inochiCore` builds the
+  rest of the Cubism-core shape Jun's code reads (`drawables` y-up with `canvasinfo`, `parts.opacities` fading groups);
+  `checkRig(model, raw)` lists anything missing. Jun ids on an Inochi rig: name the params with her ids (a 2D param
+  "ParamHead" gives ParamHead.x/.y, or map them), or pass a `map`. `webapp/js/rig/inochi/`: `inochi-format.js`
+  (.inp/.inx read/write, TGA), `inochi-puppet.js` (params, deforms, transforms, mesh groups, pendulum physics; no DOM),
+  `inochi-view.js` (PIXI v6 display object: blend modes, stencil masks, composites, mipmaps; UVs outside 0..1 are
+  transparent, as on desktop Inochi2D), `inochi-doll.js` (a code-drawn test puppet with her ids, main + 4096 px close-up).
+  `rig-fx.js`: `Crossfade` (two rigs, flattened, 300 ms) and `glitch()` (RGB split + scanlines, removes itself).
+  Test page `webapp/rig-lab.html` (+ `js/rig-lab.js`): the doll or any dropped puppet, zoom/close-up, her light colours,
+  glitch, "Run the checks" (11 checks for design sheet §7, incl. Jun's own params.js/anim.js/geometry.js on the new rig).
+  Node tests: `.github/scripts/js/rig.test.mjs`. Licenses: NOTICE section 8. No puppets in git (example puppets are
+  CC BY 4.0, credit seagetch if ever shown).
+
 ## Everything is customizable
 The owner wants every visible piece recolorable. New UI: colors as CSS variables, and a row in the settings
 page using the closet's picker (`makeItemColorButton` from `js/wardrobe/color-picker.js`), like

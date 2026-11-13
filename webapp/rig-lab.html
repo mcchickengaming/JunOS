@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rig lab · Jun's new renderer</title>
+<link rel="icon" href="favicon.png">
+<style>
+  :root { --bg: #17131f; --panel: #221c2d; --ink: #e9e3f2; --dim: #a79cb8; --edge: #3a3149; --accent: #b83a66; --ok: #5fd39a; --bad: #ff6b81; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
+  #wrap { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
+  #stage { position: relative; overflow: hidden; background: radial-gradient(circle at 50% 40%, #2a2238, var(--bg) 70%); }
+  #stage.light { background: #ece7f3; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #drop { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(184, 58, 102, .18); border: 2px dashed var(--accent); font-size: 18px; pointer-events: none; }
+  #hover { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--dim); pointer-events: none; }
+  aside { background: var(--panel); border-left: 1px solid var(--edge); overflow-y: auto; padding: 14px 16px 40px; }
+  h1 { font-size: 16px; margin: 0 0 2px; }
+  h2 { font-size: 12px; margin: 18px 0 6px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  p.note { margin: 0 0 8px; color: var(--dim); font-size: 12px; }
+  #status { white-space: pre-wrap; font-size: 12px; color: var(--dim); margin: 6px 0; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  button, .file { background: #2f2640; color: var(--ink); border: 1px solid var(--edge); border-radius: 6px; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px; }
+  button:hover, .file:hover { border-color: var(--accent); }
+  button.on { border-color: var(--accent); background: #3c2a45; }
+  .file input { display: none; }
+  .zoomrow { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .zoomrow input { flex: 1; }
+  #lights { display: flex; gap: 6px; flex-wrap: wrap; }
+  .swatch { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid transparent; }
+  .swatch.on { border-color: var(--ink); }
+  #checks { list-style: none; padding: 0; margin: 6px 0; }
+  #checks li { margin: 6px 0; padding-left: 20px; position: relative; font-weight: 600; font-size: 13px; }
+  #checks li::before { position: absolute; left: 0; }
+  #checks li.ok::before { content: "✓"; color: var(--ok); }
+  #checks li.bad::before { content: "✗"; color: var(--bad); }
+  #checks small { display: block; font-weight: 400; color: var(--dim); font-size: 12px; }
+  #sliders { max-height: 360px; overflow-y: auto; }
+  .slider { display: grid; grid-template-columns: 1fr 44px; gap: 2px 6px; margin: 4px 0; font-size: 12px; }
+  .slider span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slider output { text-align: right; color: var(--dim); }
+  .slider input { grid-column: 1 / -1; width: 100%; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <div id="drop">Drop an Inochi2D puppet (.inx / .inp)</div>
+    <div id="hover"></div>
+  </div>
+  <aside>
+    <h1>Rig lab</h1>
+    <p class="note">Tries Jun's new Inochi2D renderer. Nothing on this page changes Jun.</p>
+    <div id="status"></div>
+
+    <h2>Puppet</h2>
+    <div class="btns">
+      <button id="useDoll">Lab doll</button>
+      <label class="file">Open a puppet…<input type="file" id="file" accept=".inx,.inp"></label>
+    </div>
+
+    <h2>Camera</h2>
+    <div class="zoomrow">Zoom <input type="range" id="zoom" min="0.3" max="5" step="0.05" value="1"> <span id="zoomOut">1.0</span>×</div>
+    <div class="btns" style="margin-top:6px">
+      <button id="closeup">Close-up rig</button>
+      <button id="move" class="on">Move her</button>
+      <button id="mips" class="on">Mipmaps</button>
+      <button id="bg">Light background</button>
+    </div>
+
+    <h2>Her light</h2>
+    <div id="lights"></div>
+
+    <h2>Effects</h2>
+    <div class="btns">
+      <button id="glitch">Glitch</button>
+      <button id="junDrive">Jun's own code drives her</button>
+    </div>
+
+    <h2>Checks</h2>
+    <div class="btns">
+      <button id="run">Run the checks</button>
+      <button id="big">Try an 8192 px texture</button>
+    </div>
+    <ul id="checks"></ul>
+
+    <h2>Params</h2>
+    <div id="sliders"></div>
+  </aside>
+</div>
+<script src="vendor/pixi.min.js"></script>
+<script type="module" src="js/rig-lab.js?v=1"></script>
+</body>
+</html>
