@@ -499,6 +499,15 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   writing lines, action moments (#23), items and loot tables (#9; chests only lift the delve's quality), the scene maker, the
   courage dial inside the personality dials (#7), real hands-on moments at camp (a button today), top-down / menu pieces.
   Numbers are first guesses from the time-lapse (server farm: ~18 min, knocked out in ~1 delve in 12 at level 1).
+  **Tuning 1 (Nov 13, owner's notes):** every place now fights turn-based (data `pace: "turn"`; timed / real-time stay in the
+  engine and as the player's pick, kept for action activities later, e.g. shooting). **Creatures move** (`mobs.js`): every
+  STEP is one turn for the floor (turning on the spot is free, tune `mobs.tickOnTurn`); each foe's `moves` in the data:
+  `still` (sweeper, sentry, the boss: they guard corridors), `wander` (lantern drone: drifts ≤ 2 cells from home), `hunt`
+  (cable crawler: notices you within 3 steps, follows at 75% of your pace, starts the fight when it reaches you, gives up
+  past 6 and goes home). A group moves as its stillest member. Kind rules, tested: nothing comes within 2 of a camp or the
+  way in, never onto a thing, a backed-off creature stays put; own rng stream `run.ms`; positions in `run.mob[depth][id]`;
+  `Run.thingAt` shows them where they are. Her line moment `followed`. Switch "Creatures move" (`feature:delve_moving`,
+  default on → `Run.start({ mobs })`). Balance unchanged in the time-lapse (~18 min, ~11 meetings).
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

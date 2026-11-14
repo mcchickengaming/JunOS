@@ -10,7 +10,7 @@
 // Lines are by code from data/delve.json "lines" (her brain can take over a moment later: every
 // line has an id, so the repeat watcher and a line pack can replace it one by one).
 
-import { tune as getTune } from './delve-tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=2';
 
 export const COURAGE = [['grows', 'Grows with her'], ['timid', 'Timid'], ['steady', 'Steady'], ['brave', 'Fearless']];
 const FIXED = { timid: 0.15, steady: 0.55, brave: 0.95 };
@@ -71,6 +71,7 @@ export function momentFor(ev) {
     case 'entered': return 'enter';
     case 'descended': return 'deeper';
     case 'quiet': return 'corridor';
+    case 'followed': return 'followed';
     case 'sensed': return ev.what === 'trap' ? 'trap_warn' : 'sensed';
     case 'secret': return 'secret';
     case 'trap': return 'trap_hit';

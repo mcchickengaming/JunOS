@@ -18,7 +18,7 @@
 // sits the rest out and is back on her feet afterwards.
 
 import { next } from './rng.js?v=1';
-import { tune as getTune } from './delve-tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=2';
 
 export const PACES = [['turn', 'Turn-based'], ['timed', 'Timed turns'], ['real', 'Real-time']];
 export const PACE_IDS = PACES.map(p => p[0]);

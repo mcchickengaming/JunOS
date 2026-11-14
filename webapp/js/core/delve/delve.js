@@ -15,9 +15,9 @@
 import * as F from '../features.js?v=3';
 import * as Progress from '../progress.js?v=2';
 import * as Gate from '../gate.js?v=3';
-import * as Run from './run.js?v=1';
-import * as Party from './party.js?v=1';
-import { tune as getTune } from './delve-tune.js?v=1';
+import * as Run from './run.js?v=2';
+import * as Party from './party.js?v=2';
+import { tune as getTune } from './delve-tune.js?v=2';
 import { lastDelve } from './last.js?v=1';
 
 export const KEY = 'jun.delve';
@@ -82,7 +82,7 @@ export async function levels() {
   return out;
 }
 
-// o: { area, seed, together, real (count it: default true), levels?, stage?, kits?, role?, pace?, courage? }
+// o: { area, seed, together, real (count it: default true), levels?, stage?, kits?, role?, pace?, courage?, mobs? }
 export async function begin(data, o = {}) {
   if (!isOn()) return { off: true };
   const real = o.real !== false && Progress.isOn();
@@ -97,6 +97,7 @@ export async function begin(data, o = {}) {
     area: o.area, seed: o.seed ?? (Date.now() % 1000000), together: o.together !== false,
     role: o.role || setting('role'), pace: o.pace || paceFor(data, o.area), levels: lv, effects,
     kits: o.kits, courage: o.courage || setting('courage'), stage: o.stage || 1,
+    mobs: o.mobs ?? F.isOn('delve_moving'),
   }, getTune());
   run.real = real;
   save(run);

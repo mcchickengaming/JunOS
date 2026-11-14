@@ -2,11 +2,11 @@
 // the progress lab; every rule it shows lives in js/core/delve/ (run.js, encounter.js, party.js,
 // scenes.js, sim.js) and this file only draws and listens.
 
-import * as Delve from './core/delve/delve.js?v=1';
+import * as Delve from './core/delve/delve.js?v=2';
 import * as Scenes from './core/delve/scenes.js?v=1';
-import * as Sim from './core/delve/sim.js?v=1';
+import * as Sim from './core/delve/sim.js?v=2';
 import { createView, drawMap } from './core/delve/view.js?v=1';
-import { DEFAULTS, setOverrides, tune as getTune } from './core/delve/delve-tune.js?v=1';
+import { DEFAULTS, setOverrides, tune as getTune } from './core/delve/delve-tune.js?v=2';
 import * as Progress from './core/progress.js?v=2';
 import * as F from './core/features.js?v=3';
 import { dayMood, dayKey } from './core/feel/initiative.js?v=2';
@@ -110,6 +110,8 @@ function handle(events) {
     else if (ev.type === 'nothing') say(ev.maybe ? 'Just wall. …Probably.' : 'Nothing here.');
     else if (ev.type === 'rested') { say('You rest. You\'re both patched up.'); safeSpot(); }
     else if (ev.type === 'descended') say(ev.last ? 'The last floor. Something big is humming.' : 'Down a floor.');
+    else if (ev.type === 'caught') say('It caught up with you.');
+    else if (ev.type === 'followed' && !run.together) say('You hear something moving behind you.');
     else if (ev.type === 'fight') { say('It notices you: ' + ev.foes.join(', ') + '.'); openFight(run.enc, false); }
     else if (ev.type === 'ko') careScene();
     else if (ev.type === 'woke') say('You\'re back on your feet at the camp.');

@@ -13,12 +13,13 @@
 //
 // No DOM, no storage, no clock in here.
 
-import { generate, WALL, FLOOR, DOOR, SECRET, DX, DY } from './floor.js?v=1';
+import { generate, WALL, FLOOR, DOOR, SECRET, DX, DY } from './floor.js?v=2';
 import { next, mix } from './rng.js?v=1';
-import { tune as getTune } from './delve-tune.js?v=1';
-import * as Ab from './abilities.js?v=1';
-import * as Enc from './encounter.js?v=1';
-import * as Party from './party.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=2';
+import * as Ab from './abilities.js?v=2';
+import * as Enc from './encounter.js?v=2';
+import * as Party from './party.js?v=2';
+import * as Mobs from './mobs.js?v=2';
 
 const SOLID = ['chest', 'vault', 'terminal'];
 const floors = new Map();
@@ -39,7 +40,8 @@ function floorFor(data, run, tune) {
 }
 
 // o: { area, seed, together, role, pace, levels: { player: {…}, jun: {…} }, effects, kits: { player, jun },
-//      courage: her courage setting ('grows' | 'timid' | 'steady' | 'brave'), stage: bond stage (words only) }
+//      courage: her courage setting ('grows' | 'timid' | 'steady' | 'brave'), stage: bond stage (words only),
+//      mobs: false = creatures stay where they are (the "Creatures move" switch) }
 export function start(data, o = {}, tune) {
   const t = tune || getTune();
   const area = data.areas[o.area] ? o.area : Object.keys(data.areas)[0];
@@ -50,7 +52,7 @@ export function start(data, o = {}, tune) {
   const run = {
     v: 1, area, seed: (o.seed ?? 1) >>> 0, depth: 1, floors: A.floors, together, pace,
     role: data.roles[o.role] ? o.role : 'decides',
-    setup: { levels, effects: o.effects || {}, kits: { player: o.kits?.player || data.defaultKits.player, jun: o.kits?.jun || data.defaultKits.jun }, courage: o.courage || 'grows', stage: o.stage || 1 },
+    setup: { levels, effects: o.effects || {}, kits: { player: o.kits?.player || data.defaultKits.player, jun: o.kits?.jun || data.defaultKits.jun }, courage: o.courage || 'grows', stage: o.stage || 1, mobs: o.mobs !== false },
     pos: null, hp: null, seen: {}, done: {}, found: {}, hint: {}, rolled: {},
     rs: { s: mix('run', area, o.seed ?? 1) }, state: 'walk', enc: null, fightAt: null,
     queue: [], said: { recent: [] }, wish: null, emptyTold: {},
@@ -83,7 +85,14 @@ export function cellAt(data, run, x, y) {
 export const isSecretHinted = (data, run, x, y) => { const f = floorOf(data, run); return f.cells[y * f.w + x] === SECRET && !!run.hint[key(run, y * f.w + x)] && !run.found[key(run, y * f.w + x)]; };
 export function thingAt(data, run, x, y) {
   const f = floorOf(data, run);
-  return (x >= 0 && y >= 0 && x < f.w && y < f.h && f.index.get(y * f.w + x)) || null;
+  if (x < 0 || y < 0 || x >= f.w || y >= f.h) return null;
+  const at = y * f.w + x;
+  // creatures that moved (mobs.js) are where they are now, not where the floor put them
+  const moved = Mobs.movedAt(run, f, at);
+  if (moved) return moved;
+  const th = f.index.get(at) || null;
+  if (th && th.kind === 'foe' && Mobs.movedAway(run, th)) return null;
+  return th;
 }
 export const stateOf = (run, thing) => run.done[thing.id] || null;
 const solid = (run, th) => !!th && (SOLID.includes(th.kind) || (th.kind === 'foe' && !run.done[th.id]));
@@ -144,7 +153,26 @@ export function turn(data, run, k, tune) {
   if (run.state !== 'walk') return [];
   run.pos.d = (run.pos.d + (k > 0 ? 1 : 3)) % 4;
   run.stats.turns++;
-  return [{ type: 'turned', d: run.pos.d }, ...look(data, run, tune || getTune())];
+  const t = tune || getTune();
+  const events = [{ type: 'turned', d: run.pos.d }, ...look(data, run, t)];
+  if (t.mobs && t.mobs.tickOnTurn) events.push(...floorTurn(data, run, t));
+  return events;
+}
+
+// one turn for the floor after you moved: creatures that move take theirs (mobs.js). One that
+// reaches you starts the fight, the same as walking into it.
+function floorTurn(data, run, t) {
+  if (run.setup.mobs === false) return [];
+  const f = floorOf(data, run, t);
+  const open = (x, y) => { const c = cellAt(data, run, x, y); return c === FLOOR || c === DOOR; };
+  const evs = Mobs.tick(data, run, { f, open, t });
+  const out = [];
+  for (const e of evs) {
+    if (e.type === 'caught') out.push({ type: 'caught' }, ...beginFight(data, run, e.thing, t));
+    else out.push(e);
+  }
+  if (evs.some(e => e.type === 'foe_moved') && run.state === 'walk') out.push(...look(data, run, t));
+  return out;
 }
 
 // rel: 0 forward, 1 step right, 2 back, 3 step left (you keep facing the same way)
@@ -181,6 +209,8 @@ export function step(data, run, rel = 0, tune) {
   } else if (th && (th.kind === 'camp' || th.kind === 'stairs')) events.push({ type: th.kind });
   if (th && th.kind === 'exit' && run.stats.steps > 1) events.push({ type: 'exit' });
   if (run.stats.steps % t.walk.corridorEvery === 0 && events.length === 1) events.push({ type: 'quiet' }); // a passing remark, only when nothing else happened
+  // every step is one turn for the floor: what moves, moves (not on a step that took you down or out)
+  if (run.state === 'walk') events.push(...floorTurn(data, run, t));
   return events;
 }
 
@@ -247,7 +277,7 @@ export function use(data, run, tune) {
 function emptyCheck(data, run, t) {
   if (run.emptyTold[run.depth]) return [];
   const f = floorOf(data, run, t);
-  const left = f.things.some(th => (th.kind === 'foe' || th.kind === 'chest') && !run.done[th.id] && seenAt(data, run, th.x, th.y));
+  const left = f.things.some(th => { if ((th.kind !== 'foe' && th.kind !== 'chest') || run.done[th.id]) return false; const at = th.kind === 'foe' ? Mobs.posOf(run, f, th) : th.y * f.w + th.x; return seenAt(data, run, at % f.w, Math.floor(at / f.w)); });
   if (left) return [];
   const any = f.things.some(th => (th.kind === 'foe' || th.kind === 'chest') && run.done[th.id]);
   if (!any) return [];
@@ -376,4 +406,4 @@ export function outcome(data, run, how, tune) {
   };
 }
 
-export { Party, Enc, Ab, WALL, FLOOR, DOOR, SECRET, DX, DY };
+export { Party, Enc, Ab, Mobs, WALL, FLOOR, DOOR, SECRET, DX, DY };

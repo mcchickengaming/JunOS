@@ -26,6 +26,7 @@ const Ab = await import('../../../webapp/js/core/delve/abilities.js');
 const Party = await import('../../../webapp/js/core/delve/party.js');
 const Scenes = await import('../../../webapp/js/core/delve/scenes.js');
 const Sim = await import('../../../webapp/js/core/delve/sim.js');
+const Mobs = await import('../../../webapp/js/core/delve/mobs.js');
 const { tune, DEFAULTS } = await import('../../../webapp/js/core/delve/delve-tune.js');
 const { lastDelve } = await import('../../../webapp/js/core/delve/last.js');
 const Delve = await import('../../../webapp/js/core/delve/delve.js');
@@ -226,12 +227,66 @@ test('one encounter engine, three paces', () => {
   assert.equal(Enc.flee(e)[0].how, 'fled');
   // "no timers" is turn-based everywhere, whatever the place or the pick
   Delve.setStorage(globalThis.localStorage);
-  assert.equal(Delve.paceFor(data, 'scrapyard'), 'real');
+  assert.equal(Delve.paceFor(data, 'scrapyard'), 'turn', 'every place is turn-based now');
+  Delve.setSetting('pace', 'real');
+  assert.equal(Delve.paceFor(data, 'scrapyard'), 'real', 'the player can still pick real-time');
   Delve.setSetting('pace', 'timed');
   assert.equal(Delve.paceFor(data, 'server_farm'), 'timed');
   Delve.setSetting('notimer', true);
   assert.equal(Delve.paceFor(data, 'scrapyard'), 'turn');
   store.clear();
+});
+
+test('every place fights turn-based; timed and real-time stay in the engine for later', () => {
+  for (const [id, A] of Object.entries(data.areas)) assert.equal(A.pace, 'turn', id + ': the cozy game fights turn-based');
+  assert.deepEqual(Enc.PACE_IDS, ['turn', 'timed', 'real']);
+  const { run } = Run.start(data, { area: 'scrapyard', seed: 3, pace: 'real', levels: L(12) });
+  assert.equal(run.pace, 'real', 'the player can still pick another pace');
+});
+
+test('creatures move: one step is one turn for the floor; still ones guard, hunters follow, kind rules hold', () => {
+  const t = tune();
+  for (const [id, fo] of Object.entries(data.foes)) assert.ok(Mobs.MOVES.includes(fo.moves), id + ' says how it moves');
+  assert.equal(data.foes.sweeper.moves, 'still', 'the sweeper keeps its corridor');
+  assert.equal(data.foes.warden.moves, 'still');
+  // walk many delves with the stand-in: creatures move, still ones never do, nobody steps on a thing or near a camp
+  let moved = 0, followed = 0, caught = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const r = Sim.delve(data, { area: seed % 2 ? 'server_farm' : 'flooded_factory', seed, levels: L(seed % 2 ? 1 : 6) }, t);
+    moved += r.count.foe_moved || 0; followed += r.count.followed || 0; caught += r.count.caught || 0;
+    assert.equal(r.run.state, 'over');
+    for (const [depth, m] of Object.entries(r.run.mob || {})) {
+      const f = Floor.generate(data, { area: r.run.area, depth: Number(depth), seed: r.run.seed, tune: t });
+      const byId = new Map(f.things.map(th => [th.id, th]));
+      for (const [id, st] of Object.entries(m)) {
+        const th = byId.get(id);
+        assert.notEqual(Mobs.movesOf(data, th), 'still', 'a still creature never moves');
+        const other = f.index.get(st.at);
+        assert.ok(!other || other.kind === 'foe', 'never on a chest, stairs, trap or camp');
+        for (const c of f.things.filter(x => x.kind === 'camp' || x.kind === 'exit')) {
+          assert.ok(Math.abs(c.x - st.at % f.w) + Math.abs(c.y - Math.floor(st.at / f.w)) > t.mobs.safeRadius, 'nothing comes near a camp or the way in');
+        }
+      }
+    }
+  }
+  assert.ok(moved > 0, 'something moved');
+  assert.ok(followed > 0 && caught > 0, 'hunters notice, follow and reach you: ' + followed + ' / ' + caught);
+  // the same seed tells the same story, moves included
+  const a = Sim.delve(data, { area: 'server_farm', seed: 9, levels: L(1) }, t), b = Sim.delve(data, { area: 'server_farm', seed: 9, levels: L(1) }, t);
+  assert.deepEqual(a.run.mob, b.run.mob);
+  assert.deepEqual(a.outcome, b.outcome);
+  // the switch: off, nothing moves
+  const off = Sim.delve(data, { area: 'server_farm', seed: 9, levels: L(1), mobs: false }, t);
+  assert.ok(!off.count.foe_moved && !off.count.followed);
+  // turning on the spot is free; a step is a turn
+  const { run } = Run.start(data, { area: 'server_farm', seed: 9, levels: L(1) }, t);
+  for (let i = 0; i < 8; i++) assert.ok(!Run.turn(data, run, 1, t).some(e => e.type === 'foe_moved'));
+  // she notices a follower, and her line for it exists at every courage
+  assert.equal(Party.momentFor({ type: 'followed' }), 'followed');
+  for (const c of [0, 0.5, 1]) assert.ok(Party.say(data, 'followed', { courage: c, often: 100 }, { recent: [] }), 'a line at courage ' + c);
+  // a creature you backed off from stays put and lets you pass
+  const code = read('webapp/js/core/delve/mobs.js');
+  assert.ok(/run\.done\[th\.id\]/.test(code));
 });
 
 test('roles come from what you carry and know, not from classes', () => {

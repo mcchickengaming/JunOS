@@ -1,5 +1,5 @@
 {
-  "about": "The delve framework's data (#32; js/core/delve/ is the engine). Areas, hand-made rooms, creatures, abilities, kits (stand-in gear until the economy #9), her lines by code, safe-spot moments and scene slots, all as data: a new room, creature, ability or line is one more entry here, no new code. PLACEHOLDER content: names are working names, shapes and colors stand in for art. Rooms: '#' wall, '.' floor, '+' a place a door may go (the middle of a side), 'E' a creature may wait here, 'B' the area's big one, 'C' chest, 'V' the deep chest, 'T' terminal, '^' trap, 'R' camp, '<' the way in, '>' stairs down, '?' something odd. Rooms are odd-sized, at most 7x7. Creatures are machines, drones and odd creatures, never people. Everything here is everyday tier except scene variants, which carry their own tier and go through the gate. No entry may ask for a bond stage or a relationship flavor to PLAY (tested): the bond only changes her words.",
+  "about": "The delve framework's data (#32; js/core/delve/ is the engine). Areas, hand-made rooms, creatures, abilities, kits (stand-in gear until the economy #9), her lines by code, safe-spot moments and scene slots, all as data: a new room, creature, ability or line is one more entry here, no new code. PLACEHOLDER content: names are working names, shapes and colors stand in for art. Rooms: '#' wall, '.' floor, '+' a place a door may go (the middle of a side), 'E' a creature may wait here, 'B' the area's big one, 'C' chest, 'V' the deep chest, 'T' terminal, '^' trap, 'R' camp, '<' the way in, '>' stairs down, '?' something odd. Rooms are odd-sized, at most 7x7. A creature's 'moves' (still / wander / hunt) says what it does each time you take a step (js/core/delve/mobs.js). Every area's 'pace' is 'turn' (owner, Nov 13: the cozy game fights turn-based); 'timed' and 'real' stay in the engine for action activities later (shooting), and the player can still pick them. Creatures are machines, drones and odd creatures, never people. Everything here is everyday tier except scene variants, which carry their own tier and go through the gate. No entry may ask for a bond stage or a relationship flavor to PLAY (tested): the bond only changes her words.",
   "version": 1,
   "areas": {
     "server_farm": {
@@ -14,7 +14,7 @@
     "flooded_factory": {
       "name": "The flooded factory",
       "line": "Ankle-deep water, slow drips, belts that still twitch.",
-      "level": 6, "floors": 3, "cols": 4, "rows": 3, "pace": "timed",
+      "level": 6, "floors": 3, "cols": 4, "rows": 3, "pace": "turn",
       "colors": { "wall": "#3c5a5c", "wallDark": "#213638", "floor": "#1c2e33", "ceil": "#142124", "door": "#7d7a4a", "fog": "#081214", "trim": "#5fd39a" },
       "foes": [["crawler", 4], ["lantern", 3], ["sentry", 2], ["sweeper", 1]],
       "boss": "warden",
@@ -23,7 +23,7 @@
     "scrapyard": {
       "name": "The scrapyard's buried levels",
       "line": "Crushed metal pressed into corridors. Things still move in it.",
-      "level": 12, "floors": 4, "cols": 4, "rows": 3, "pace": "real",
+      "level": 12, "floors": 4, "cols": 4, "rows": 3, "pace": "turn",
       "colors": { "wall": "#6a4d3c", "wallDark": "#3d2b22", "floor": "#2c221d", "ceil": "#1e1714", "door": "#9a8a6a", "fog": "#120c0a", "trim": "#ffb86a" },
       "foes": [["sentry", 3], ["crawler", 3], ["sweeper", 2], ["lantern", 2]],
       "boss": "warden",
@@ -51,11 +51,11 @@
     "hidden_store": { "tags": ["secret"], "w": 2, "rows": ["##+##", "#C.C#", "+...+", "#.?.#", "##+##"] }
   },
   "foes": {
-    "sweeper": { "name": "Floor sweeper", "kind": "machine", "shape": "box", "color": "#9aa3b5", "hp": 16, "atk": 5, "def": 1, "spd": 8, "acc": 0, "eva": 0, "abilities": [["bump", 1]] },
-    "lantern": { "name": "Lantern drone", "kind": "machine", "shape": "diamond", "color": "#ffd76a", "hp": 10, "atk": 6, "def": 0, "spd": 14, "acc": 5, "eva": 12, "abilities": [["zap", 3], ["flash", 1]] },
-    "crawler": { "name": "Cable crawler", "kind": "creature", "shape": "wide", "color": "#c98bff", "hp": 20, "atk": 6, "def": 2, "spd": 9, "acc": 0, "eva": 4, "abilities": [["bite", 3], ["lash", 1]] },
-    "sentry": { "name": "Old sentry", "kind": "machine", "shape": "tall", "color": "#ff8a7a", "hp": 30, "atk": 8, "def": 4, "spd": 6, "acc": 0, "eva": 0, "abilities": [["slam", 3], ["brace", 1]] },
-    "warden": { "name": "The rack warden", "kind": "machine", "big": true, "shape": "big", "color": "#ff6b81", "hp": 64, "atk": 9, "def": 3, "spd": 8, "acc": 0, "eva": 0, "abilities": [["slam", 3], ["sweep", 2], ["brace", 1]] }
+    "sweeper": { "name": "Floor sweeper", "kind": "machine", "shape": "box", "color": "#9aa3b5", "hp": 16, "atk": 5, "def": 1, "spd": 8, "acc": 0, "eva": 0, "moves": "still", "abilities": [["bump", 1]] },
+    "lantern": { "name": "Lantern drone", "kind": "machine", "shape": "diamond", "color": "#ffd76a", "hp": 10, "atk": 6, "def": 0, "spd": 14, "acc": 5, "eva": 12, "moves": "wander", "abilities": [["zap", 3], ["flash", 1]] },
+    "crawler": { "name": "Cable crawler", "kind": "creature", "shape": "wide", "color": "#c98bff", "hp": 20, "atk": 6, "def": 2, "spd": 9, "acc": 0, "eva": 4, "moves": "hunt", "abilities": [["bite", 3], ["lash", 1]] },
+    "sentry": { "name": "Old sentry", "kind": "machine", "shape": "tall", "color": "#ff8a7a", "hp": 30, "atk": 8, "def": 4, "spd": 6, "acc": 0, "eva": 0, "moves": "still", "abilities": [["slam", 3], ["brace", 1]] },
+    "warden": { "name": "The rack warden", "kind": "machine", "big": true, "shape": "big", "color": "#ff6b81", "hp": 64, "atk": 9, "def": 3, "spd": 8, "acc": 0, "eva": 0, "moves": "still", "abilities": [["slam", 3], ["sweep", 2], ["brace", 1]] }
   },
   "abilities": {
     "shove": { "name": "Shove", "kind": "hit", "power": 0.7, "target": "foe", "tags": ["dps"], "line": "A plain shove. Everyone has it." },
@@ -140,6 +140,16 @@
       { "id": "th1", "face": "worried", "t": "Hey! Are you okay? Let me see." },
       { "id": "th2", "c": ["steady", "brave"], "face": "pout", "t": "I'd have seen that one if you'd slowed down." },
       { "id": "th3", "c": ["timid"], "face": "scared", "t": "Don't do that! ...Does it hurt?" }
+    ] },
+    "followed": { "p": 0.75, "say": [
+      { "id": "fol1", "c": ["timid"], "face": "scared", "t": "Something's behind us. Don't look. ...Okay, look." },
+      { "id": "fol2", "c": ["timid"], "face": "uneasy", "t": "It's following us. Walk normal. Walk... normal." },
+      { "id": "fol3", "c": ["steady"], "face": "focused", "t": "Movement on my scanner. It's tailing us." },
+      { "id": "fol4", "c": ["steady"], "face": "neutral", "t": "We've picked up a follower. Lose it, or turn around and say hello." },
+      { "id": "fol5", "c": ["brave"], "face": "grin", "t": "Something's following us. Rude. Let's go meet it." },
+      { "id": "fol6", "face": "curious", "t": "Scanner's pinging. Something down here likes us." },
+      { "id": "fol7", "near": "warm", "face": "uneasy", "t": "Stay close. ...Closer than that is fine too." },
+      { "id": "fol8", "near": "shy", "face": "neutral", "t": "...Something's following us. Not you. The other thing." }
     ] },
     "fight_start": { "p": 0.7, "say": [
       { "id": "fs1", "c": ["timid"], "face": "scared", "t": "It's moving. It's definitely moving." },

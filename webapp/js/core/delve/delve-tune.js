@@ -24,6 +24,18 @@ export const DEFAULTS = Object.freeze({
     stepSec: 1.2,       // for the time-lapse: seconds a step takes a real player
     turnSec: 6,         // … and a go in a fight
   },
+  mobs: {
+    on: true,           // creatures that move (their "moves" in the data); off = everything stays put
+    tickOnTurn: false,  // only a step is a turn for the floor; turning on the spot to look around is free
+    wanderPace: 0.5,    // a wanderer's chance to drift each turn …
+    wanderLeash: 2,     // … never more than this many cells from home
+    notice: 3,          // a hunter notices you within this many steps …
+    huntPace: 0.75,     // … follows at this share of your pace (you can always walk away) …
+    giveUp: 6,          // … and loses you past this many steps …
+    leash: 6,           // … or this far from home, then wanders back
+    homePace: 0.6,      // its chance to take a step home each turn
+    safeRadius: 2,      // nothing comes this close to a camp or the way in
+  },
   unit: {
     hpBase: 30, hpPerLevel: 1.6,
     atkBase: 6, atkPerLevel: 0.3,

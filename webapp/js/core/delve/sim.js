@@ -4,8 +4,8 @@
 // The stand-in explores what it can see a way to, opens what she points out, rests when hurt, fights
 // everything in its way and takes the stairs when the floor is done.
 
-import * as Run from './run.js?v=1';
-import { tune as getTune } from './delve-tune.js?v=1';
+import * as Run from './run.js?v=2';
+import { tune as getTune } from './delve-tune.js?v=2';
 
 const { WALL, DX, DY } = Run;
 const SOLID = ['chest', 'vault', 'terminal'];
