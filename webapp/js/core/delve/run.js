@@ -15,7 +15,7 @@
 
 import { generate, WALL, FLOOR, DOOR, SECRET, DX, DY } from './floor.js?v=1';
 import { next, mix } from './rng.js?v=1';
-import { tune as getTune } from './tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=1';
 import * as Ab from './abilities.js?v=1';
 import * as Enc from './encounter.js?v=1';
 import * as Party from './party.js?v=1';

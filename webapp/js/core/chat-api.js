@@ -1,6 +1,7 @@
 import { api, apiJson } from './api.js?v=1';
 import * as TouchLog from './touch-log.js?v=2';
 import * as Feel from './feel/feel.js?v=4';
+import { lastDelve } from './delve/last.js?v=1';
 
 export async function listModels() {
   const r = await api('models.php');
@@ -15,6 +16,9 @@ export function chat({ messages, model, reasoning, think, outfit_context, mod_it
   if (!idle && !ephemeral && !regenerate && !watch) { try { Feel.message(); } catch (e) { /* never in the way of a chat */ } }
   let feel = null;
   try { feel = Feel.forChat(); } catch (e) { feel = null; }
+  // the last delve (#32), for a day and a half: what happened down there feeds what she says at home
+  let delve = null;
+  try { delve = lastDelve(); } catch (e) { delve = null; }
 
   (async () => {
     try {
@@ -26,7 +30,7 @@ export function chat({ messages, model, reasoning, think, outfit_context, mod_it
           touches: TouchLog.takeBatch(), touch_now: TouchLog.now(),
           // how she is inside right now (needs, what she's had plenty of, the session), in words
           // on the server (lib/feel.php)
-          feel },
+          feel, delve },
         { signal: ctrl.signal });
       if (!res.ok || !res.body) {
         const error = new Error(`http ${res.status}`);

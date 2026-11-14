@@ -7,7 +7,7 @@
 // No DOM and no storage in here: the page, the time-lapse and the tests all call generate().
 
 import { dice, mix } from './rng.js?v=1';
-import { tune as getTune } from './tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=1';
 
 export const WALL = 0, FLOOR = 1, DOOR = 2, SECRET = 3;
 // 0 north, 1 east, 2 south, 3 west

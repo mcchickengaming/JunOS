@@ -11,7 +11,7 @@ import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
 import * as Fx from './desktop/fx.js?v=12';
 import * as Moods from './desktop/moods.js?v=16';
 import * as Often from './desktop/often.js?v=2';
-import * as HerWin from './home/herwin.js?v=8';
+import * as HerWin from './home/herwin.js?v=9';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=3';
 import * as Controls from './home/controls.js?v=10';
@@ -611,6 +611,49 @@ async function drawSkillsNow() {
     : [you ? `You're ${words(you)}.` : '', her ? `${she} is ${words(her)}.` : ''].filter(Boolean).join(' ');
 }
 
+// Her > Delves under the city (#32, core/delve/): the switch, how she is down there, how fights run, the lab
+const DELVE_COURAGE = [['grows', 'Grows with her'], ['timid', 'Timid'], ['steady', 'Steady'], ['brave', 'Fearless']];
+const DELVE_ROLE = [['scanner', 'Scanner'], ['hacker', 'Hacker'], ['support', 'Support'], ['front', 'Front line']];
+const DELVE_PACE = [['place', 'As the place suits'], ['turn', 'Turn-based'], ['timed', 'Timed turns'], ['real', 'Real-time']];
+function buildDelves() {
+  const host = document.getElementById('delveRows');
+  if (!host) return;
+  host.innerHTML = '';
+  const on = F.isOn('delves');
+  const get = (k, d) => { try { const v = localStorage.getItem('jun.delve.' + k); return v === null || v === '' ? d : v; } catch (e) { return d; } };
+  const put = async (k, v) => { await Stores.write('local:jun.delve.' + k, v); drawDelveNow(); };
+  const sw = (id, off) => Controls.switchCtl(F.isOn(id), async (v) => { await Stores.write('feature:' + id, v); buildDelves(); soon(); }, off);
+  const role = get('role', 'decides');
+  host.append(
+    Controls.row('Delves', 'Off, they\'re out of the way; nothing you found is lost.', sw('delves'), 'feature:delves'),
+    Controls.row('How often she says something', 'Words and a look on her face, never a pause. Sometimes is how she comes.',
+      Controls.oftenCtl(Often.pct(get('talk', 50), 50), Often.OFTEN, (v) => put('talk', v), !on), 'local:jun.delve.talk'),
+    Controls.row('As she feels', 'Her mood of the day moves how much she talks down there. Off keeps her steady.', sw('delve_as_feels', !on), 'feature:delve_as_feels'),
+    Controls.row('Her courage', 'It changes her words and her face, never how useful she is.',
+      Controls.choiceCtl(DELVE_COURAGE, get('courage', 'grows'), (v) => put('courage', v), { disabled: !on }), 'local:jun.delve.courage'),
+    Controls.row('Her part in a fight', 'What she can do comes from what she carries and knows. This is what she leans toward.',
+      Controls.choiceCtl(DELVE_ROLE, role === 'decides' ? 'decide' : role, (v) => put('role', v === 'decide' ? 'decides' : v), { decide: 'She decides', disabled: !on }), 'local:jun.delve.role'),
+    Controls.row('Fights', 'Most places are turn-based: every go waits for you.',
+      Controls.choiceCtl(DELVE_PACE, get('pace', 'place'), (v) => put('pace', v), { disabled: !on }), 'local:jun.delve.pace'),
+    Controls.row('No timers', 'Every fight waits for you, whatever the place or the pace.',
+      Controls.switchCtl(get('notimer', 'false') === 'true', (v) => put('notimer', v), !on), 'local:jun.delve.notimer'),
+    Controls.row('Delve lab', 'Walk a floor, try a fight, and play a hundred delves in a moment.',
+      Controls.buttonCtl('Open the delve lab', () => window.open('delve-lab.html', 'delvelab'))),
+  );
+  drawDelveNow();
+}
+// in words: what she'd be like down there right now, and the last delve
+function drawDelveNow() {
+  const el = document.getElementById('delveNow');
+  if (!el) return;
+  if (!F.isOn('delves')) { el.textContent = ''; return; }
+  let she = 'She', c = 'grows', last = null;
+  try { she = (localStorage.getItem('omega.names.bot') || '').trim() || 'She'; c = localStorage.getItem('jun.delve.courage') || 'grows'; last = (JSON.parse(localStorage.getItem('jun.delve') || '{}') || {}).last; } catch (e) {}
+  const how = { grows: 'a little scared of the dark for now, and braver the more you two go down', timid: 'timid down there, and still every bit as useful', steady: 'steady down there', brave: 'fearless down there' }[c] || 'steady down there';
+  const was = last && Date.now() - last.at < 36 * 3600 * 1000 ? ` Your last delve: ${last.name}${last.cleared ? ', all the way down' : ''}${last.how === 'carried' ? '; she brought you home' : ''}.` : '';
+  el.textContent = `${she} is ${how}.${was}`;
+}
+
 function buildOwnWay() {
   const host = document.getElementById('ownRows');
   if (!host) return;
@@ -774,6 +817,7 @@ function buildFeedback() {
   buildInside();
   buildOwnWay();
   buildSkills();
+  buildDelves();
   const lab = document.getElementById('labelRows');
   lab.innerHTML = '';
   lab.append(
@@ -1459,6 +1503,7 @@ window.jun = {
     console.log('jun.lab()                    open the feel lab');
     console.log('jun.progress()               skills, hers and yours: levels, Credits, buffs and the source of each');
     console.log('jun.progressLab()            open the progress lab');
+    console.log('jun.delveLab()               open the delve lab (delves under the city, stand-in art)');
     return 'Names are the ones you see in Settings. Her window\'s settings (voice, mic...) work while her window is open.';
   },
   feel() {
@@ -1476,6 +1521,7 @@ window.jun = {
     return { on: F.isOn('progress'), yourTotal: j.state.owners.player.total, herTotal: j.state.owners.jun.total, credits: j.state.credits, running: j.state.session, setGoing: j.state.jobs };
   },
   progressLab() { window.open('progress-lab.html', 'progresslab'); return 'Opening the progress lab…'; },
+  delveLab() { window.open('delve-lab.html', 'delvelab'); return 'Opening the delve lab…'; },
   find(q) {
     const list = (q ? F.search(q) : F.all()).filter(f => f.key);
     console.table(list.map(f => ({ name: f.name, now: Stores.peek(f.key), default: Stores.defaultOf(f.key),

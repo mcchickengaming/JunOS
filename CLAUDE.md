@@ -59,6 +59,7 @@ php .github/scripts/touch.test.php
 php .github/scripts/quirks.test.php
 php .github/scripts/feel.test.php
 php .github/scripts/progress.test.php
+php .github/scripts/delve.test.php
 node --test .github/scripts/js/*.test.mjs
 ```
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
@@ -452,6 +453,52 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   desktop to a level-up (the `ups` and `event` drops are returned for that), courage, abilities and stats (the delve
   framework reads `progress_effects()`), what she does while away (her simulation picks the activity later). Tests:
   `.github/scripts/progress.test.php`, `.github/scripts/js/progress.test.mjs`.
+
+- **The delve framework** (#32, Nov 13, on Fable; PLACEHOLDER ART, lab only): a first-person grid crawler's systems, all rules
+  in pure modules under `webapp/js/core/delve/` (no DOM, storage or clock; seeded, so the time-lapse and the tests replay them),
+  all content in `webapp/data/delve.json` (areas, hand-made rooms, creatures, abilities, kits, her lines, safe-spot moments,
+  scene slots: a new one is one more entry). `floor.js`: `generate(data, { area, depth, seed })` lays hand-made rooms (odd-sized,
+  ≤ 7x7, a `+` in the middle of a side = a door may go there; `checkRoom` is the rulebook) on a lattice of slots, joins every
+  slot with a random tree of corridors + a few loops, puts the way on (stairs, or the deep chest on the last floor) at the far
+  end, maybe a camp (floor 2+), maybe one hidden room on a leaf behind a SECRET door, at most one rare room; `reach()` /
+  `usable()` prove every floor can be finished (tested over hundreds of seeds). A delve is saved as a seed, never a map.
+  `run.js`: one delve as plain data (`start`, `turn`, `step(rel)`, `use`, `search`, `endFight`, `careWhere` / `afterCare`,
+  `leave`, `outcome`); every call returns EVENTS. Her scanner maps around you and may sense hidden doors and traps (once per
+  thing, by her Scanning); a terminal needs her Hacking. **Kind danger, tested:** leave any time, a trap never takes the last
+  of your health, backing off always works and the creatures then let you slip past, knocked out = the care scene then the camp
+  or home with everything you had, a bad delve still counts (`run.qualityFloor`). `encounter.js`: ONE engine, three paces:
+  everyone has a meter filled by speed; `turn` jumps to the next full meter and waits for you, `timed` runs in real time and
+  slows the others while you choose, `real` never waits (`advance(data, enc, ms)`, `act`, `options`, `flee`, `choose` = the AI for
+  creatures, her and the stand-in player, `autoplay`). A place picks its pace, the player can override it, "no timers" is turn
+  everywhere (`Delve.paceFor`). `act(…, { skill })` is the door for action moments from the minigames (#23); nothing calls it yet.
+  `abilities.js`: **roles from what you have, not classes**: `build()` = a shove + what the kits give (stand-in gear until #9) +
+  what skills taught (`"from": { skill, level }`, levels from the progression service) + buff effects (`accuracy`…); `roleOf()`
+  puts it in words; alone, creatures are fewer and lighter (`foesFor`, tune `foe.alone*`, + a breather after each win): different,
+  never worse. `party.js`: **she's in it, never in the way**: `say(data, moment, ctx, mem)` = a line + a face by code, by her
+  courage band (timid / steady / brave) and a shy / warm wording by bond; `courage()` ('grows' = braver with her Delving and
+  the bond, or fixed); how often (0..100, "As she feels" = feature `delve_as_feels`); she stayed home = phone lines + a wish.
+  What moves her is `keep()`-ed in `run.queue` and only comes out at a safe spot (`safeSpot()` → cards, an offer only if the
+  gate says yes) or rides home (`outcome.carried`). **Hard rules, tested:** abilities.js / encounter.js never read courage, bond
+  or flavor; run.js never calls her lines; nothing to play asks for a bond or flavor. `scenes.js`: **scene slots** (#22's first
+  piece): `pick(data, slot, { where, gateCheck, gateCtx })` = the highest tier that's on AND she's fine with, always an
+  Everyday fallback; `checkSlots` (every slot has an Everyday variant; shipped `adult` lists stay empty: 18+ variants are the
+  owner's, through `setCustom()` once the scene maker exists). First slot: `knocked_out` (Everyday home / camp / alone, Flirty
+  home at Close+). `sim.js`: a stand-in player walks whole delves (`delve`, `many`). `delve-tune.js`: EVERY number. `delve.js`:
+  the page's door (`loadData`, settings `jun.delve.talk / courage / role / pace / notimer`, the run in localStorage `jun.delve`
+  so save points include it, `begin` → `Progress.begin('delve')` (her server keeps the clock; api/progress.php `begin` now
+  returns the buff `effects`), `end` → `Progress.finish({ quality, minutes: time actually played })`: the delve has NO reward
+  numbers of its own, the one roller pays; `delve` in data/progress.json replaced `sample_delve`). `last.js` + `api/lib/delve.php`
+  (`JUN_DELVE`, default on): chat-api.js sends the last delve for 36 h and her prompt gets a few lines in words (where, whether
+  she carried him home, what she kept to herself: a test keeps `DELVE_CARRIED` / `DELVE_PLACES` equal to the data). `view.js`:
+  the first-person view in PixiJS (flat shaded quads + shapes; draws only when asked, no ticker) and `drawMap`. **Delve lab**
+  `webapp/delve-lab.html` + `js/delve-lab.js` (Settings > Her > Delves, main.js allows the url; `jun.delveLab()`): a whole
+  delve, try a fight at any pace, the scene slots as the gate sees them now, "a hundred delves in a moment", every number
+  (tried, never saved). Factory reset clears `jun.delve`. Tests: `.github/scripts/js/delve.test.mjs`, `.github/scripts/delve.test.php`.
+  Cloud test of the page: `python3 -m http.server` in webapp + Playwright with `**/api/**` stubbed. NOT built: real art and
+  movement tweening, the world-window entrance (#30), her live portrait (#28; a stand-in ASCII face today), her voice, her brain
+  writing lines, action moments (#23), items and loot tables (#9; chests only lift the delve's quality), the scene maker, the
+  courage dial inside the personality dials (#7), real hands-on moments at camp (a button today), top-down / menu pieces.
+  Numbers are first guesses from the time-lapse (server farm: ~18 min, knocked out in ~1 delve in 12 at level 1).
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

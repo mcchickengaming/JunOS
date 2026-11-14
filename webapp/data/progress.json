@@ -1,5 +1,5 @@
 {
-  "about": "The progression service's data (foundations #31 item 8; api/lib/progress.php is the engine). Skills for her AND the player, activities, reward pools, buffs and story grants, all as data: a new activity is one more entry here, no new code. Items are ids only until the economy (#9) exists. The activities marked \"sample\" are placeholders that prove the shape; the delve framework (#32), cooking and the focus timer replace them. The bond is NOT in here and never will be: no skill, no activity source and no reward may touch it (tested).",
+  "about": "The progression service's data (foundations #31 item 8; api/lib/progress.php is the engine). Skills for her AND the player, activities, reward pools, buffs and story grants, all as data: a new activity is one more entry here, no new code. Items are ids only until the economy (#9) exists. The activities marked \"sample\" are placeholders that prove the shape until cooking and the focus timer exist; \"delve\" is real (the delve framework #32, js/core/delve/: its quality comes from how the delve went, its minutes from time actually played). The bond is NOT in here and never will be: no skill, no activity source and no reward may touch it (tested).",
   "version": 1,
   "owners": { "player": "You", "jun": "Her" },
   "skills": {
@@ -17,8 +17,8 @@
     "mechanic":   { "name": "Assistant mechanic", "owners": ["jun"], "line": "Handing you the right tool, then doing it herself." }
   },
   "activities": {
-    "sample_delve": {
-      "name": "A delve (sample)", "sample": true, "source": "delve", "tier": "everyday", "minutes": 25, "together": true,
+    "delve": {
+      "name": "A delve", "source": "delve", "tier": "everyday", "minutes": 25, "together": true,
       "skills": { "player": { "delving": 1, "scavenging": 0.3 }, "jun": { "delving": 0.5, "scanning": 0.6, "support": 0.3 } },
       "pools": ["common"],
       "signature": [

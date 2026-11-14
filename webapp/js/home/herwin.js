@@ -445,6 +445,8 @@ function wireAccount() {
     forgetLocal();
     // her inside state (core feel: needs, what she's tired of, her favorites) starts over too
     try { localStorage.removeItem('jun.feel'); } catch (e) {}
+    // … and any delve in progress or just finished (#32)
+    try { localStorage.removeItem('jun.delve'); } catch (e) {}
     post({ type: 'reload' });
     location.reload();
   });

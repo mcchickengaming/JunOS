@@ -54,7 +54,12 @@ if ($action === 'curve') json_out(['curve' => progress_curve($tune)]);
 $state = progress_load($userId);
 $tz = max(-840, min(840, (int)($body['tz'] ?? 0)));
 $r = match ($action) {
-    'begin' => progress_begin($state, $d, (string)($body['activity'] ?? ''), !empty($body['together']), $now),
+    // + the buff effects that count for this activity right now (a delve reads "accuracy", "luck", …)
+    'begin' => (function () use (&$state, $d, $body, $now) {
+        $r = progress_begin($state, $d, (string)($body['activity'] ?? ''), !empty($body['together']), $now);
+        if (empty($r['error'])) $r['effects'] = (object)progress_effects($state, $d, $now, (string)($d['activities'][$state['session']['activity']]['source'] ?? ''));
+        return $r;
+    })(),
     'finish' => progress_finish($state, $d, ['quality' => $body['quality'] ?? 0.5, 'minutes' => $body['minutes'] ?? null,
         'worn' => array_slice(array_filter((array)($body['worn'] ?? []), 'is_string'), 0, 40), 'day' => gmdate('Y-m-d', $now + $tz * 60)], $now, $rnd),
     'cancel' => (function () use (&$state) { $state['session'] = null; return ['ok' => true]; })(),

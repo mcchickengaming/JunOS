@@ -939,9 +939,9 @@ function openSettings(tab) {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
   settingsWin.setMenu(null);
-  // the feel lab (core feel #27) and the progress lab (#31 item 8) open in their own window from Settings; nothing else does
-  settingsWin.webContents.setWindowOpenHandler(({ url }) => (url.startsWith(ORIGIN + '/feel-lab.html') || url.startsWith(ORIGIN + '/progress-lab.html')
-    ? { action: 'allow', overrideBrowserWindowOptions: { width: 1100, height: 860, autoHideMenuBar: true, title: url.includes('progress-lab') ? 'Progress lab' : 'Feel lab' } }
+  // the feel lab (core feel #27), the progress lab (#31 item 8) and the delve lab (#32) open in their own window from Settings; nothing else does
+  settingsWin.webContents.setWindowOpenHandler(({ url }) => (['/feel-lab.html', '/progress-lab.html', '/delve-lab.html'].some(p => url.startsWith(ORIGIN + p))
+    ? { action: 'allow', overrideBrowserWindowOptions: { width: 1100, height: 860, autoHideMenuBar: true, title: url.includes('delve-lab') ? 'Delve lab' : url.includes('progress-lab') ? 'Progress lab' : 'Feel lab' } }
     : { action: 'deny' }));
   settingsWin.loadURL(`${JUN_URL}/desktop-settings.html#${encodeURIComponent(tab || 'help')}`);
   settingsWin.once('ready-to-show', () => settingsWin && settingsWin.show());

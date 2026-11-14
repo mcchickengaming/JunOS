@@ -15,7 +15,7 @@
 // In the desktop app her gear and user chip open the home; a plain browser / the phone keeps the drawer.
 
 import * as ui from '../core/ui.js?v=1';
-import { loadConversation, setSidebarOpen } from './sidebar.js?v=136';
+import { loadConversation, setSidebarOpen } from './sidebar.js?v=137';
 
 const D = window.junDesktop || null;
 // the rows the home mirrors, by section there. a row is found by its control's id

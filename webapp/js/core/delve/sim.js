@@ -5,7 +5,7 @@
 // everything in its way and takes the stairs when the floor is done.
 
 import * as Run from './run.js?v=1';
-import { tune as getTune } from './tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=1';
 
 const { WALL, DX, DY } = Run;
 const SOLID = ['chest', 'vault', 'terminal'];

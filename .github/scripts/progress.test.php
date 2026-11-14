@@ -44,7 +44,7 @@ foreach (['chat', 'message', 'bond'] as $src) {
 }
 $bad = $d; $bad['skills']['bond'] = ['name' => 'Bond', 'owners' => ['player']];
 $ok('the bond can never be a skill', preg_grep('/never a skill/', progress_validate($bad)));
-$bad = $d; $bad['activities']['sample_delve']['minStage'] = 3;
+$bad = $d; $bad['activities']['delve']['minStage'] = 3;
 $ok('an activity can never ask for a bond stage', preg_grep('/any bond/', progress_validate($bad)));
 $bad = $d; $bad['buffs']['well_fed']['effect'] = ['bond.xp' => 5];
 $ok('a buff never touches the relationship', preg_grep('/never touches/', progress_validate($bad)));
@@ -84,7 +84,7 @@ $eq('her skills stay hers', isset($b['skills']['player']['souschef']), false);
 $eq('Total Level adds up', progress_total($b, 'player', $d), 6 + progress_skill_level($b, 'player', 'cooking'));
 
 // --- rewards: fair across activities, growing with skill, sizes from a mix (never a ladder)
-$acts = ['sample_delve', 'sample_cooking', 'sample_tinkering', 'sample_fishing'];
+$acts = ['delve', 'sample_cooking', 'sample_tinkering', 'sample_fishing'];
 $vals = [];
 foreach ($acts as $i => $id) $vals[$id] = progress_simulate($d, $id, 1000, ['seed' => 11 + $i])['valuePerMin'];
 $ok('about the same value for the time, whatever you love (' . implode(' / ', $vals) . ')', max($vals) / min($vals) < 1.15);
@@ -102,13 +102,13 @@ $ok('the same mix at the top: never a ladder', abs($share($s99, 'big') - $share(
 $rnd = $seeded(8); $lo = PHP_INT_MAX; $hi = 0;
 for ($i = 0; $i < 300; $i++) { $cr = progress_roll($d, 'sample_fishing', 60, 1, $rnd)['credits']; $lo = min($lo, $cr); $hi = max($hi, $cr); }
 $ok('ups and downs, not flat', $hi > $lo * 1.3);
-$sim = progress_simulate($d, 'sample_delve', 300, ['seed' => 3]);
+$sim = progress_simulate($d, 'delve', 300, ['seed' => 3]);
 $ok('signature finds show up next to shared ones', $sim['signature'] > 0 && $sim['signature'] < array_sum($sim['drops']));
 $ok('a big moment in every activity', !empty($sim['big']) && !empty(progress_simulate($d, 'sample_cooking', 300, ['seed' => 4])['big']));
 $ok('something set going pays for half the time: he was not there', abs(progress_simulate($d, 'sample_expedition', 1000, ['seed' => 2])['valuePerMin'] / $vals['sample_fishing'] - 0.5) < 0.1);
-$eq('the same seed, the same story', progress_simulate($d, 'sample_delve', 50, ['seed' => 9]), progress_simulate($d, 'sample_delve', 50, ['seed' => 9]));
+$eq('the same seed, the same story', progress_simulate($d, 'delve', 50, ['seed' => 9]), progress_simulate($d, 'delve', 50, ['seed' => 9]));
 $rnd = $seeded(12); $early = false;
-for ($i = 0; $i < 3000; $i++) foreach (progress_roll($d, 'sample_delve', 25, 5, $rnd)['drops'] as $x) if ($x['id'] === 'delve_greatsword') $early = true;
+for ($i = 0; $i < 3000; $i++) foreach (progress_roll($d, 'delve', 25, 5, $rnd)['drops'] as $x) if ($x['id'] === 'delve_greatsword') $early = true;
 $eq('a deep-chest find waits for some skill', $early, false);
 
 // --- buffs: timed, permanent (small, once), worn; each says where it's from
@@ -119,7 +119,7 @@ $eq('…and nowhere else', progress_effects($s, $d, $now, 'cook'), []);
 $eq('it says where it came from', progress_active_buffs($s, $d, $now)[0]['from'], 'A focus session');
 progress_grant($s, $d, ['activity' => 'sample_cooking', 'minutes' => 10], $now, $seeded(1));
 $eq('cooking does not use it up', $s['buffs'][0]['uses'], 3);
-for ($i = 0; $i < 3; $i++) progress_grant($s, $d, ['activity' => 'sample_delve', 'minutes' => 10, 'rewards' => false], $now, $seeded(1));
+for ($i = 0; $i < 3; $i++) progress_grant($s, $d, ['activity' => 'delve', 'minutes' => 10, 'rewards' => false], $now, $seeded(1));
 $eq('gone after the next three delves', progress_effects($s, $d, $now, 'delve'), []);
 $s = progress_blank();
 progress_give($s, $d, [['id' => 'well_fed', 'kind' => 'buff', 'size' => 'small']], 'Dinner', $now);
@@ -173,7 +173,7 @@ $before = $s['skills']['jun']['mechanic']['xp'];
 progress_away($s, $d, $now + 600 + 4 * 3600 + 40 * 86400, $seeded(1));
 $eq('a month away counts as one long day', $s['skills']['jun']['mechanic']['xp'] - $before, 1200);
 $s = progress_blank();
-$eq('only some things can be set going', progress_set_going($s, $d, 'sample_delve', $now)['error'] ?? '', 'unknown_activity');
+$eq('only some things can be set going', progress_set_going($s, $d, 'delve', $now)['error'] ?? '', 'unknown_activity');
 progress_set_going($s, $d, 'sample_expedition', $now);
 $eq('one drone, one trip', progress_set_going($s, $d, 'sample_expedition', $now)['error'] ?? '', 'already_going');
 $eq('not back yet', progress_collect($s, $d, $now + 3600, $seeded(1)), []);
@@ -220,7 +220,7 @@ putenv('JUN_PROGRESS=on');
 // --- her database, and a hand-edited blob
 db()->exec("INSERT INTO users (id, email, password_hash, created_at, adult_consent_at) VALUES (1, 'a@b.c', 'x', 0, 0)");
 $eq('a new player starts blank', progress_load(1), progress_blank());
-$s = progress_blank(); progress_grant($s, $d, ['activity' => 'sample_delve', 'minutes' => 25, 'together' => true], $now, $seeded(3));
+$s = progress_blank(); progress_grant($s, $d, ['activity' => 'delve', 'minutes' => 25, 'together' => true], $now, $seeded(3));
 progress_save(1, $s); progress_save(1, $s);
 $eq('saved and read back', progress_load(1), $s);
 $eq('garbage reads as blank', progress_clean(['skills' => 'lots', 'credits' => 'all of them', 'log' => 7]), progress_blank());

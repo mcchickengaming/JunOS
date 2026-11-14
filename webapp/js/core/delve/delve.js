@@ -17,16 +17,19 @@ import * as Progress from '../progress.js?v=2';
 import * as Gate from '../gate.js?v=3';
 import * as Run from './run.js?v=1';
 import * as Party from './party.js?v=1';
-import { tune as getTune } from './tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=1';
+import { lastDelve } from './last.js?v=1';
 
 export const KEY = 'jun.delve';
 export const ACTIVITY = 'delve';
 export const KEYS = {
-  talk: 'jun.delve.talk', asFeels: 'jun.delve.asFeels', courage: 'jun.delve.courage',
+  talk: 'jun.delve.talk', courage: 'jun.delve.courage',
   pace: 'jun.delve.pace', notimer: 'jun.delve.notimer', role: 'jun.delve.role',
 };
 // how she comes: she talks sometimes, her courage grows with her, the place picks the pace, she picks her role
-export const SETTING_DEFAULTS = { talk: 50, asFeels: true, courage: 'grows', pace: 'place', notimer: false, role: 'decides' };
+export const SETTING_DEFAULTS = { talk: 50, courage: 'grows', pace: 'place', notimer: false, role: 'decides' };
+// "As she feels" for how much she talks down there is its own switch: feature `delve_as_feels`
+export const asFeels = () => F.isOn('delve_as_feels');
 export const PACE_CHOICES = [['place', 'As the place suits'], ...Run.Enc.PACES];
 
 let storage = null;
@@ -122,13 +125,8 @@ export async function abandon(run) {
 
 export const herCourage = (run) => Party.courage({ setting: run.setup.courage, delving: run.setup.levels.jun.delving, stage: run.setup.stage });
 
-// what her prompt hears about the last delve, for a day and a half (api/lib/delve.php puts it in words)
-export function forChat(now = Date.now()) {
-  const l = last();
-  if (!l || !isOn() || now - l.at > 36 * 3600 * 1000) return null;
-  return { ago: Math.round((now - l.at) / 60000), area: l.area, together: !!l.together, cleared: !!l.cleared, floors: l.floors, of: l.of, ko: l.ko, how: l.how,
-    carried: (l.carried || []).slice(0, 4), wish: l.wish || null, secrets: l.secrets ? 1 : 0, courage: l.courage };
-}
+// what her prompt hears about the last delve, for a day and a half: last.js (api/lib/delve.php puts it in words)
+export const forChat = (now) => lastDelve(now, storage || undefined);
 
 // the gate's context for scenes and safe-spot offers. rel = relationship.php's answer (or a lab override)
 export function gateCtx(rel = {}) {

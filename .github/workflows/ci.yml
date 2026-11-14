@@ -168,6 +168,9 @@ jobs:
       - name: Progression service (skills, hers and yours)
         run: php .github/scripts/progress.test.php
 
+      - name: Delves (her prompt lines)
+        run: php .github/scripts/delve.test.php
+
       - name: Consent + ratings gate
         run: php .github/scripts/gate.test.php
 

@@ -121,6 +121,8 @@ function chat_parse_request(string $provider): array {
     $touchNow = $body['touch_now'] ?? null;
     // how she is inside (core feel #27, lib/feel.php): her needs, what she's had plenty of, the session
     $feel = is_array($body['feel'] ?? null) ? $body['feel'] : null;
+    // the last delve, for a day and a half (delves #32, lib/delve.php)
+    $delve = is_array($body['delve'] ?? null) ? $body['delve'] : null;
 
     $invite = isset($body['invite']) && in_array($body['invite'], TRIP_TOOLS, true) ? (string)$body['invite'] : '';
 
@@ -129,7 +131,7 @@ function chat_parse_request(string $provider): array {
         'model' => $model, 'reasoning' => $reasoning, 'outfit_context' => $outfitContext,
         'mod_items' => $modItems, 'client_time' => $clientTime, 'tz' => $tz, 'idle' => $idle,
         'ephemeral' => $ephemeral, 'invite' => $invite, 'regenerate' => $regenerate,
-        'watch' => $watch, 'frames' => $frames, 'touches' => $touches, 'touch_now' => $touchNow, 'feel' => $feel,
+        'watch' => $watch, 'frames' => $frames, 'touches' => $touches, 'touch_now' => $touchNow, 'feel' => $feel, 'delve' => $delve,
     ];
 }
 

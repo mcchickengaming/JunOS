@@ -8,7 +8,7 @@
 // HARD RULE (tested): nothing in here reads the bond, the relationship flavor or her courage.
 // Those change her words (party.js), never what she can do.
 
-import { tune as getTune } from './tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=1';
 
 export const WHO = ['player', 'jun'];
 export const TAGS = ['front', 'dps', 'support', 'scan', 'hack'];

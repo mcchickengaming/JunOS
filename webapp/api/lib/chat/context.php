@@ -209,6 +209,9 @@ function chat_live_context(array $req, array $user, string $lastUserMsg, string 
     $progressBlock = progress_context((int)$user['id']);
     if ($progressBlock !== '') $contextParts[] = $progressBlock;
 
+    $delveBlock = delve_context($req['delve'] ?? null);
+    if ($delveBlock !== '') $contextParts[] = $delveBlock;
+
     $feelingsBlock = "## YOUR FEELINGS TOWARD ANON RIGHT NOW - highest priority for this reply\n"
         . relationship_directives($rel);
     $contextParts[] = $feelingsBlock;

@@ -10,7 +10,7 @@
 // Lines are by code from data/delve.json "lines" (her brain can take over a moment later: every
 // line has an id, so the repeat watcher and a line pack can replace it one by one).
 
-import { tune as getTune } from './tune.js?v=1';
+import { tune as getTune } from './delve-tune.js?v=1';
 
 export const COURAGE = [['grows', 'Grows with her'], ['timid', 'Timid'], ['steady', 'Steady'], ['brave', 'Fearless']];
 const FIXED = { timid: 0.15, steady: 0.55, brave: 0.95 };
@@ -33,7 +33,8 @@ const MOOD = { quiet: -1, playful: 1, clingy: 0.5, cuddly: 0, easy: 0 };
 export function talkChance(p, { often = 50, asFeels = true, dayMood = 'easy', tune } = {}) {
   if (often <= 0) return 0;
   const t = (tune || getTune()).her;
-  const k = often >= 100 ? 3 : often / 50;
+  if (often >= 100) return p > 0 ? 1 : 0; // "All the time" means it
+  const k = often / 50;
   const mood = asFeels ? 1 + t.moodSwing * (MOOD[dayMood] || 0) : 1;
   return Math.max(0, Math.min(1, p * k * mood));
 }
