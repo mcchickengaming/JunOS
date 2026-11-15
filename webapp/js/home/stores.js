@@ -4,7 +4,7 @@
 
 import * as Fx from '../desktop/fx.js?v=12';
 import * as F from '../core/features.js?v=3';
-import * as Gate from '../core/gate.js?v=3';
+import * as Gate from '../core/gate.js?v=4';
 
 const D = window.junDesktop || null;
 let desk = null; // the app's last deskInfo (desktop-settings.js passes it on)

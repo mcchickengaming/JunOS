@@ -908,7 +908,7 @@ ipcMain.on('jun:menu', (e) => {
 });
 // her main window's Settings > Memory has a button for the saves tab
 // old tab names keep working (the page maps them onto the new sections)
-const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'saves', 'account', 'comfort', 'colors', 'feedback', 'spots', 'size'];
+const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'game', 'saves', 'account', 'comfort', 'colors', 'feedback', 'spots', 'size'];
 ipcMain.on('jun:open-settings', (e, tab) => {
   if (!fromWin(e)) return;
   openSettings(SETTINGS_TABS.includes(tab) ? tab : 'help');

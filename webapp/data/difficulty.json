@@ -1,0 +1,85 @@
+{
+  "about": "Difficulty presets (#35 b, owner Nov 14): Easy / Medium / Hard / Extreme, the player's pick, changeable any time, kept with the game (the story section, so a save remembers it). Easy is the old kind danger: knocked out = her care scene, nothing lost. Harder presets bring real game overs (load a save), stronger creatures and sharper traps, a small lift to how well a delve counts, and a lower chance that she saves you. 'Jun saves you' (owner): a chance instead of a game over that grows with the bond and her Support skill, lower on harder presets. Every number is a first guess, tuned in the delve lab. Read by js/core/difficulty.js; the delve gets the preset object in Run.start({ difficulty }). Jun is non-lethal to people on every preset (one story moment aside, which the story engine owns): that is a content rule, not a number here.",
+  "version": 1,
+  "default": "easy",
+  "order": [
+    "easy",
+    "medium",
+    "hard",
+    "extreme"
+  ],
+  "presets": {
+    "easy": {
+      "name": "Easy",
+      "line": "The cozy way, as delves have always been. If you go down, she takes care of you and nothing is lost.",
+      "knockout": "care",
+      "foe": {
+        "hp": 1,
+        "atk": 1
+      },
+      "trap": 1,
+      "quality": 0,
+      "saves": {
+        "base": 1,
+        "perStage": 0,
+        "perSupport": 0,
+        "alone": 1,
+        "cap": 1
+      }
+    },
+    "medium": {
+      "name": "Medium",
+      "line": "The same creatures, real danger. If you go down she may still save you. If she can't, it's game over and you load a save.",
+      "knockout": "gameover",
+      "foe": {
+        "hp": 1,
+        "atk": 1
+      },
+      "trap": 1,
+      "quality": 0.03,
+      "saves": {
+        "base": 0.4,
+        "perStage": 0.08,
+        "perSupport": 0.15,
+        "alone": 0.7,
+        "cap": 0.92
+      }
+    },
+    "hard": {
+      "name": "Hard",
+      "line": "Tougher creatures, sharper traps, and she can't always reach you in time.",
+      "knockout": "gameover",
+      "foe": {
+        "hp": 1.25,
+        "atk": 1.2
+      },
+      "trap": 1.3,
+      "quality": 0.06,
+      "saves": {
+        "base": 0.2,
+        "perStage": 0.06,
+        "perSupport": 0.1,
+        "alone": 0.6,
+        "cap": 0.7
+      }
+    },
+    "extreme": {
+      "name": "Extreme",
+      "line": "The city at its worst. Every fight counts, and her saving you is a rare mercy.",
+      "knockout": "gameover",
+      "foe": {
+        "hp": 1.4,
+        "atk": 1.35
+      },
+      "trap": 1.5,
+      "quality": 0.1,
+      "saves": {
+        "base": 0.05,
+        "perStage": 0.035,
+        "perSupport": 0.06,
+        "alone": 0.5,
+        "cap": 0.35
+      }
+    }
+  }
+}

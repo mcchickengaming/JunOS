@@ -4,7 +4,7 @@
 // The stand-in explores what it can see a way to, opens what she points out, rests when hurt, fights
 // everything in its way and takes the stairs when the floor is done.
 
-import * as Run from './run.js?v=2';
+import * as Run from './run.js?v=3';
 import { tune as getTune } from './delve-tune.js?v=2';
 
 const { WALL, DX, DY } = Run;
@@ -52,7 +52,7 @@ export function delve(data, o = {}, tune) {
   const t = tune || getTune();
   const { run } = Run.start(data, o, t);
   const count = {};
-  const note = (evs) => { for (const e of evs) count[e.type] = (count[e.type] || 0) + 1; return evs; };
+  const note = (evs) => { for (const e of evs) { count[e.type] = (count[e.type] || 0) + 1; if (e.type === 'ko' && e.saved) count.saved = (count.saved || 0) + 1; } return evs; };
   let guard = 0, stuck = 0;
   while (run.state !== 'over' && guard++ < 6000) {
     if (run.state === 'fight') {
@@ -97,7 +97,7 @@ export function delve(data, o = {}, tune) {
 // many delves, averaged. Returns plain numbers for the lab's table and the tests.
 export function many(data, o = {}, n = 100, tune) {
   const t = tune || getTune();
-  const sum = { minutes: 0, quality: 0, cleared: 0, ko: 0, anyKo: 0, won: 0, met: 0, fled: 0, chests: 0, secrets: 0, steps: 0, acts: 0, floors: 0, traps: 0, carried: 0 };
+  const sum = { minutes: 0, quality: 0, cleared: 0, ko: 0, anyKo: 0, won: 0, met: 0, fled: 0, chests: 0, secrets: 0, steps: 0, acts: 0, floors: 0, traps: 0, carried: 0, gameOver: 0, saved: 0 };
   let lo = Infinity, hi = 0;
   for (let i = 0; i < n; i++) {
     const r = delve(data, { ...o, seed: (o.seed ?? 1) * 7919 + i }, t);
@@ -105,6 +105,7 @@ export function many(data, o = {}, n = 100, tune) {
     sum.ko += r.stats.ko; sum.anyKo += r.stats.ko ? 1 : 0; sum.won += r.stats.won; sum.met += r.stats.met; sum.fled += r.stats.fled;
     sum.chests += r.stats.chests; sum.secrets += r.stats.secrets; sum.steps += r.stats.steps; sum.acts += r.stats.acts;
     sum.floors += r.outcome.floors; sum.traps += r.stats.traps; sum.carried += r.outcome.how === 'carried' ? 1 : 0;
+    sum.gameOver += r.outcome.gameOver ? 1 : 0; sum.saved += r.count.saved || 0;
     lo = Math.min(lo, r.minutes); hi = Math.max(hi, r.minutes);
   }
   const avg = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / n]));

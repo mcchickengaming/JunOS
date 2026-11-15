@@ -14,11 +14,14 @@
 
 import * as F from '../features.js?v=3';
 import * as Progress from '../progress.js?v=2';
-import * as Gate from '../gate.js?v=3';
-import * as Run from './run.js?v=2';
+import * as Gate from '../gate.js?v=4';
+import * as Run from './run.js?v=3';
 import * as Party from './party.js?v=2';
 import { tune as getTune } from './delve-tune.js?v=2';
 import { lastDelve } from './last.js?v=1';
+import * as Difficulty from '../difficulty.js?v=2';
+import * as Story from '../story/story-state.js?v=2';
+import * as GameSave from '../gamesave.js?v=3';
 
 export const KEY = 'jun.delve';
 export const ACTIVITY = 'delve';
@@ -93,15 +96,26 @@ export async function begin(data, o = {}) {
     effects = (r && r.effects) || {};
   }
   const lv = o.levels || await levels();
+  const diff = o.difficulty || await difficulty();
   const { run, events } = Run.start(data, {
     area: o.area, seed: o.seed ?? (Date.now() % 1000000), together: o.together !== false,
     role: o.role || setting('role'), pace: o.pace || paceFor(data, o.area), levels: lv, effects,
     kits: o.kits, courage: o.courage || setting('courage'), stage: o.stage || 1,
-    mobs: o.mobs ?? F.isOn('delve_moving'),
+    mobs: o.mobs ?? F.isOn('delve_moving'), difficulty: diff,
   }, getTune());
   run.real = real;
   save(run);
   return { run, events };
+}
+
+// the difficulty the game is set to (story state, #35 b) as the preset object Run.start takes. No game yet / her server
+// away = the default preset (Easy: the kind danger delves have always had).
+export async function difficulty() {
+  const dd = await Difficulty.loadData();
+  try {
+    const st = await Story.open(GameSave, { difficultyIds: Difficulty.ids(dd), fallbackDifficulty: Difficulty.defaultId(dd) });
+    return Difficulty.preset(dd, st.state.difficulty);
+  } catch (e) { return Difficulty.preset(dd, Difficulty.defaultId(dd)); }
 }
 
 // the delve is over (run.outcome is set by Run.leave): hand it to the progression service, keep a

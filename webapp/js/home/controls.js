@@ -10,7 +10,7 @@
 
 import * as Often from '../desktop/often.js?v=2';
 import * as F from '../core/features.js?v=3';
-import * as Stores from './stores.js?v=7';
+import * as Stores from './stores.js?v=8';
 
 export function row(title, hint, control, fkey) {
   const r = document.createElement('div');

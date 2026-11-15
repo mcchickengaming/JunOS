@@ -8,6 +8,11 @@
 //   · backing off from a fight always works; afterwards the creatures let you slip past
 //   · knocked out = the care scene (scenes.js), then you go on from the camp or you're home
 //   · a delve that went badly still counts (tune.run.qualityFloor)
+// Difficulty (#35 b, owner Nov 14): Run.start({ difficulty: Difficulty.preset(…) }). Easy (and no preset at all) is the
+// kind danger above, unchanged. Harder presets: tougher creatures and traps (a trap still never takes the last of your
+// health; backing off still always works), a small lift to the delve's quality, and knocked out = a GAME OVER (load a
+// save) unless she saves you (Difficulty.saveChance: the bond and her Support skill, less when she stayed home). A
+// game over still counts the time you played (it ends the delve like heading home, how = 'gameover').
 // She's in it, never in the way: every function here returns EVENTS; her words and face come from
 // party.js reading those events. Nothing in a delve waits for her or for a touch.
 //
@@ -20,6 +25,7 @@ import * as Ab from './abilities.js?v=2';
 import * as Enc from './encounter.js?v=2';
 import * as Party from './party.js?v=2';
 import * as Mobs from './mobs.js?v=2';
+import { saveChance } from '../difficulty.js?v=2';
 
 const SOLID = ['chest', 'vault', 'terminal'];
 const floors = new Map();
@@ -52,7 +58,8 @@ export function start(data, o = {}, tune) {
   const run = {
     v: 1, area, seed: (o.seed ?? 1) >>> 0, depth: 1, floors: A.floors, together, pace,
     role: data.roles[o.role] ? o.role : 'decides',
-    setup: { levels, effects: o.effects || {}, kits: { player: o.kits?.player || data.defaultKits.player, jun: o.kits?.jun || data.defaultKits.jun }, courage: o.courage || 'grows', stage: o.stage || 1, mobs: o.mobs !== false },
+    setup: { levels, effects: o.effects || {}, kits: { player: o.kits?.player || data.defaultKits.player, jun: o.kits?.jun || data.defaultKits.jun }, courage: o.courage || 'grows', stage: o.stage || 1, mobs: o.mobs !== false,
+      diff: o.difficulty && typeof o.difficulty === 'object' ? o.difficulty : null },
     pos: null, hp: null, seen: {}, done: {}, found: {}, hint: {}, rolled: {},
     rs: { s: mix('run', area, o.seed ?? 1) }, state: 'walk', enc: null, fightAt: null,
     queue: [], said: { recent: [] }, wish: null, emptyTold: {},
@@ -197,7 +204,7 @@ export function step(data, run, rel = 0, tune) {
   if (th && !run.done[th.id]) {
     if (th.kind === 'trap') {
       const h = run.hp.you;
-      const dmg = Math.min(Math.max(0, h.hp - 1), Math.round(h.max * t.walk.trapHurt)); // never the last of it
+      const dmg = Math.min(Math.max(0, h.hp - 1), Math.round(h.max * t.walk.trapHurt * (run.setup.diff?.trap ?? 1))); // never the last of it
       h.hp -= dmg; run.done[th.id] = 'sprung'; run.stats.traps++;
       events.push({ type: 'trap', dmg });
     } else if (th.kind === 'odd') { run.done[th.id] = 'seen'; events.push({ type: 'odd' }); }
@@ -329,6 +336,8 @@ export function fighters(data, run, t) {
 function beginFight(data, run, thing, t) {
   const level = Ab.placeLevel(data.areas[run.area], run.depth, run.setup.levels.player.delving, t);
   const them = Ab.foesFor(data, thing.foes, level, { alone: !run.together, tune: t });
+  const d = run.setup.diff;
+  if (d) for (const f of them) { f.hp = f.max = Math.max(1, Math.round(f.max * d.foe.hp)); f.atk *= d.foe.atk; }
   run.enc = Enc.create(data, { us: fighters(data, run, t), them, pace: run.pace, seed: mix('fight', run.seed, thing.id, run.stats.met), herRole: run.role, tune: t });
   run.state = 'fight'; run.fightAt = thing.id; run.stats.met++;
   return [{ type: 'fight', big: !!thing.big, foes: them.map(f => f.name) }];
@@ -350,7 +359,24 @@ export function endFight(data, run, tune) {
     if (!run.together) run.hp.you.hp = Math.min(run.hp.you.max, run.hp.you.hp + Math.round(run.hp.you.max * t.run.aloneBreather));
     return [ev, ...emptyCheck(data, run, t)];
   }
-  if (r.how === 'ko') { run.stats.ko++; run.state = 'ko'; return [ev, { type: 'ko' }]; }
+  if (r.how === 'ko') {
+    run.stats.ko++;
+    const d = run.setup.diff;
+    if (d && d.knockout === 'gameover') {
+      // she may still reach you in time: the bond and her Support skill, less when she stayed home
+      const chance = saveChance(d, { stage: run.setup.stage, support: run.setup.levels.jun.support || 1, together: run.together });
+      const roll = next({ s: mix('saves', run.seed, run.stats.ko, run.stats.met) });
+      if (roll >= chance) {
+        run.state = 'over';
+        run.outcome = outcome(data, run, 'gameover', t);
+        return [ev, { type: 'gameover', chance }, { type: 'left', how: 'gameover', outcome: run.outcome }];
+      }
+      run.state = 'ko';
+      return [ev, { type: 'ko', saved: true, chance }];
+    }
+    run.state = 'ko';
+    return [ev, { type: 'ko' }];
+  }
   // backed off (or nobody could finish it): they lose interest and you can slip past
   run.done[id] = 'fled'; run.stats.fled++; run.state = 'walk';
   return [ev];
@@ -397,9 +423,10 @@ export function outcome(data, run, how, tune) {
   for (const list of Object.values(run.seen)) { all += list.length; seen += list.reduce((a, b) => a + b, 0); }
   const map = all ? Math.min(1, (seen / all) / 0.6) : 0;
   const core = (t.qFloors * (floorsDone / run.floors) + t.qFights * fights + t.qFinds * finds + t.qMap * map) / (t.qFloors + t.qFights + t.qFinds + t.qMap);
-  const quality = Math.max(t.qualityFloor, Math.min(1, t.qualityFloor + t.qCore * core + (s.vault ? t.qVault : 0) + (s.ko ? 0 : t.qNoKo) + (s.secrets ? t.qSecret : 0)));
+  const lift = run.setup.diff?.quality || 0; // a harder preset counts a little more
+  const quality = Math.max(t.qualityFloor, Math.min(1, t.qualityFloor + t.qCore * core + (s.vault ? t.qVault : 0) + (s.ko ? 0 : t.qNoKo) + (s.secrets ? t.qSecret : 0) + lift));
   return {
-    how, quality: Math.round(quality * 100) / 100, cleared: !!s.vault, floors: floorsDone, of: run.floors,
+    how, difficulty: run.setup.diff?.id || 'easy', gameOver: how === 'gameover', quality: Math.round(quality * 100) / 100, cleared: !!s.vault, floors: floorsDone, of: run.floors,
     together: run.together, ko: s.ko, won: s.won, fled: s.fled, chests: s.chests, secrets: s.secrets,
     wish: run.wish ? (run.wish.got ? 'got' : 'missed') : null,
     carried: run.queue.slice(), // what she kept and never got to say: it rides home with her

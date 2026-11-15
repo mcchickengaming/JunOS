@@ -213,6 +213,7 @@
   <button type="button" data-tab="desktop"><i>🖥️</i><span>On the desktop</span></button>
   <button type="button" data-tab="visuals"><i>🎨</i><span>Visuals</span></button>
   <button type="button" data-tab="comfort" title="Comfort &amp; ratings"><i>🤍</i><span>Comfort</span></button>
+  <button type="button" data-tab="game"><i>🎮</i><span>The game</span></button>
   <button type="button" data-tab="saves"><i>💾</i><span>Saves &amp; updates</span></button>
   <button type="button" data-tab="account" title="Account &amp; advanced"><i>🔐</i><span>Account</span></button>
   <button type="button" data-tab="help" class="nav-help"><i>❓</i><span>How to play</span></button>
@@ -414,9 +415,35 @@
   <p class="hint">Anything flirty or 18+ hides while you share your screen. Her stop signal always counts.
     If her look ever reads as a child, flirty and 18+ pause until it reads adult again.</p>
 </section>
+<section id="tab-game" hidden>
+  <p class="hint">The game in her window: an authored story, with delves and voyages. She is herself out here whichever
+    game you play; what happens in the game stays the game's.</p>
+  <h2 id="at-difficulty">Difficulty</h2>
+  <div id="diffRows"></div>
+  <p class="hint" id="diffNow" role="status"></p>
+  <h2 id="at-gamesaves">Game saves</h2>
+  <p class="hint">The game in her window keeps its own saves. She isn't in them: her memories, her feelings and how she is
+    with you stay hers, whichever game you load.</p>
+  <div id="gameOff" class="hint" hidden></div>
+  <div id="gameBox">
+    <div class="save-new">
+      <input type="text" id="gameName" maxlength="80" placeholder="Name it, like &quot;Before the harbor&quot;" aria-label="Name for the game save">
+      <button type="button" class="btn accent" id="gameSaveNow">Save the game</button>
+    </div>
+    <p class="hint" id="gameMsg" role="status"></p>
+    <div class="game-undo" id="gameUndo" hidden></div>
+    <div id="gameRows" class="game-rows" aria-label="Game saves"></div>
+    <p class="hint" id="noGameSaves" hidden>No game saves yet. Once the story arrives the game saves itself as you play; you can save now too.</p>
+    <p class="adds"><button type="button" class="btn" id="gameUpload">Upload a save…</button>
+      <input type="file" id="gameFile" accept=".jungame,application/json" hidden>
+      <span class="hint game-drop">or drop a .jungame file on this list</span></p>
+    <div id="gameRowsSettings"></div>
+  </div>
+</section>
+
 <section id="tab-saves" hidden>
   <p class="hint">A save keeps everything that makes her her: chats, memories, bond, touches, moods and her desktop settings.
-    You can always go back to one.</p>
+    You can always go back to one. (The game's own saves are in The game.)</p>
   <h2>Save Jun now</h2>
   <div class="save-new">
     <input type="text" id="saveName" maxlength="80" placeholder="Name it, like &quot;Before our first date&quot;" aria-label="Name for the save">
@@ -437,24 +464,6 @@
     <button type="button" class="btn" id="saveDefault">Use the default</button>
     <button type="button" class="btn" id="saveOpen">Open the folder</button></p>
   <p class="hint">Tip: a folder on another drive (like D:) keeps her safe even if this drive ever fails.</p>
-  <h2 id="at-gamesaves">Game saves</h2>
-  <p class="hint">The game in her window keeps its own saves. She isn't in them: her memories, her feelings and how she is
-    with you stay hers, whichever game you load.</p>
-  <div id="gameOff" class="hint" hidden></div>
-  <div id="gameBox">
-    <div class="save-new">
-      <input type="text" id="gameName" maxlength="80" placeholder="Name it, like &quot;Before the harbor&quot;" aria-label="Name for the game save">
-      <button type="button" class="btn accent" id="gameSaveNow">Save the game</button>
-    </div>
-    <p class="hint" id="gameMsg" role="status"></p>
-    <div class="game-undo" id="gameUndo" hidden></div>
-    <div id="gameRows" class="game-rows" aria-label="Game saves"></div>
-    <p class="hint" id="noGameSaves" hidden>No game saves yet. Once the story arrives the game saves itself as you play; you can save now too.</p>
-    <p class="adds"><button type="button" class="btn" id="gameUpload">Upload a save…</button>
-      <input type="file" id="gameFile" accept=".jungame,application/json" hidden>
-      <span class="hint game-drop">or drop a .jungame file on this list</span></p>
-    <div id="gameRowsSettings"></div>
-  </div>
   <h2>Updates</h2>
   <div class="row"><div class="what"><b>Get the latest update</b><span>Jun checks GitHub for new changes, saves herself, updates and restarts.
     If anything goes wrong she tells you and stays as she is.</span></div>
@@ -555,8 +564,9 @@
   <div class="row"><div class="gesture">🕯️</div><div class="what"><b>Go down</b><span>Settings &gt; Her &gt; Delves &gt; Open the delve lab &gt; Go down. Alone, or with her along. <b>W</b> <b>S</b> walk, <b>A</b> <b>D</b> sidestep, <b>Q</b> <b>E</b> turn, <b>Space</b> uses what's in front of you or feels along the wall.</span></div></div>
   <div class="row"><div class="gesture">⚔️</div><div class="what"><b>Fights</b><span>Walk into something to meet it. Pick what to do with the number keys; most places wait for you as long as you like. Backing off always works.</span></div></div>
   <div class="row"><div class="gesture">🩹</div><div class="what"><b>Nothing is ever lost</b><span>Head home any time. If you go down she patches you up, and you keep everything.</span></div></div>
-  <h2>Game saves</h2>
-  <div class="row"><div class="gesture">💾</div><div class="what"><b>Save and load the game</b><span>Settings &gt; Saves &amp; updates &gt; Game saves. Name a save, or let the game autosave as you play. Load any save; the game you had is saved first, so <b>Undo last load</b> always brings it back.</span></div></div>
+  <h2>The game</h2>
+  <div class="row"><div class="gesture">🎚️</div><div class="what"><b>Difficulty</b><span>Settings &gt; The game &gt; Difficulty, any time. <b>Easy</b>: if you go down she takes care of you and nothing is lost. <b>Medium</b> and up: real game overs (load a save), unless she reaches you in time; a closer bond and her Support skill make that likelier.</span></div></div>
+  <div class="row"><div class="gesture">💾</div><div class="what"><b>Save and load the game</b><span>Settings &gt; The game &gt; Game saves. Name a save, or let the game autosave as you play. Load any save; the game you had is saved first, so <b>Undo last load</b> always brings it back.</span></div></div>
   <div class="row"><div class="gesture">🫶</div><div class="what"><b>She isn't in a save</b><span>Her memories, her feelings and how she is with you stay hers whichever game you load. A save remembers the bond it was made with; tick <b>Use this save's bond</b> when loading only if you want that one.</span></div></div>
   <div class="row"><div class="gesture">📤</div><div class="what"><b>Share a save</b><span>⋯ &gt; Download makes a .jungame file. Upload a save… (or drop the file on the list) adds it as a new save; it's never loaded until you load it.</span></div></div>
   <h2>Talking</h2>
@@ -570,6 +580,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=59"></script>
+<script type="module" src="js/desktop-settings.js?v=61"></script>
 </body>
 </html>

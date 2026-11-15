@@ -13,12 +13,14 @@ import * as Moods from './desktop/moods.js?v=16';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=9';
 import * as F from './core/features.js?v=3';
-import * as Gate from './core/gate.js?v=3';
-import * as Controls from './home/controls.js?v=11';
-import * as Stores from './home/stores.js?v=7';
+import * as Gate from './core/gate.js?v=4';
+import * as Controls from './home/controls.js?v=12';
+import * as Stores from './home/stores.js?v=8';
 import * as Feel from './core/feel/feel.js?v=4';
 import * as Progress from './core/progress.js?v=2';
 import * as GameSave from './core/gamesave.js?v=3';
+import * as Difficulty from './core/difficulty.js?v=2';
+import * as Story from './core/story/story-state.js?v=2';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -48,7 +50,7 @@ function writeTheme(t) {
 // the settings home: one section at a time, picked in the sidebar.
 // old tab names (openSettings('spots'), #feedback...) still land in the right place
 
-const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'comfort', 'saves', 'account', 'help'];
+const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'comfort', 'game', 'saves', 'account', 'help'];
 const OLD_TABS = { colors: ['visuals'], feedback: ['touch'], spots: ['desktop', 'at-spots'], size: ['desktop', 'at-size'] };
 const tabs = [...document.querySelectorAll('nav button')];
 let current = 'help';
@@ -65,7 +67,8 @@ function show(tab, anchor) {
   if (tab === 'talk') { loadDesk(); HerWin.hello(); }
   if (tab === 'her') { HerWin.hello(); HerWin.loadHer(); }
   if (tab === 'account') HerWin.loadAccount();
-  if (tab === 'saves') { setTimeout(loadSaves); setTimeout(loadGame); }
+  if (tab === 'saves') setTimeout(loadSaves);
+  if (tab === 'game') { setTimeout(loadGame); setTimeout(buildDifficulty); }
   if (tab === 'her') setTimeout(buildBondByHand); // after this module has set itself up
   if (tab === 'comfort') loadComfort();
   soon();
@@ -1109,8 +1112,8 @@ function gameMsg(text, err) {
   m.classList.toggle('err', !!err);
 }
 const gameSay = (r, fallback) => (r && r.error ? GameSave.say(r.error) : fallback);
-// her name as the player set it; with none, "She" to start a sentence and "her" inside one
-const herName = (inside = false) => { let n = ''; try { n = (localStorage.getItem('omega.names.bot') || '').trim(); } catch (e) {} return n || (inside ? 'her' : 'She'); };
+// her name as the player set it; with none: "She" to start a sentence, "she" as the subject inside one, "her" otherwise
+const herName = (form = 'start') => { let n = ''; try { n = (localStorage.getItem('omega.names.bot') || '').trim(); } catch (e) {} return n || (form === 'start' ? 'She' : form === 'subj' ? 'she' : 'her'); };
 
 async function loadGame() {
   const v = await GameSave.load();
@@ -1253,7 +1256,7 @@ function gameRow(sv, v) {
   const txt = document.createElement('span');
   txt.textContent = same
     ? `Use this save's bond (${theirs || 'the same'}, the same as now).`
-    : `Use this save's bond: ${theirs} (yours now: ${nowBond}). A save point of ${herName(true)} comes first, and Undo puts your bond back.`;
+    : `Use this save's bond: ${theirs} (yours now: ${nowBond}). A save point of ${herName('obj')} comes first, and Undo puts your bond back.`;
   lab.append(box, txt);
   const keep = document.createElement('div');
   keep.className = 'hint';
@@ -1264,10 +1267,10 @@ function gameRow(sv, v) {
     gameBtn('Cancel', () => { gameLoading = null; drawGame(gameView); }),
     gameBtn('Load it', async (e) => {
       e.target.disabled = true;
-      gameMsg(box.checked ? `Saving ${herName(true)} first…` : 'Loading…');
+      gameMsg(box.checked ? `Saving ${herName('obj')} first…` : 'Loading…');
       const r = await GameSave.loadSave(sv.id, { useBond: box.checked });
       gameLoading = null;
-      if (r.error === 'savepoint') gameMsg(`Couldn't save ${herName(true)} first (${r.why}), so nothing was loaded.`, true);
+      if (r.error === 'savepoint') gameMsg(`Couldn't save ${herName('obj')} first (${r.why}), so nothing was loaded.`, true);
       else if (r.error) gameMsg(gameSay(r), true);
       else gameMsg(`Loaded “${sv.name}”.` + (r.bond ? ` Your bond is ${r.bond.name} now.` : '')
         + (box.checked && r.savePoint?.skipped ? ` (No save point: open this from the Jun desktop app for one. Undo still puts your bond back.)` : ''));
@@ -1308,7 +1311,36 @@ $('gameFile').addEventListener('change', () => { gameImport($('gameFile').files[
   zone.addEventListener('drop', (e) => { e.preventDefault(); $('gameRows').classList.remove('drop'); gameImport(e.dataTransfer?.files?.[0]); });
 }
 // another window loaded a game: show the new list
-GameSave.onChange((e) => { if (e.type === 'loaded' && !$('tab-saves').hidden) loadGame(); });
+GameSave.onChange((e) => { if (e.type === 'loaded' && !$('tab-game').hidden) { loadGame(); buildDifficulty(); } });
+
+// The game > Difficulty (#35 b, core/difficulty.js + core/story/story-state.js): Easy / Medium / Hard / Extreme, any time.
+// Kept with the game (story state), so a save remembers it. A line in words says how often she'd reach you in time.
+async function buildDifficulty() {
+  const host = $('diffRows');
+  if (!host) return;
+  const dd = await Difficulty.loadData();
+  const st = await Story.open(GameSave, { difficultyIds: Difficulty.ids(dd), fallbackDifficulty: Difficulty.defaultId(dd) });
+  host.textContent = '';
+  if (st.off) { $('diffNow').textContent = 'The game is switched off in her setup (JUN_GAMESAVES=off).'; return; }
+  const cur = Difficulty.preset(dd, st.state.difficulty);
+  host.append(Controls.row('Difficulty', cur.line,
+    Controls.choiceCtl(Difficulty.choices(dd), cur.id, async (v) => {
+      const now = await Story.open(GameSave, { difficultyIds: Difficulty.ids(dd), fallbackDifficulty: Difficulty.defaultId(dd) });
+      Story.setDifficulty(now.state, v, Math.floor(Date.now() / 1000));
+      const r = await Story.commit(GameSave, now.state, now.epoch, dd.presets[v]?.name || v);
+      if (r.error) $('diffNow').textContent = GameSave.say(r.error);
+      buildDifficulty();
+    }), 'server:difficulty'));
+  // in words: how often she'd reach you in time today (the bond and her Support skill)
+  let stage = 1, support = 1;
+  try { const j = await (await fetch('api/relationship.php', { credentials: 'same-origin' })).json(); stage = j?.bond?.stage || 1; } catch (e) {}
+  try { const p = await Progress.load({ peek: true }); support = p?.state?.owners?.jun?.skills?.support?.level || 1; } catch (e) {}
+  const c = Difficulty.saveChance(cur, { stage, support });
+  $('diffNow').textContent = cur.knockout === 'care'
+    ? `If you go down, ${herName('subj')} always takes care of you and nothing is lost.`
+    : `If you go down, today ${herName('subj')} would reach you in time ${Difficulty.chanceWords(c)}. A closer bond and her Support skill raise it.`;
+  soon();
+}
 
 // Her > Your bond > Set the bond by hand (Everything view only, registry `layer: "all"`): a stage, never a number.
 // Quiet: no stage-up moment; she only feels the shift softly for a day. A save point of her comes first.
@@ -1446,7 +1478,7 @@ D?.onDeskChanged?.((st) => { deskState = st; Stores.setDesk(st); drawDesk(); });
 // scrolls to it, so nothing has to move around to be found
 
 const searchBox = document.getElementById('setSearch');
-const NAMES = { her: 'Her', talk: 'Talking & voice', touch: 'Touch & feelings', desktop: 'On the desktop', visuals: 'Visuals', comfort: 'Comfort & ratings', saves: 'Saves & updates', account: 'Account & advanced', help: 'How to play' };
+const NAMES = { her: 'Her', talk: 'Talking & voice', touch: 'Touch & feelings', desktop: 'On the desktop', visuals: 'Visuals', comfort: 'Comfort & ratings', game: 'The game', saves: 'Saves & updates', account: 'Account & advanced', help: 'How to play' };
 const norm = (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
 function runSearch() {
   const q = norm(searchBox.value);

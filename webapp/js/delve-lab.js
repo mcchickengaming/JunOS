@@ -2,9 +2,9 @@
 // the progress lab; every rule it shows lives in js/core/delve/ (run.js, encounter.js, party.js,
 // scenes.js, sim.js) and this file only draws and listens.
 
-import * as Delve from './core/delve/delve.js?v=2';
+import * as Delve from './core/delve/delve.js?v=3';
 import * as Scenes from './core/delve/scenes.js?v=1';
-import * as Sim from './core/delve/sim.js?v=2';
+import * as Sim from './core/delve/sim.js?v=3';
 import { createView, drawMap } from './core/delve/view.js?v=1';
 import { DEFAULTS, setOverrides, tune as getTune } from './core/delve/delve-tune.js?v=2';
 import * as Progress from './core/progress.js?v=2';
@@ -12,6 +12,7 @@ import * as F from './core/features.js?v=3';
 import { dayMood, dayKey } from './core/feel/initiative.js?v=2';
 import * as Store from './core/feel/store.js?v=4';
 import * as GameSave from './core/gamesave.js?v=3';
+import * as Difficulty from './core/difficulty.js?v=2';
 
 const { Run, Party, Gate } = Delve;
 const { Enc, Ab } = Run;
@@ -26,6 +27,7 @@ document.querySelectorAll('.herName').forEach(e => { e.textContent = herName; })
 
 let data = null, view = null, run = null, enc = null, standalone = false;
 let rel = { stage: 1, trust: 50, tension: 0 }, levels = { player: {}, jun: {} };
+let diffData = null, gameDiff = 'easy';   // data/difficulty.json; the lab's "Difficulty" pick ('game' = as the game is set)
 let tuneOver = {};
 let activeMs = 0, lastActive = 0, timer = null, target = null, bubbleT = 0, escAt = 0;
 const mem = { recent: [] };
@@ -114,7 +116,8 @@ function handle(events) {
     else if (ev.type === 'caught') say('It caught up with you.');
     else if (ev.type === 'followed' && !run.together) say('You hear something moving behind you.');
     else if (ev.type === 'fight') { say('It notices you: ' + ev.foes.join(', ') + '.'); openFight(run.enc, false); }
-    else if (ev.type === 'ko') careScene();
+    else if (ev.type === 'ko') { if (ev.saved) say(`${herName} reached you in time.`); careScene(); }
+    else if (ev.type === 'gameover') say(`You went down, and ${herName} couldn't reach you in time.`);
     else if (ev.type === 'woke') say('You\'re back on your feet at the camp.');
     else if (ev.type === 'left') finish(ev);
   }
@@ -299,7 +302,13 @@ function whoIsWhat() {
 }
 function setupOptions() {
   return { area: $('area').value, seed: Number($('seed').value) || 0, together: $('together').value === '1', role: $('role').value,
-    pace: $('notimer').checked ? 'turn' : ($('pace').value === 'place' ? undefined : $('pace').value), courage: $('courage').value, stage: stageNow(), kits: kits(), levels };
+    pace: $('notimer').checked ? 'turn' : ($('pace').value === 'place' ? undefined : $('pace').value), courage: $('courage').value, stage: stageNow(), kits: kits(), levels,
+    difficulty: diffPick() };
+}
+// the lab's Difficulty pick: 'game' = whatever the game is set to (Delve.begin asks), else that preset to try
+function diffPick() {
+  const v = $('diff').value;
+  return diffData && v && v !== 'game' ? Difficulty.preset(diffData, v) : undefined;
 }
 async function begin() {
   if (run && run.state !== 'over') await Delve.abandon(run);
@@ -309,6 +318,8 @@ async function begin() {
   if (r.off) { $('off').hidden = false; say('Delves are switched off in Settings.'); return; }
   if (r.error) { say('Her server said no: ' + r.error.replace(/_/g, ' ') + '. Untick "count it" to play anyway.'); return; }
   enter(r.run, r.events);
+  // a save right at the top, so a game over on a harder difficulty has somewhere to load back to (game saves, #35 a)
+  if (r.run.real) GameSave.autosave('A delve begins', { force: true });
 }
 function enter(r, events) {
   run = r; activeMs = 0; lastActive = Date.now();
@@ -325,12 +336,31 @@ async function finish(ev) {
   clearInterval(timer);
   touchClock();
   const r = await Delve.end(data, mine, activeMs / 60000);
-  const how = o.how === 'carried' ? `${mine.together ? herName + ' carried you home' : herName + ' came down and brought you home'}. Nothing was lost.` : o.cleared ? 'You opened the deep chest and walked out.' : 'You headed home.';
+  const how = o.how === 'gameover' ? `Game over: you went down, and ${herName} couldn't reach you in time.` : o.how === 'carried' ? `${mine.together ? herName + ' carried you home' : herName + ' came down and brought you home'}. Nothing was lost.` : o.cleared ? 'You opened the deep chest and walked out.' : 'You headed home.';
   const got = r.got && !r.got.off && !r.got.error ? describe(r.got) : mine.real ? 'Her server didn\'t answer, so nothing was counted.' : 'Not counted.';
   $('done').innerHTML = `<h3 style="margin:0">${esc(how)}</h3>
     <div class="note">${o.floors} of ${o.of} floors · ${o.won} won, ${o.fled} backed off from · ${o.chests} chests${o.secrets ? ' · something hidden found' : ''}${o.wish === 'got' ? ' · you found what she asked for' : ''}</div>
     <div style="white-space:pre-line;font-size:13px">${esc(got)}</div>
     <div class="note">${o.carried.length ? `${esc(herName)} is still carrying something from down there (${esc(o.carried.join(', '))}): it comes up when you talk at home.` : ''}</div>`;
+  if (o.how === 'gameover') {
+    const p = document.createElement('div');
+    p.className = 'btns';
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'primary'; b.textContent = 'Load your last save';
+    const note = document.createElement('span'); note.className = 'note';
+    b.onclick = async () => {
+      b.disabled = true;
+      const v = await GameSave.load();
+      const last = (v.saves || []).find(sv => sv.kind !== 'before_load');
+      if (!last) { note.textContent = 'There\'s no game save yet. Start again from the top.'; b.disabled = false; return; }
+      note.textContent = `Loading “${last.name}”…`;
+      const r = await GameSave.loadSave(last.id);
+      if (r.error) { note.textContent = GameSave.say(r.error); b.disabled = false; }
+      // a load reloads this page (GameSave.onChange below) with the delve that save put back
+    };
+    p.append(b, note);
+    $('done').append(p);
+  }
   $('done').hidden = false;
   run = mine; draw();
 }
@@ -390,10 +420,11 @@ async function runSim() {
   for (const area of Object.keys(data.areas)) for (const together of [true, false]) {
     $('simBusy').textContent = `${data.areas[area].name}, ${together ? 'together' : 'alone'}…`;
     await new Promise(r => setTimeout(r, 10));
-    const m = Sim.many(data, { area, together, levels: L, kits: k, role: $('role').value, seed: Number($('seed').value) || 1 }, n, t);
+    const m = Sim.many(data, { area, together, levels: L, kits: k, role: $('role').value, seed: Number($('seed').value) || 1, stage: stageNow(),
+      difficulty: diffPick() || (diffData ? Difficulty.preset(diffData, gameDiff) : undefined) }, n, t);
     rows.push(`<tr><td>${esc(data.areas[area].name)}</td><td>${together ? 'together' : 'alone'}</td><td class="num">${m.minutes.toFixed(1)}</td><td class="num">${m.minMinutes.toFixed(0)}–${m.maxMinutes.toFixed(0)}</td>
-      <td class="num">${Math.round(100 * m.cleared)}%</td><td class="num">${Math.round(100 * m.anyKo)}%</td><td class="num">${m.met.toFixed(1)}</td><td class="num">${m.chests.toFixed(1)}</td><td class="num">${Math.round(100 * m.secrets) / 100}</td><td class="num">${m.quality.toFixed(2)}</td></tr>`);
-    $('simOut').innerHTML = `<tr><th>Place</th><th></th><th class="num">Minutes</th><th class="num">shortest–longest</th><th class="num">Deep chest opened</th><th class="num">Knocked out at least once</th><th class="num">Meetings</th><th class="num">Chests</th><th class="num">Hidden doors found</th><th class="num">Quality (0.5 = a normal session)</th></tr>` + rows.join('');
+      <td class="num">${Math.round(100 * m.cleared)}%</td><td class="num">${Math.round(100 * m.anyKo)}%</td><td class="num">${Math.round(100 * m.saved)}% / ${Math.round(100 * m.gameOver)}%</td><td class="num">${m.met.toFixed(1)}</td><td class="num">${m.chests.toFixed(1)}</td><td class="num">${Math.round(100 * m.secrets) / 100}</td><td class="num">${m.quality.toFixed(2)}</td></tr>`);
+    $('simOut').innerHTML = `<tr><th>Place</th><th></th><th class="num">Minutes</th><th class="num">shortest–longest</th><th class="num">Deep chest opened</th><th class="num">Knocked out at least once</th><th class="num">She saved you / game over</th><th class="num">Meetings</th><th class="num">Chests</th><th class="num">Hidden doors found</th><th class="num">Quality (0.5 = a normal session)</th></tr>` + rows.join('');
   }
   $('simBusy').textContent = `${n} delves each, Delving ${lv}.`;
   $('simRun').disabled = false;
@@ -423,6 +454,9 @@ async function init() {
   $('talk').value = Delve.setting('talk');
   $('notimer').checked = Delve.setting('notimer');
   $('bond').innerHTML = opt([['now', `As it is (${STAGES[rel.stage - 1]})`], ...STAGES.map((s, i) => [i + 1, s])]);
+  diffData = await Difficulty.loadData();
+  gameDiff = (await Delve.difficulty()).id;
+  $('diff').innerHTML = opt([['game', `As the game is set (${diffData.presets[gameDiff]?.name || gameDiff})`], ...Difficulty.choices(diffData)]);
   const kitList = [['', 'nothing'], ...Object.entries(data.kits).map(([id, k]) => [id, `${k.name}: ${k.line}`])];
   for (const [el, v] of [['kitP1', data.defaultKits.player[0]], ['kitP2', data.defaultKits.player[1]], ['kitJ1', data.defaultKits.jun[0]], ['kitJ2', data.defaultKits.jun[1]]]) $(el).innerHTML = opt(kitList, v);
   const foeList = [['', '(nothing)'], ...Object.entries(data.foes).map(([id, f]) => [id, f.name])];

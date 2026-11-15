@@ -557,6 +557,38 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   `_summary` in it for the save cards, call `GameSave.autosave(reason, { force: true })` at beats that must be kept, write with
   the epoch you read, and listen to `GameSave.onChange` for `loaded`.
 
+- **Story state + difficulty + "agreed beforehand"** (#35 b, Nov 15, Opus): the base the story-event engine (#34) sits on.
+  **Story state** `js/core/story/story-state.js` (pure; `now` passed in; every edit mutates and logs, the last 200 changes):
+  `flags` (true / a number / a short string: `setFlag`, `flag`, `has`, `addTo`, `clearFlag`), `quests` ({ step, done, at }:
+  `setQuest`, `finishQuest`, `questStep`, `questDone`), `seen` (counts: `markSeen`, `seenIt`), `choices` (`choose`, `chose`),
+  `agreements` (`agree`, `revoke`, `agreement` → 'given' | 'revoked' | null, `agreementsFor` = the gate's ctx shape),
+  `difficulty`, `place` / `chapter` (`setPlace`; `summary()` → the save card's `_summary`). Ids `^[a-z][a-z0-9_.:-]{0,63}$`,
+  values ≤ 120 chars; `clean()` makes anything from a save safe. The door: `open(GameSave)` → { state, epoch } from the
+  game's `story` section, `commit(GameSave, state, epoch, difficultyName)` writes it back with the epoch it read + `_summary`.
+  **Difficulty** `webapp/data/difficulty.json` + `js/core/difficulty.js` (pure): Easy (DEFAULT, owner Nov 14 "harder presets
+  for those who want it") / Medium / Hard / Extreme, each { knockout care|gameover, foe { hp, atk } ×, trap ×, quality lift,
+  saves { base, perStage, perSupport, alone, cap } }; `preset(data, id)` always has every field; `saveChance(p, { stage,
+  support, together })` = "she saves you" (the bond + her Support skill, less when she stayed home, capped); `chanceWords`.
+  **Easy is the old kind danger exactly** (×1 creatures and traps, the care scene; a test plays delves with and without it and
+  compares). The delve: `Run.start({ difficulty })` → `run.setup.diff`; foes scaled in `beginFight`, traps × (still never the
+  last of your health), `outcome` quality + `diff.quality`; a knock-out on a `gameover` preset rolls `saveChance` on its own
+  stream (`mix('saves', seed, ko, met)`): saved → the usual `ko` event with `saved: true` (her care scene), else `gameover`
+  + `left` with outcome `how: 'gameover'`, `gameOver: true` (the time still counts; the player loads a save). `Sim.many`
+  counts `saved` / `gameOver`. `Delve.difficulty()` reads the game's (story state; no game = the default) and `Delve.begin`
+  passes it. Her prompt after a game over (api/lib/delve.php): it went badly, the run was rewound like a bad dream; never
+  gory. Delve lab: a Difficulty pick ("As the game is set" + each), the bond select now also drives her reaching you, "She
+  saved you / game over" in the time-lapse, an autosave at the top of every counted delve, and a game over shows **Load your
+  last save** (the newest non-before-load save). **The gate's "agreed beforehand"** (gate.js = gate.php, 12 new shared cases):
+  item `{ consent: 'beforehand', agreement: id }`, ctx `{ agreements: { id: 'given' | 'revoked' }, awake }`; after the
+  switches (they still decide the tier) and the stop signal (always first): revoked → no (`revoked`), not given → no
+  (`not_agreed`), the item's minStage still counts, asleep (`awake: false`) → yes (`agreed`): the agreement stands in for the
+  live say; awake → the normal live say. Claude builds the option only; the entries (and which story flag gives one) are
+  the owner's. **Settings > The game** (new section `game`, 🎮; main.js `SETTINGS_TABS` knows it): Difficulty
+  (`buildDifficulty`: the pick, the preset's line, and "today she'd reach you in time …" in words from the bond + her Support
+  level) and Game saves (moved here from Saves & updates). Registry: `difficulty` (`server:difficulty`, default easy);
+  `game_saves` / `game_autosave` now in `game`. Name forms in Settings: `herName()` "She", `herName('subj')` "she",
+  `herName('obj')` "her" when no name is set. Tests: `.github/scripts/js/story.test.mjs`, the shared gate cases.
+
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`
   `features_registry()`): every feature once: `id`, `name`, `line`, `section` (+ `anchor`, or `where` for

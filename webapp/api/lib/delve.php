@@ -34,12 +34,17 @@ function delve_context(mixed $delve): string {
     $when = $ago < 90 ? 'A little while ago' : ($ago < 8 * 60 ? 'Earlier today' : ($ago < 20 * 60 ? 'Not long ago' : 'Yesterday'));
     $together = !empty($delve['together']);
     $carriedHome = ($delve['how'] ?? '') === 'carried';
+    // a game over on a harder difficulty (#35 b): it ended badly down there and that run was rewound (he loads a save).
+    // Never gory, never a death scene: a scare she felt, and relief that it didn't stick.
+    $gameOver = ($delve['how'] ?? '') === 'gameover';
     $lines = [];
 
     if ($together) {
         $lines[] = "$when you and Anon went delving together in $place, under the city."
             . (!empty($delve['cleared']) ? ' You made it all the way down and opened the deep chest.' : ' You came back before the bottom.');
-        if ($carriedHome) $lines[] = 'He got knocked out down there and you carried him home and patched him up. Nothing was lost; you fussed over him.';
+        if ($gameOver) $lines[] = "It went badly: he went down and you couldn't reach him in time, and that run ended there. "
+            . "It was rewound, like waking from a bad dream; you're quietly relieved he's here, and you want to do better next time.";
+        elseif ($carriedHome) $lines[] = 'He got knocked out down there and you carried him home and patched him up. Nothing was lost; you fussed over him.';
         elseif (!empty($delve['ko'])) $lines[] = 'He went down once and you patched him up at the camp before you went on.';
         if (!empty($delve['secrets'])) $lines[] = 'You found a hidden room together.';
         foreach (array_slice(array_unique(array_filter((array)($delve['carried'] ?? []), 'is_string')), 0, 2) as $c) {
@@ -48,7 +53,9 @@ function delve_context(mixed $delve): string {
     } else {
         $lines[] = "$when Anon went delving in $place, under the city, while you stayed home."
             . (!empty($delve['cleared']) ? ' He made it all the way down.' : '');
-        if ($carriedHome) $lines[] = 'He got knocked out and you went down to bring him home. You patched him up.';
+        if ($gameOver) $lines[] = "It went badly: he went down and you couldn't get down there in time, and that run ended there. "
+            . "It was rewound like a bad dream; you're relieved, and a little shaken that you weren't with him.";
+        elseif ($carriedHome) $lines[] = 'He got knocked out and you went down to bring him home. You patched him up.';
         $wish = (string)($delve['wish'] ?? '');
         if ($wish === 'got') $lines[] = 'He brought back the thing you asked him to look for. You were pleased, even if you played it down.';
         elseif ($wish === 'missed') $lines[] = "You'd asked him to look for something down there and he didn't find it. No hard feelings.";

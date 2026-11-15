@@ -53,6 +53,9 @@ export const WHY = Object.freeze({
   trust: 'She doesn\'t trust you enough for that right now.',
   mood: 'Not in the mood right now.',
   ask: 'She wants something first.',
+  agreed: '',
+  not_agreed: 'Not agreed beforehand.',
+  revoked: 'Taken back: that agreement doesn\'t count any more.',
 });
 
 const bool = (v, d) => (typeof v === 'boolean' ? v : d);
@@ -81,9 +84,19 @@ export function canTag(flavor, tier) {
   return !(LOCKED[flavor] || []).includes(tier);
 }
 
-// item: { tier, flavors?: [ids it fits], minStage?: 1..6, minTrust?: 0..100 }
+// item: { tier, flavors?: [ids it fits], minStage?: 1..6, minTrust?: 0..100,
+//         consent?: 'live' (default) | 'beforehand', agreement?: the id of the agreement it needs }
 // ctx:  { comfort, mode: 'desktop'|'windowed'|'compact', screenShare, lookAdult (the adult-look
-//         check on her look itself, never a flag in a file), stage 1..6, trust, tension, stop }
+//         check on her look itself, never a flag in a file), stage 1..6, trust, tension, stop,
+//         agreements?: { id: 'given' | 'revoked' } (story state's agreementsFor), awake?: false while the one it's about
+//         is asleep (default true) }
+//
+// "Agreed beforehand" (#35 b, owner Nov 14-15): consent given beforehand counts. Set by the person it's about, awake and
+// clear-headed, in the owner's own dialogue or story (a story flag); it can be taken back any time and taking it back
+// always wins. While they're asleep (awake: false) the agreement stands in for their live say (bond and trust can't be
+// read from someone asleep); the stop signal always counts, and the moment they're awake their live say counts again.
+// Nothing else about the switches above changes: the tier still has to be on. Claude builds the option and the makers'
+// fields only; the entries are the owner's (CLAUDE.md, Content).
 export function check(item, ctx = {}) {
   const tier = tierOf(item && item.tier != null ? item.tier : 'everyday');
   const c = clean(ctx.comfort);
@@ -108,6 +121,13 @@ export function check(item, ctx = {}) {
   const minStage = Number.isFinite(item?.minStage) ? item.minStage : 1;
   const minTrust = Math.max(Number.isFinite(item?.minTrust) ? item.minTrust : 0, tier === 'everyday' ? 0 : TUNE.trustNo);
   if (ctx.stop) return out(true, 'no', 'stop');
+  if (item?.consent === 'beforehand') {
+    const a = ctx.agreements && item.agreement ? ctx.agreements[item.agreement] : null;
+    if (a === 'revoked') return out(true, 'no', 'revoked');
+    if (a !== 'given') return out(true, 'no', 'not_agreed');
+    if (stage < minStage) return out(true, 'no', 'bond');
+    if (ctx.awake === false) return out(true, 'yes', 'agreed');
+  }
   if (stage < minStage) return out(true, 'no', 'bond');
   if (trust < minTrust) return out(true, 'no', 'trust');
   if (tension >= TUNE.tensionNo) return out(true, 'no', 'mood');

@@ -463,6 +463,249 @@
    "show": true,
    "her": "yes",
    "why": "ok"
+  },
+  {
+   "name": "agreed beforehand: never asked = no",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "awake": false
+   },
+   "show": true,
+   "her": "no",
+   "why": "not_agreed"
+  },
+  {
+   "name": "agreed beforehand: given, asleep = yes (the agreement speaks)",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "awake": false,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": true,
+   "her": "yes",
+   "why": "agreed"
+  },
+  {
+   "name": "agreed beforehand: asleep, low trust doesn't matter (it can't be read)",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 5,
+    "tension": 90,
+    "awake": false,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": true,
+   "her": "yes",
+   "why": "agreed"
+  },
+  {
+   "name": "agreed beforehand: taken back always wins",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "awake": false,
+    "agreements": {
+     "asleep_cuddles": "revoked"
+    }
+   },
+   "show": true,
+   "her": "no",
+   "why": "revoked"
+  },
+  {
+   "name": "agreed beforehand: the stop signal always counts",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "awake": false,
+    "stop": true,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": true,
+   "her": "no",
+   "why": "stop"
+  },
+  {
+   "name": "agreed beforehand: awake again, the live say counts (tense = asks)",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "tension": 70,
+    "awake": true,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": true,
+   "her": "ask",
+   "why": "ask"
+  },
+  {
+   "name": "agreed beforehand: awake and fine = yes the normal way",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": true,
+   "her": "yes",
+   "why": "ok"
+  },
+  {
+   "name": "agreed beforehand: another agreement doesn't count",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "awake": false,
+    "agreements": {
+     "something_else": "given"
+    }
+   },
+   "show": true,
+   "her": "no",
+   "why": "not_agreed"
+  },
+  {
+   "name": "agreed beforehand: still needs the bond it asks for",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles",
+    "minStage": 5
+   },
+   "ctx": {
+    "comfort": {},
+    "stage": 4,
+    "trust": 60,
+    "awake": false,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": true,
+   "her": "no",
+   "why": "bond"
+  },
+  {
+   "name": "agreed beforehand: never opens a switch that's off",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {
+     "flirty": false
+    },
+    "stage": 4,
+    "awake": false,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flirty_off"
+  },
+  {
+   "name": "agreed beforehand: 18+ still needs 18+ on and confirmed",
+   "item": {
+    "tier": "adult",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {
+     "adult": true
+    },
+    "stage": 6,
+    "awake": false,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "adult_off"
+  },
+  {
+   "name": "agreed beforehand: never on a platonic flavor",
+   "item": {
+    "tier": "flirty",
+    "consent": "beforehand",
+    "agreement": "asleep_cuddles"
+   },
+   "ctx": {
+    "comfort": {
+     "flavor": "platonic"
+    },
+    "stage": 6,
+    "awake": false,
+    "agreements": {
+     "asleep_cuddles": "given"
+    }
+   },
+   "show": false,
+   "her": "no",
+   "why": "flavor_lock"
   }
  ]
 }
