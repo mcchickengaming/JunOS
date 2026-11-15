@@ -268,7 +268,7 @@ test('agreed beforehand in the game: story state feeds the gate; once agreed it 
 // ---------------------------------------------------------------- the registry
 
 test('the registry: The game section, difficulty, and the game saves moved into it', () => {
-  assert.equal(reg.sections.game, 'The game');
+  assert.match(reg.sections.game, /^The game/);   // since Nov 15: the game's own menu, inside the game world
   const by = Object.fromEntries(reg.features.map(f => [f.id, f]));
   assert.equal(by.difficulty.section, 'game');
   assert.equal(by.difficulty.default, dd.default);

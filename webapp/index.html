@@ -1409,6 +1409,10 @@ html[data-pre-auth] #app { visibility: hidden; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           <span>Do something together</span>
         </button>
+        <button class="sidebar-item" id="gameWorldBtn" title="Enter the game world" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="12" rx="4"/><path d="M7 13h4M9 11v4"/><circle cx="16" cy="12" r="1"/><circle cx="18" cy="14" r="1"/></svg>
+          <span>Enter the game world</span>
+        </button>
         <button class="sidebar-item" id="achievementsBtn" title="Achievements" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/></svg>
           <span>Achievements</span>
@@ -1512,5 +1516,12 @@ html[data-pre-auth] #app { visibility: hidden; }
   </div>
 </div>
 
+<!-- The game world (Nov 15, the settings split): her window is plain Jun; this button opens the game over it, and
+     inside it the window is only the game (game-world.html, with its own menu). A plain button for now; the owner's
+     concept art decides the real way in later. -->
+<style>
+  #gameWorld { position: fixed; inset: 0; z-index: 9000; border: 0; width: 100%; height: 100%; background: #0f0e1c; }
+</style>
+<script type="module" src="js/app/game-door.js?v=1"></script>
 </body>
 </html>

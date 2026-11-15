@@ -13,12 +13,12 @@ import * as Moods from './desktop/moods.js?v=17';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=9';
 import * as F from './core/features.js?v=3';
-import * as Gate from './core/gate.js?v=5';
-import * as Controls from './home/controls.js?v=14';
-import * as Stores from './home/stores.js?v=10';
+import * as Gate from './core/gate.js?v=6';
+import * as Controls from './home/controls.js?v=15';
+import * as Stores from './home/stores.js?v=11';
 import * as Feel from './core/feel/feel.js?v=4';
 import * as Progress from './core/progress.js?v=2';
-import * as GameSave from './core/gamesave.js?v=4';
+import * as GameSave from './core/gamesave.js?v=5';
 import * as Difficulty from './core/difficulty.js?v=2';
 import * as Story from './core/story/story-state.js?v=3';
 import * as Inventory from './core/inventory.js?v=3';
@@ -56,7 +56,15 @@ function writeTheme(t) {
 // the settings home: one section at a time, picked in the sidebar.
 // old tab names (openSettings('spots'), #feedback...) still land in the right place
 
-const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'comfort', 'game', 'saves', 'account', 'help'];
+const SECTIONS = ['her', 'talk', 'touch', 'desktop', 'visuals', 'comfort', 'game', 'journal', 'saves', 'account', 'help'];
+// Nov 15 (the settings split): 'game' is the game's own menu, opened from inside the game world (game-world.html shows
+// this page with ?embed=game); 'journal' is her journal (memories + timeline), not a setting. Embedded = that page only.
+const EMBED = (() => { const e = new URLSearchParams(location.search).get('embed'); return SECTIONS.includes(e) ? e : null; })();
+if (EMBED) {
+  document.body.classList.add('embed');
+  // Esc closes the menu around this page (the game world listens)
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') parent?.postMessage({ type: 'jun:menu-close' }, '*'); });
+}
 const OLD_TABS = { colors: ['visuals'], feedback: ['touch'], spots: ['desktop', 'at-spots'], size: ['desktop', 'at-size'] };
 const tabs = [...document.querySelectorAll('nav button')];
 let current = 'help';
@@ -64,17 +72,18 @@ function show(tab, anchor) {
   tab = String(tab || '');
   if (OLD_TABS[tab]) [tab, anchor = anchor] = OLD_TABS[tab];
   if (!SECTIONS.includes(tab)) tab = 'help';
-  if (current === 'her' && tab !== 'her') HerWin.leaveHer();
+  if (EMBED) tab = EMBED;
+  if ((current === 'her' || current === 'journal') && tab !== current) HerWin.leaveHer();
   current = tab;
   for (const b of tabs) b.classList.toggle('on', b.dataset.tab === tab);
   for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== 'tab-' + tab;
   if (tab === 'desktop') { loadSpots(); setTimeout(loadSize); loadDesk(); } // size after this module has set itself up
   if (tab === 'touch') { previewTheme(); setTimeout(pvAskSnap); loadDesk(); }
   if (tab === 'talk') { loadDesk(); HerWin.hello(); }
-  if (tab === 'her') { HerWin.hello(); HerWin.loadHer(); }
+  if (tab === 'her' || tab === 'journal') { HerWin.hello(); HerWin.loadHer(); }
   if (tab === 'account') HerWin.loadAccount();
   if (tab === 'saves') { setTimeout(loadSaves); setTimeout(loadProfiles); setTimeout(drawCarry); }
-  if (tab === 'game') { setTimeout(loadGame); setTimeout(buildDifficulty); setTimeout(loadOwned); }
+  if (tab === 'game') { setTimeout(loadGame); setTimeout(buildDifficulty); setTimeout(loadOwned); setTimeout(buildSkills); setTimeout(buildDelves); }
   if (tab === 'her') setTimeout(buildBondByHand); // after this module has set itself up
   if (tab === 'comfort') loadComfort();
   soon();
@@ -100,7 +109,16 @@ const oftenControl = Controls.oftenCtl;
 let soonT = 0;
 function soon() {
   if (soonT) return;
-  soonT = requestAnimationFrame(() => { soonT = 0; Controls.decorate(document.querySelector('main')); });
+  soonT = requestAnimationFrame(() => { soonT = 0; Controls.decorate(document.querySelector('main')); tips(); });
+}
+
+// Simple view: the line under a row's title becomes a hover tip on the title (ⓘ); Everything shows the line
+function tips() {
+  for (const b of document.querySelectorAll('main .row .what > b')) {
+    const sp = b.parentElement.querySelector(':scope > span:not([role])');
+    const t = sp?.textContent.trim();
+    if (t) { b.dataset.tip = '1'; b.title = t; } else { delete b.dataset.tip; b.removeAttribute('title'); }
+  }
 }
 
 function buildColors() {
@@ -583,8 +601,6 @@ function buildInside() {
     Controls.row('She mixes it up', 'She avoids doing, showing or saying the same thing twice in a row, and takes the same touch in different ways.', sw('repeat'), 'feature:repeat'),
     Controls.row('Gentle or rough matters', 'A slow, steady rub melts her. A fast, scrubby one tickles. Too rough for too long gets a pout.', sw('manner'), 'feature:manner'),
     Controls.row('She sees your hand coming', 'Before a touch lands she notices: her eyes follow, then a lean in, a perk of the ears or a small flinch.', sw('anticipate'), 'feature:anticipate'),
-    Controls.row('Feel lab', 'How she is inside, live. Try a touch without touching her, tune any number. For tuning only.',
-      Controls.buttonCtl('Open the feel lab', () => window.open('feel-lab.html', 'feellab'))),
   );
   drawInsideNow();
 }
@@ -601,8 +617,6 @@ function buildSkills() {
   host.append(
     Controls.row('Skills', 'Off, nothing is gained and nothing is lost: everything waits as it is.',
       Controls.switchCtl(F.isOn('progress'), async (v) => { await Stores.write('feature:progress', v); buildSkills(); soon(); }), 'feature:progress'),
-    Controls.row('Progress lab', 'Where you both stand, the level curve, and hundreds of hours played in a moment. For tuning only.',
-      Controls.buttonCtl('Open the progress lab', () => window.open('progress-lab.html', 'progresslab'))),
   );
   drawSkillsNow();
 }
@@ -649,8 +663,6 @@ function buildDelves() {
       Controls.choiceCtl(DELVE_PACE, get('pace', 'place'), (v) => put('pace', v), { disabled: !on }), 'local:jun.delve.pace'),
     Controls.row('No timers', 'Every fight waits for you, whatever the place or the pace.',
       Controls.switchCtl(get('notimer', 'false') === 'true', (v) => put('notimer', v), !on), 'local:jun.delve.notimer'),
-    Controls.row('Delve lab', 'Walk a floor, try a fight, and play a hundred delves in a moment.',
-      Controls.buttonCtl('Open the delve lab', () => window.open('delve-lab.html', 'delvelab'))),
   );
   drawDelveNow();
 }
@@ -698,8 +710,6 @@ function buildOwnWay() {
       Controls.choiceCtl(Init.WAVE_STYLES, Init.setting('waveStyle'), (v) => put('waveStyle', v), { disabled: !waveOn }), 'local:jun.init.waveStyle'),
     Controls.row('How big a wave', 'How far your cursor has to travel to count.',
       Controls.oftenCtl(Often.pct(Init.setting('waveSize'), 50), WAVE_SIZES, (v) => put('waveSize', v), !waveOn), 'local:jun.init.waveSize'),
-    Controls.row('A day in a minute', 'Watch what she would do over a whole day with these settings. In the feel lab, for tuning.',
-      Controls.buttonCtl('Open the feel lab', () => window.open('feel-lab.html#timelapse', 'feellab'))),
   );
   drawOwnNow();
   drawOwnWhy();
@@ -2043,12 +2053,11 @@ function drawComfort() {
   flavorHost.append(
     row('What you are to each other', fl[2],
       Controls.choiceCtl(Gate.FLAVORS.map(f => [f[0], f[1]]), c.flavor, (v) => setComfort({ flavor: v })), 'comfort:flavor'),
-    row('Keep it where it is', 'She won\'t bring up becoming something more. You can still change it here.',
-      Controls.switchCtl(c.flavorLock, (v) => setComfort({ flavorLock: v })), 'comfort:flavorLock'),
   );
-  if (c.flavor === 'siblings') {
-    flavorHost.append(row('Flirty and 18+ as siblings', 'Off by default. Made by you in the makers; both adults, always.',
-      Controls.switchCtl(c.siblingsRated, (v) => setComfort({ siblingsRated: v })), 'comfort:siblingsRated'));
+  // only for the friends kinds: she won't bring up becoming more (for lovers there's nothing more to bring up)
+  if (c.flavor !== 'romantic') {
+    flavorHost.append(row('Keep it where it is', 'She won\'t bring up becoming something more.',
+      Controls.switchCtl(c.flavorLock, (v) => setComfort({ flavorLock: v })), 'comfort:flavorLock'));
   }
 
   const host = document.getElementById('ratingRows');

@@ -684,6 +684,26 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   keep })` → `gamesave_load(…, $keepMine)` (`GAMESAVE_KEEPABLE`: 'skills', 'things'; `lastLoad.kept`). Registry `profiles`,
   `carry`. NOT built: profiles for makers' entries and packs (they plug in as more pieces), switching profiles by time of day.
 
+- **The settings split + the game world** (Nov 15, Opus; owner: "a lot of clutter… separate the window and the game"):
+  Settings is about HER (Her, Talking & voice, Touch & feelings, On the desktop, Looks, You two, Saves & updates,
+  Account) + **Her journal** (`tab-journal`: memories + timeline, not settings) + How to play. **The game world**: her
+  window's sidebar "Enter the game world" (`#gameWorldBtn`, `js/app/game-door.js`) opens `game-world.html`
+  (+ `js/game-world.js`) in a full-window frame over her: a stand-in map (one place: "Under the city" = the delve lab),
+  "← Back to her" (`jun:leave-game` message), and **its own menu** (Menu / Esc) = `desktop-settings.html?embed=game`
+  (`EMBED` in desktop-settings.js: that section only, no header or sidebar; Esc posts `jun:menu-close`): Difficulty,
+  Skills, Fights and delves, Game saves, Everything you own. **The game menu's settings ride in game saves**
+  (gamesave.js `localKeys('settings', GAME_SETTING_KEYS)` = the `jun.delve.*` picks; difficulty is in story state);
+  desktop and her-window settings are Jun profiles. The labs (feel, progress, delve) left Settings: F12 > Labs (registry
+  `section: "elsewhere"`). The developer key row is gone (a secret Jun code may unlock F12 later). **Calmer Simple
+  view**: a row is its title + control, the line under it is a hover tip (ⓘ, `tips()`), section and heading intro lines
+  hide (`p.hint` with a `role` or `id` stays: those are live lines). Relationship kinds: **Lovers / Friends with benefits
+  / Best friends**; siblings retired (gate.js `RETIRED`, gate.php `GATE_RETIRED`: read as best friends; `OPT_IN` empty);
+  "Keep it where it is" only for the friends kinds. **Her pages allow no inline scripts** (CSP `script-src 'self'`): that
+  was why the house cube never drew (its script is now `js/desktop/house-cube-page.js`); a test checks every page. Her own
+  pages may frame each other (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`, router + nginx). Tests:
+  `.github/scripts/js/settings-split.test.mjs`. NOT built: the real way into the game (the owner's concept art), the
+  game's own How to play, the secret code, more places on the map.
+
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`
   `features_registry()`): every feature once: `id`, `name`, `line`, `section` (+ `anchor`, or `where` for

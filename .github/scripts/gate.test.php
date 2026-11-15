@@ -34,7 +34,7 @@ echo "tagging\n";
 $eq('platonic can\'t tag flirty', gate_can_tag('platonic', 'flirty'), false);
 $eq('platonic can\'t tag 18+', gate_can_tag('platonic', 'adult'), false);
 $eq('romantic can tag 18+', gate_can_tag('romantic', 'adult'), true);
-$eq('siblings can tag flirty (owner\'s makers)', gate_can_tag('siblings', 'flirty'), true);
+$eq('the retired siblings flavor can\'t be tagged flirty (dropped Nov 15)', gate_can_tag('siblings', 'flirty'), false);
 $eq('unknown flavor can\'t tag rated', gate_can_tag('???', 'flirty'), false);
 $eq('anyone can tag everyday', gate_can_tag('platonic', 'everyday'), true);
 

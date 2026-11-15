@@ -178,21 +178,23 @@
    "why": "flavor_lock"
   },
   {
-   "name": "siblings: rated needs its own opt-in",
+   "name": "a retired flavor (siblings, dropped Nov 15) reads as best friends: never flirty",
    "item": {
     "tier": "flirty"
    },
    "ctx": {
     "comfort": {
      "flavor": "siblings"
-    }
+    },
+    "stage": 6,
+    "trust": 100
    },
    "show": false,
    "her": "no",
-   "why": "flavor_optin"
+   "why": "flavor_lock"
   },
   {
-   "name": "siblings with the opt-in",
+   "name": "the old siblings opt-in does nothing now",
    "item": {
     "tier": "flirty"
    },
@@ -201,12 +203,12 @@
      "flavor": "siblings",
      "siblingsRated": true
     },
-    "stage": 3,
-    "trust": 50
+    "stage": 6,
+    "trust": 100
    },
-   "show": true,
-   "her": "yes",
-   "why": "ok"
+   "show": false,
+   "her": "no",
+   "why": "flavor_lock"
   },
   {
    "name": "friends open to more: flirty fine",
@@ -245,7 +247,7 @@
    "item": {
     "tier": "everyday",
     "flavors": [
-     "siblings"
+     "platonic"
     ]
    },
    "ctx": {
@@ -260,7 +262,7 @@
    "item": {
     "tier": "everyday",
     "flavors": [
-     "siblings",
+     "platonic",
      "romantic"
     ]
    },

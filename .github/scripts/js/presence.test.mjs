@@ -192,5 +192,5 @@ test('a walk off the edge always ends, and the house window always draws', () =>
   assert.match(hide, /state: 'stopped'/);
   const house = main.slice(main.indexOf('function openHouseWin'), main.indexOf("ipcMain.on('jun:house-done'"));
   assert.match(house, /backgroundThrottling: false/);
-  assert.match(read('webapp/house-cube.html'), /setTimeout\(go, \d+\)/);
+  assert.match(read('webapp/js/desktop/house-cube-page.js'), /setTimeout\(go, \d+\)/);
 });

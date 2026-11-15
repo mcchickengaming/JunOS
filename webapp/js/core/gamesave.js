@@ -48,6 +48,18 @@ export function localPart(name, key, field) {
 }
 localPart('delve', 'jun.delve', 'run');
 
+// a part made of whole localStorage keys (strings)
+export function localKeys(name, keys) {
+  part(name, {
+    get: () => { const o = {}; for (const k of keys) { const v = storage?.getItem(k); if (v !== null && v !== undefined) o[k] = v; } return Object.keys(o).length ? o : null; },
+    set: (v) => { for (const k of keys) { try { if (v && typeof v[k] === 'string') storage?.setItem(k, v[k]); else storage?.removeItem(k); } catch (e) {} } },
+  });
+}
+// the game menu's own settings ride in every game save (owner, Nov 15: "load Game save X and its settings come with
+// it"). Difficulty already lives in story state. Desktop and her-window settings never do: those are Jun profiles.
+export const GAME_SETTING_KEYS = ['jun.delve.talk', 'jun.delve.courage', 'jun.delve.role', 'jun.delve.pace', 'jun.delve.notimer'];
+localKeys('settings', GAME_SETTING_KEYS);
+
 export function collect() {
   const out = {};
   for (const [name, p] of PARTS) {

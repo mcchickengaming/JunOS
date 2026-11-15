@@ -15,11 +15,14 @@ export const TIERS = ['everyday', 'flirty', 'adult'];
 
 // [id, name, one line]
 export const FLAVORS = [
-  ['romantic', 'Romantic', 'Partners, as your bond grows. Everything is open, with her say.'],
-  ['friends_open', 'Friends, open to more', 'No romance and no "I love you", but flirty moments are fine with her say.'],
-  ['platonic', 'Best friends', 'Hugs, headpats and cuddles as friends. Never flirty.'],
-  ['siblings', 'Family: siblings', 'Two adult siblings. Warm teasing and looking out for each other.'],
+  ['romantic', 'Lovers', 'Partners, as your bond grows. Everything is open, with her say.'],
+  ['friends_open', 'Friends with benefits', 'Close, without the romance: no "I love you". Everything else is open, with her say.'],
+  ['platonic', 'Best friends', 'Hugs, headpats and teasing as friends. Never flirty.'],
 ];
+// Nov 15 (owner): the siblings flavor was dropped (a lot of work for a niche). Anyone who had it is read as best friends.
+// Players' own flavors (later, in the makers) change her tone only; their ratings come from one of these three, and
+// family roles stay out of Flirty and 18+.
+const RETIRED = Object.freeze({ siblings: 'platonic' });
 export const FLAVOR_IDS = FLAVORS.map(f => f[0]);
 
 // HARD locks, in code on purpose: never from a file, a profile or a setting.
@@ -27,7 +30,7 @@ export const FLAVOR_IDS = FLAVORS.map(f => f[0]);
 // belongs here, never rated: Claude declined a rated version on Nov 11)
 export const LOCKED = Object.freeze({ platonic: ['flirty', 'adult'] });
 // flavors where rated tiers need their own opt-in (off by default)
-export const OPT_IN = Object.freeze({ siblings: ['flirty', 'adult'] });
+export const OPT_IN = Object.freeze({});
 
 export const DEFAULTS = Object.freeze({
   flavor: 'romantic', flavorLock: false,
@@ -64,7 +67,7 @@ const bool = (v, d) => (typeof v === 'boolean' ? v : d);
 export function clean(c) {
   c = c && typeof c === 'object' ? c : {};
   return {
-    flavor: FLAVOR_IDS.includes(c.flavor) ? c.flavor : DEFAULTS.flavor,
+    flavor: FLAVOR_IDS.includes(c.flavor) ? c.flavor : RETIRED[c.flavor] || DEFAULTS.flavor,
     flavorLock: bool(c.flavorLock, DEFAULTS.flavorLock),
     flirty: bool(c.flirty, DEFAULTS.flirty),
     adult: bool(c.adult, DEFAULTS.adult),

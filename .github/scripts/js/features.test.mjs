@@ -151,7 +151,7 @@ test('the php gate has the same rules', { skip: (() => { try { execFileSync('php
   const [flavors, locked, optIn, defaults, tune] = JSON.parse(execFileSync('php', ['-r', php], { encoding: 'utf8' }));
   assert.deepEqual(flavors, G.FLAVOR_IDS);
   assert.deepEqual(locked, { ...G.LOCKED });
-  assert.deepEqual(optIn, { ...G.OPT_IN });
+  assert.deepEqual(Array.isArray(optIn) && !optIn.length ? {} : optIn, { ...G.OPT_IN });   // php writes an empty map as []
   assert.deepEqual(defaults, { ...G.DEFAULTS });
   assert.deepEqual(tune, { ...G.TUNE });
 });

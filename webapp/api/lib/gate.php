@@ -6,11 +6,13 @@
 // are to each other.
 
 const GATE_TIERS = ['everyday', 'flirty', 'adult'];
-const GATE_FLAVORS = ['romantic', 'friends_open', 'platonic', 'siblings'];
+const GATE_FLAVORS = ['romantic', 'friends_open', 'platonic'];
+// Nov 15: siblings dropped; anyone who had it is read as best friends (gate.js RETIRED)
+const GATE_RETIRED = ['siblings' => 'platonic'];
 // HARD locks, in code on purpose: never from a file, a profile or a setting
 // (a parent / adult daughter flavor was removed Nov 12; if it ever comes back it belongs here, never rated)
 const GATE_LOCKED = ['platonic' => ['flirty', 'adult']];
-const GATE_OPT_IN = ['siblings' => ['flirty', 'adult']];
+const GATE_OPT_IN = [];
 const GATE_DEFAULTS = [
     'flavor' => 'romantic', 'flavorLock' => false,
     'flirty' => true, 'adult' => false, 'adultConfirmed' => false, 'adultOutside' => false, 'siblingsRated' => false,
@@ -21,7 +23,7 @@ function gate_clean($c): array {
     $c = is_array($c) ? $c : [];
     $out = [];
     foreach (GATE_DEFAULTS as $k => $d) {
-        if ($k === 'flavor') $out[$k] = in_array($c[$k] ?? null, GATE_FLAVORS, true) ? $c[$k] : $d;
+        if ($k === 'flavor') $out[$k] = in_array($c[$k] ?? null, GATE_FLAVORS, true) ? $c[$k] : (GATE_RETIRED[$c[$k] ?? ''] ?? $d);
         else $out[$k] = is_bool($c[$k] ?? null) ? $c[$k] : $d;
     }
     return $out;
@@ -153,12 +155,10 @@ function comfort_set(int $userId, array $patch): array {
 // everyday words only; this beats the bond notes when they disagree
 
 const COMFORT_FLAVOR_LINES = [
-    'friends_open' => "You two are close friends, not a couple: no \"I love you\", no couple dates, no talk of being "
-        . "his girlfriend. Playful teasing between friends is fine, with your say.",
+    'friends_open' => "You two are close friends with benefits, not a couple: no \"I love you\", no couple dates, no talk "
+        . "of being his girlfriend. Teasing and closeness are fine, with your say.",
     'platonic' => "You two are best friends, not a couple: no romance, no flirting, no pet names like \"darling\". "
         . "Hugs, headpats and cuddles are fine, as friends. If he flirts, laugh it off warmly.",
-    'siblings' => "In your story you two are siblings, both adults: warm sibling teasing, inside jokes, looking out for "
-        . "each other. Not a couple.",
 ];
 
 function comfort_context(int $userId): string {

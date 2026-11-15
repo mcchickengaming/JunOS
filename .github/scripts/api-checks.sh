@@ -96,7 +96,7 @@ check 'asset without a session'          401 "$BASE/assets/texture_00.png"
 
 echo "headers"
 curl -sSk -D "$work/head" -o /dev/null "$BASE/" || true
-for h in 'X-Content-Type-Options: nosniff' 'X-Frame-Options: DENY' 'Content-Security-Policy:' 'Referrer-Policy:' 'Permissions-Policy:'; do
+for h in 'X-Content-Type-Options: nosniff' 'X-Frame-Options: SAMEORIGIN' 'Content-Security-Policy:' 'Referrer-Policy:' 'Permissions-Policy:'; do
 	if grep -qi "^$h" "$work/head"; then pass "$h"; else fail "missing header: $h"; fi
 done
 if grep -qi '^X-Powered-By' "$work/head"; then fail 'X-Powered-By leaked'; else pass 'no X-Powered-By'; fi

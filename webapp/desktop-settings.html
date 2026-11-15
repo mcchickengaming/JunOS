@@ -81,6 +81,15 @@
   @media (max-width: 520px) { .mirror-row.wide { flex-wrap: wrap; } .mirror-row.wide .mirror-ctl { max-width: 100%; width: 100%; } }
   .row.off, .row.paused { opacity: .55; }
   /* the registry's layers: in Simple, extra rows wait behind "More settings" (js/home/controls.js) */
+  /* Simple view, calmer (Nov 15): a row is its title and its control; the line under it is a hover tip (ⓘ),
+     and a section's intro line is gone. Everything view shows it all. */
+  body.layer-simple .row .what > span:not([role]) { display: none; }
+  body.layer-simple .row .what > b[data-tip]::after { content: " ⓘ"; font-weight: 400; opacity: .45; }
+  body.layer-simple main > section > p.hint:first-child { display: none; }
+  body.layer-simple main h2 + p.hint:not([role]):not([id]), body.layer-simple main h3.sub + p.hint:not([role]):not([id]) { display: none; }
+  /* opened as the game's menu (?embed=game) or her journal (?embed=journal): that page only */
+  body.embed > header, body.embed nav, body.embed .new-card { display: none !important; }
+  body.embed .home { display: block; }
   body.layer-simple .row[data-more="1"] { display: none; }
   body.layer-simple .row[data-only="all"]:not(.found) { display: none; }
   body.layer-simple .folds-open > .row[data-more="1"], body.layer-simple .folds-one > .row[data-more="1"] { display: flex; }
@@ -239,12 +248,12 @@
   <button type="button" data-tab="talk"><i>💬</i><span>Talking &amp; voice</span></button>
   <button type="button" data-tab="touch"><i>✋</i><span>Touch &amp; feelings</span></button>
   <button type="button" data-tab="desktop"><i>🖥️</i><span>On the desktop</span></button>
-  <button type="button" data-tab="visuals"><i>🎨</i><span>Visuals</span></button>
-  <button type="button" data-tab="comfort" title="Comfort &amp; ratings"><i>🤍</i><span>Comfort</span></button>
-  <button type="button" data-tab="game"><i>🎮</i><span>The game</span></button>
+  <button type="button" data-tab="visuals"><i>🎨</i><span>Looks</span></button>
+  <button type="button" data-tab="comfort" title="What you are to each other, and ratings"><i>🤍</i><span>You two</span></button>
   <button type="button" data-tab="saves"><i>💾</i><span>Saves &amp; updates</span></button>
   <button type="button" data-tab="account" title="Account &amp; advanced"><i>🔐</i><span>Account</span></button>
-  <button type="button" data-tab="help" class="nav-help"><i>❓</i><span>How to play</span></button>
+  <button type="button" data-tab="journal" class="nav-help"><i>📔</i><span>Her journal</span></button>
+  <button type="button" data-tab="help"><i>❓</i><span>How to play</span></button>
 </nav>
 <main>
 <section id="tab-results" hidden>
@@ -254,7 +263,7 @@
 </section>
 
 <section id="tab-her" hidden>
-  <p class="hint">Who she is with you: your names, your bond, what she's picked up from you, and her memories.</p>
+  <p class="hint">Who she is with you: your names, your bond, and what she's picked up from you.</p>
   <h2 id="at-names">Names</h2>
   <div data-mirror="her"></div>
   <h2 id="at-bond">Your bond</h2>
@@ -293,37 +302,6 @@
   <p class="hint" id="ownNow" role="status"></p>
   <div id="ownRows"></div>
   <ul class="touch-all-list" id="ownWhy" hidden></ul>
-  <h2 id="at-skills">Skills, hers and yours</h2>
-  <p class="hint">You both get better at the things you do, and doing them together helps you both. Being close to her is never a skill: that grows its own way.</p>
-  <p class="hint" id="skillsNow" role="status"></p>
-  <div id="skillRows"></div>
-  <h2 id="at-delves">Delves under the city</h2>
-  <p class="hint">A first-person crawl through the ruins under the city, with stand-in art for now. Go alone or bring her. You can leave at any time and nothing is ever lost.</p>
-  <p class="hint" id="delveNow" role="status"></p>
-  <div id="delveRows"></div>
-  <h2 id="at-memories">Her memories <span class="count" id="memoryCount">0</span></h2>
-  <p class="hint">Notes she keeps about you between conversations, grouped by category alongside her journal. Click one to read it; drag to look around.</p>
-  <div class="memory-graph-wrap" id="memoryGraphWrap">
-    <canvas class="memory-graph" id="memoryGraph" aria-label="Interactive constellation of saved memories"></canvas>
-    <div class="memory-graph-status" id="memoryGraphStatus" aria-live="polite">Loading…</div>
-    <aside class="memory-reader" id="memoryReader" hidden>
-      <button class="memory-reader-close ghost" id="memoryReaderClose" type="button" aria-label="Close memory reader">×</button>
-      <div class="memory-reader-meta" id="memoryReaderMeta"></div>
-      <h3 class="memory-reader-title" id="memoryReaderTitle"></h3>
-      <div class="memory-reader-body" id="memoryReaderBody"></div>
-    </aside>
-  </div>
-  <ul class="sr-only" id="memoryA11y"></ul>
-  <div class="row"><div class="what"><b>Add a memory</b><span>Something you want her to remember about you.</span></div></div>
-  <div class="save-new memory-add-row">
-    <input type="text" id="memoryAddInput" maxlength="800" placeholder="Add a memory…" aria-label="New memory">
-    <input type="text" id="memoryAddCategory" maxlength="40" placeholder="category" aria-label="Memory category" class="cat">
-    <button type="button" class="btn accent" id="memoryAddBtn">Add</button>
-  </div>
-  <p><button type="button" class="btn danger" id="memoryClearBtn" hidden>Delete all memories</button></p>
-  <h2 id="at-timeline">Timeline</h2>
-  <p class="hint">How the gauges moved over time.</p>
-  <div class="card"><div class="rel-timeline" id="relTimeline" aria-label="How the gauges moved over time"></div></div>
 </section>
 
 <section id="tab-talk" hidden>
@@ -443,8 +421,7 @@
 
 <section id="tab-comfort" hidden>
   <p class="hint">What you two are to each other, and how far things can go. Your choices; she always has her say too.</p>
-  <h2 id="at-flavor">You two</h2>
-  <p class="hint">Your bond is how close you are. This is what kind of close.</p>
+  <h2 id="at-flavor">What kind of close</h2>
   <div id="flavorRows"></div>
   <h2 id="at-ratings">Ratings</h2>
   <div id="ratingRows"></div>
@@ -454,11 +431,18 @@
     If her look ever reads as a child, flirty and 18+ pause until it reads adult again.</p>
 </section>
 <section id="tab-game" hidden>
-  <p class="hint">The game in her window: an authored story, with delves and voyages. She is herself out here whichever
-    game you play; what happens in the game stays the game's.</p>
+  <p class="hint">The game's own menu. These settings ride in your game saves: load a save and its settings come with it.</p>
   <h2 id="at-difficulty">Difficulty</h2>
   <div id="diffRows"></div>
   <p class="hint" id="diffNow" role="status"></p>
+  <h2 id="at-skills">Skills, yours and hers</h2>
+  <p class="hint">You both get better at the things you do, and doing them together helps you both. Being close to her is never a skill: that grows its own way.</p>
+  <p class="hint" id="skillsNow" role="status"></p>
+  <div id="skillRows"></div>
+  <h2 id="at-delves">Fights and delves</h2>
+  <p class="hint">A first-person crawl through the ruins under the city, with stand-in art for now. Go alone or bring her. You can leave at any time and nothing is ever lost.</p>
+  <p class="hint" id="delveNow" role="status"></p>
+  <div id="delveRows"></div>
   <h2 id="at-gamesaves">Game saves</h2>
   <p class="hint">The game in her window keeps its own saves. She isn't in them: her memories, her feelings and how she is
     with you stay hers, whichever game you load.</p>
@@ -482,6 +466,33 @@
     It moves with your game saves. (Later this lives in your field notebook.)</p>
   <div class="save-new"><input type="search" id="ownFilter" placeholder="Find something, like &quot;part&quot; or &quot;rare&quot;" aria-label="Find something you own"></div>
   <div id="ownBox" class="own-box"></div>
+</section>
+
+<section id="tab-journal" hidden>
+  <p class="hint">What she keeps about you. Not settings: her side of things, to look through.</p>
+  <h2 id="at-memories">Her memories <span class="count" id="memoryCount">0</span></h2>
+  <p class="hint">Notes she keeps about you between conversations, grouped by category alongside her journal. Click one to read it; drag to look around.</p>
+  <div class="memory-graph-wrap" id="memoryGraphWrap">
+    <canvas class="memory-graph" id="memoryGraph" aria-label="Interactive constellation of saved memories"></canvas>
+    <div class="memory-graph-status" id="memoryGraphStatus" aria-live="polite">Loading…</div>
+    <aside class="memory-reader" id="memoryReader" hidden>
+      <button class="memory-reader-close ghost" id="memoryReaderClose" type="button" aria-label="Close memory reader">×</button>
+      <div class="memory-reader-meta" id="memoryReaderMeta"></div>
+      <h3 class="memory-reader-title" id="memoryReaderTitle"></h3>
+      <div class="memory-reader-body" id="memoryReaderBody"></div>
+    </aside>
+  </div>
+  <ul class="sr-only" id="memoryA11y"></ul>
+  <div class="row"><div class="what"><b>Add a memory</b><span>Something you want her to remember about you.</span></div></div>
+  <div class="save-new memory-add-row">
+    <input type="text" id="memoryAddInput" maxlength="800" placeholder="Add a memory…" aria-label="New memory">
+    <input type="text" id="memoryAddCategory" maxlength="40" placeholder="category" aria-label="Memory category" class="cat">
+    <button type="button" class="btn accent" id="memoryAddBtn">Add</button>
+  </div>
+  <p><button type="button" class="btn danger" id="memoryClearBtn" hidden>Delete all memories</button></p>
+  <h2 id="at-timeline">Timeline</h2>
+  <p class="hint">How the gauges moved over time.</p>
+  <div class="card"><div class="rel-timeline" id="relTimeline" aria-label="How the gauges moved over time"></div></div>
 </section>
 
 <section id="tab-saves" hidden>
@@ -555,9 +566,8 @@
       <input type="text" id="bridgeTokenInput" readonly hidden aria-label="Bridge token" class="mirror-text"></div>
     <div class="adds"><button type="button" class="btn" id="bridgePairBtn">Pair</button><button type="button" class="btn danger" id="bridgeUnpairBtn" hidden>Unpair</button></div></div>
   <h2>Advanced</h2>
-  <div class="row" id="devAccessRow"><div class="what"><b>Developer access</b><span id="devAccessDesc">Enter this server's developer key to unlock developer tools.</span>
-      <div class="pw-fields" id="devKeyBox"><input type="password" id="devKeyInput" autocomplete="off" aria-label="Developer key" placeholder="developer key"></div></div>
-    <button type="button" class="btn" id="promoteBtn">Unlock</button></div>
+  <!-- the developer key row was removed Nov 15 (owner): F12 is the debug menu; a secret Jun code may unlock it later -->
+  <div id="devAccessRow" hidden><span id="devAccessDesc"></span><div id="devKeyBox"><input type="password" id="devKeyInput" autocomplete="off" aria-label="Developer key"></div><button type="button" id="promoteBtn" hidden></button></div>
   <div class="row" id="devToolsRow" hidden><div class="what"><b>Developer tools</b><span>Her live logs, the metrics overlay, the memory pass and the gauge override. They show her as she runs, so they open in her window.</span></div>
     <button type="button" class="btn" id="devToolsBtn">Open in her window</button></div>
   <div class="row" id="ratingsRow" hidden><div class="what"><b>Rated replies</b><span>Download the replies you rated.</span></div>
@@ -644,6 +654,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=67"></script>
+<script type="module" src="js/desktop-settings.js?v=68"></script>
 </body>
 </html>
