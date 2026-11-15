@@ -21,7 +21,7 @@
 
 const PROGRESS_OWNERS = ['player', 'jun'];
 const PROGRESS_SIZES = ['small', 'mid', 'big'];
-const PROGRESS_KINDS = ['item', 'keepsake', 'buff', 'event'];
+const PROGRESS_KINDS = ['item', 'keepsake', 'buff', 'event', 'currency'];
 const PROGRESS_SCOPES = ['uses', 'until', 'permanent', 'worn'];
 // never a source of xp, for anyone: the relationship grows through care, not through a meter
 const PROGRESS_NEVER_SOURCES = ['touch', 'chat', 'message', 'bond', 'affection', 'trust', 'relationship'];
@@ -181,6 +181,7 @@ function progress_blank(): array {
         'v' => 1,
         'skills' => ['player' => [], 'jun' => []],   // owner → skill → ['xp' => n, 'marks' => n]
         'credits' => 0,
+        'wallet' => [],       // the other currencies (data/items.json): id → amount. Credits keep their own field.
         'items' => [],        // id → how many (ids only until the economy, #9)
         'keepsakes' => [],    // [['id', 'at', 'from']]
         'buffs' => [],        // [['id', 'from', 'at', 'until'?, 'uses'?]]
@@ -352,7 +353,16 @@ function progress_give(array &$state, array $d, array $drops, string $from, int 
         $id = (string)$r['id'];
         $row = ['id' => $id, 'kind' => $r['kind'], 'size' => $r['size'] ?? 'small', 'signature' => !empty($r['signature'])];
         if ($r['kind'] === 'item') $state['items'][$id] = ($state['items'][$id] ?? 0) + 1;
-        elseif ($r['kind'] === 'keepsake') $state['keepsakes'][] = ['id' => $id, 'at' => $now, 'from' => $from];
+        elseif ($r['kind'] === 'keepsake') {
+            // a keepsake is a memory made physical: one of each (a second one of the same is just remembered again)
+            if (!in_array($id, array_column($state['keepsakes'], 'id'), true)) $state['keepsakes'][] = ['id' => $id, 'at' => $now, 'from' => $from];
+            else $row['again'] = true;
+        } elseif ($r['kind'] === 'currency') {
+            $n = max(1, (int)($r['amount'] ?? 1));
+            $row['amount'] = $n;
+            if ($id === 'credits') $state['credits'] += $n;
+            else $state['wallet'][$id] = ($state['wallet'][$id] ?? 0) + $n;
+        }
         elseif ($r['kind'] === 'buff') {
             $row['name'] = $d['buffs'][$id]['name'] ?? $id;
             if (!progress_buff_add($state, $d, $id, $from, $now)) {
@@ -527,7 +537,7 @@ function progress_story(array &$state, array $d, string $id, int $now, array $t 
 // what a page gets to show
 
 function progress_view(array $state, array $d, int $now, array $t = PROGRESS_TUNE): array {
-    $v = ['owners' => [], 'credits' => $state['credits'], 'items' => (object)$state['items'], 'keepsakes' => $state['keepsakes'],
+    $v = ['owners' => [], 'credits' => $state['credits'], 'wallet' => (object)$state['wallet'], 'items' => (object)$state['items'], 'keepsakes' => $state['keepsakes'],
         'buffs' => progress_active_buffs($state, $d, $now), 'jobs' => $state['jobs'], 'session' => $state['session'],
         'opt' => $state['opt'], 'log' => array_slice($state['log'], -15), 'now' => $now];
     foreach (PROGRESS_OWNERS as $o) {

@@ -1,0 +1,53 @@
+{
+  "about": "Everything you can own in the game (#9 base, Nov 15): the currencies, items by kind, keepsakes. Read by api/lib/inventory.php and js/core/inventory.js. A new thing is one more entry here. Rules (tested): every id the progression service can hand out (pools, signature lists, story grants, worn buffs) has an entry; keepsakes are memories made physical: never sold, never spent, one of each (owner Nov 14-15: 'keepsakes are items'; how they work beyond that is still open); a currency is never an item. Names and lines are ours. Entries marked sample stand in until the real activities exist. 'sell' says whether the shop may buy it (prices come with the shop). 'tier' is the material tier (1 = common … 6 = the rarest), which caps crafting quality later.",
+  "version": 1,
+  "currencies": {
+    "credits": { "name": "Credits", "line": "The city's money. Everyone needs them; nobody has enough.", "icon": "¢" },
+    "materials": { "name": "Materials", "line": "Common building stock: planks, bolts, sheet metal. What harbor upgrades eat.", "icon": "▦" },
+    "salvage_sigils": { "name": "Salvage Sigils", "line": "Stamped tokens the salvage guilds trade in. Proof you found something worth finding.", "icon": "⌬" },
+    "whispers": { "name": "Whispers", "line": "Secrets, rumors and favors owed. Some doors only open for the right whisper.", "icon": "≋" },
+    "citizen_pass": { "name": "Citizen Pass points", "line": "Points on the pass everyone has to carry. Terms may update at any time.", "icon": "◈" }
+  },
+  "kinds": {
+    "material": { "name": "Materials", "order": 1 },
+    "part": { "name": "Parts", "order": 2 },
+    "ingredient": { "name": "Ingredients", "order": 3 },
+    "food": { "name": "Food", "order": 4 },
+    "catch": { "name": "Catches", "order": 5 },
+    "gear": { "name": "Gear", "order": 6 },
+    "treasure": { "name": "Treasures", "order": 7 },
+    "gift": { "name": "Gifts", "order": 8 },
+    "furniture": { "name": "Furniture", "order": 9 },
+    "outfit": { "name": "Outfits", "order": 10 },
+    "note": { "name": "Notes and maps", "order": 11 },
+    "keepsake": { "name": "Keepsakes", "order": 12, "line": "Memories made physical. Never sold, never spent; one of each." }
+  },
+  "items": {
+    "part_common": { "name": "Loose parts", "kind": "part", "tier": 1, "line": "Screws, springs and a wire or two. Always useful.", "sell": true, "sample": true },
+    "part_good": { "name": "Good parts", "kind": "part", "tier": 2, "line": "Parts that still work. Rarer than they should be.", "sell": true, "sample": true },
+    "part_rare": { "name": "A rare part", "kind": "part", "tier": 4, "line": "Somebody stopped making these a long time ago.", "sell": true, "sample": true },
+    "ingredient_common": { "name": "Pantry staples", "kind": "ingredient", "tier": 1, "line": "Rice, oil, a questionable onion.", "sell": true, "sample": true },
+    "gift_small": { "name": "A small gift", "kind": "gift", "line": "Something little to give someone.", "sell": true, "sample": true },
+    "gift_nice": { "name": "A nice gift", "kind": "gift", "line": "The kind of gift people remember.", "sell": true, "sample": true },
+    "furniture_piece": { "name": "A piece of furniture", "kind": "furniture", "line": "For the house, once there's a room for it.", "sell": true, "sample": true },
+    "outfit_piece": { "name": "Something to wear", "kind": "outfit", "line": "Clothes, for her or for you.", "sell": true, "sample": true },
+    "delve_greatsword": { "name": "A greatsword from the deep", "kind": "treasure", "tier": 5, "line": "Far too big, far too old, far too good to leave behind.", "sell": false, "sample": true },
+    "delve_map_scrap": { "name": "A scrap of an old map", "kind": "note", "line": "Half a corridor and a word nobody can read yet.", "sell": false, "sample": true },
+    "delve_old_servo": { "name": "An old servo", "kind": "part", "tier": 3, "line": "Pre-crash work. She looks at it like it's a puppy.", "sell": true, "sample": true },
+    "cook_good_leftovers": { "name": "Good leftovers", "kind": "food", "line": "Even better the next day.", "sell": false, "sample": true },
+    "cook_recipe_card": { "name": "A recipe card", "kind": "note", "line": "In someone's careful handwriting.", "sell": false, "sample": true },
+    "drone_salvage": { "name": "Drone salvage", "kind": "material", "tier": 1, "line": "Whatever the drone dragged home.", "sell": true, "sample": true },
+    "drone_rare_part": { "name": "A rare drone part", "kind": "part", "tier": 3, "line": "The drone was very proud of this one.", "sell": true, "sample": true },
+    "fish_small_catch": { "name": "A small catch", "kind": "catch", "tier": 1, "line": "Dinner, or bait for a bigger one.", "sell": true, "sample": true },
+    "fish_fine_catch": { "name": "A fine catch", "kind": "catch", "tier": 2, "line": "Worth telling someone about.", "sell": true, "sample": true },
+    "fish_legend": { "name": "A fish of legend", "kind": "catch", "tier": 5, "line": "Nobody will believe you. Good thing she was there.", "sell": true, "sample": true },
+    "tinker_spare_gear": { "name": "A spare gear", "kind": "part", "tier": 1, "line": "Every workbench has a jar of these.", "sell": true, "sample": true },
+    "tinker_tuned_part": { "name": "A tuned part", "kind": "part", "tier": 2, "line": "It hums a little better than it should.", "sell": true, "sample": true },
+    "tinker_prototype": { "name": "A prototype", "kind": "gear", "tier": 4, "line": "It works. Mostly. Don't shake it.", "sell": false, "sample": true },
+    "focus_blue_light_glasses": { "name": "Blue-light glasses", "kind": "gear", "line": "Easy on the eyes. She says they suit you.", "sell": false, "sample": true },
+    "moonlight_greatsword": { "name": "A greatsword of pale steel", "kind": "treasure", "tier": 6, "line": "A gift from a general's own collection.", "sell": false, "sample": true },
+    "fish_odd_bottle": { "name": "A bottle with a note inside", "kind": "keepsake", "line": "The note is smudged. She says it's a love letter. It might be a receipt.", "sample": true },
+    "focus_sticky_note": { "name": "A sticky note from her", "kind": "keepsake", "line": "\"You did good today.\" Drawn underneath: a very small robot.", "sample": true },
+    "generals_medal": { "name": "The general's medal", "kind": "keepsake", "line": "He pinned it on you himself, over dinner.", "sample": true }
+  }
+}

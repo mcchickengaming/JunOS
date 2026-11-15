@@ -61,6 +61,7 @@ php .github/scripts/feel.test.php
 php .github/scripts/progress.test.php
 php .github/scripts/delve.test.php
 php .github/scripts/gamesave.test.php
+php .github/scripts/inventory.test.php
 node --test .github/scripts/js/*.test.mjs
 ```
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
@@ -588,6 +589,27 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   level) and Game saves (moved here from Saves & updates). Registry: `difficulty` (`server:difficulty`, default easy);
   `game_saves` / `game_autosave` now in `game`. Name forms in Settings: `herName()` "She", `herName('subj')` "she",
   `herName('obj')` "her" when no name is set. Tests: `.github/scripts/js/story.test.mjs`, the shared gate cases.
+
+- **Items, currencies and keepsakes** (#9 base, Nov 15, Opus): everything you can own in the game is data,
+  `webapp/data/items.json`: five currencies (`credits`, `materials`, `salvage_sigils`, `whispers`, `citizen_pass`; names and
+  lines ours), `kinds` (material, part, ingredient, food, catch, gear, treasure, gift, furniture, outfit, note, keepsake;
+  `order` for the list), `items` (name, kind, line, `tier` 1..6 = the material tier, `sell`, `sample`). It lives in the
+  player's side of the progression blob: `credits`, the new **`wallet`** (the other currencies, id → amount), `items`,
+  `keepsakes`; so game saves carry it (`GAMESAVE_PROGRESS_KEYS` has `wallet`; `gamesave_clean` keeps only whole counts above
+  zero). lib/progress.php: drop / story-grant kind **`currency`** (`{ id, kind: 'currency', amount }`, Credits into
+  `credits`, the rest into `wallet`); a **keepsake is one of each** (a second of the same is `again`, not doubled; it keeps its
+  first `from`). `webapp/api/lib/inventory.php`: `inventory_data`, `inventory_validate(items, progress)` (the catalog's rules +
+  EVERY id the progression data can give has an entry of the right kind: pools, signature lists, story grants, worn buffs),
+  `inventory_view` (all five currencies even at zero; items grouped by kind in order, sorted by name; unknown ids shown as
+  "Something you found"; keepsakes with when/from), `inventory_clean_cost` (`{ currencies, items }`, whole numbers > 0,
+  never a keepsake), `inventory_missing`, `inventory_take` (all or nothing, logged with why), `inventory_words`.
+  `api/inventory.php`: GET view; POST `can {cost}` / `spend {cost, why}` (409 `not_enough` + `missing`). **It never gives**:
+  things come from the progression service (rolls, story grants by id, once). Client `js/core/inventory.js` (`load`, `can`,
+  `spend`, `countWords`, `tierWords`, `filter`, `WORDS`). Settings > The game > **Everything you own** (`loadOwned` /
+  `drawOwned`: currency chips, keepsakes, items by kind, a find box; read-only; later the field notebook). Registry `owned`.
+  Tests: `.github/scripts/inventory.test.php`, `.github/scripts/js/inventory.test.mjs`, api-checks. The current item entries are
+  stand-ins (`sample`) for the sample activities; the shop, prices, selling, gear, crafting and the legend of everything come
+  with the economy (#9) and crafting (#8).
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

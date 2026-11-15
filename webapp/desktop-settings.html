@@ -195,6 +195,20 @@
   .game-undo span { flex: 1; }
   .game-drop { margin-left: 6px; }
   #gameMsg.err { color: #ff8a8a; }
+  /* everything you own (#9 base) */
+  .own-box { margin: 8px 0 0; }
+  .own-cur { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+  .own-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--own-chip, color-mix(in srgb, var(--accent) 8%, transparent)); font-size: 13px; }
+  .own-chip i { font-style: normal; opacity: .8; }
+  .own-chip.zero { opacity: .5; }
+  .own-kind { margin: 10px 0 4px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+  .own-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+  .own-item { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-2); }
+  .own-item b { display: block; font-size: 13px; }
+  .own-item span { display: block; font-size: 12px; opacity: .75; margin-top: 2px; }
+  .own-item.keep { border-color: var(--own-keep, var(--accent)); }
+  .own-item .tier { float: right; font-size: 11px; opacity: .7; }
 </style>
 </head>
 <body>
@@ -439,6 +453,11 @@
       <span class="hint game-drop">or drop a .jungame file on this list</span></p>
     <div id="gameRowsSettings"></div>
   </div>
+  <h2 id="at-owned">Everything you own</h2>
+  <p class="hint">What you have in the game: money of every kind, your things, and your keepsakes.
+    It moves with your game saves. (Later this lives in your field notebook.)</p>
+  <div class="save-new"><input type="search" id="ownFilter" placeholder="Find something, like &quot;part&quot; or &quot;rare&quot;" aria-label="Find something you own"></div>
+  <div id="ownBox" class="own-box"></div>
 </section>
 
 <section id="tab-saves" hidden>
@@ -566,6 +585,7 @@
   <div class="row"><div class="gesture">🩹</div><div class="what"><b>Nothing is ever lost</b><span>Head home any time. If you go down she patches you up, and you keep everything.</span></div></div>
   <h2>The game</h2>
   <div class="row"><div class="gesture">🎚️</div><div class="what"><b>Difficulty</b><span>Settings &gt; The game &gt; Difficulty, any time. <b>Easy</b>: if you go down she takes care of you and nothing is lost. <b>Medium</b> and up: real game overs (load a save), unless she reaches you in time; a closer bond and her Support skill make that likelier.</span></div></div>
+  <div class="row"><div class="gesture">🎒</div><div class="what"><b>Everything you own</b><span>Settings &gt; The game &gt; Everything you own: money of every kind (Credits, Materials, Salvage Sigils, Whispers, Citizen Pass points), your things by kind, and your keepsakes, which are memories you keep: never sold or spent.</span></div></div>
   <div class="row"><div class="gesture">💾</div><div class="what"><b>Save and load the game</b><span>Settings &gt; The game &gt; Game saves. Name a save, or let the game autosave as you play. Load any save; the game you had is saved first, so <b>Undo last load</b> always brings it back.</span></div></div>
   <div class="row"><div class="gesture">🫶</div><div class="what"><b>She isn't in a save</b><span>Her memories, her feelings and how she is with you stay hers whichever game you load. A save remembers the bond it was made with; tick <b>Use this save's bond</b> when loading only if you want that one.</span></div></div>
   <div class="row"><div class="gesture">📤</div><div class="what"><b>Share a save</b><span>⋯ &gt; Download makes a .jungame file. Upload a save… (or drop the file on the list) adds it as a new save; it's never loaded until you load it.</span></div></div>
@@ -580,6 +600,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=61"></script>
+<script type="module" src="js/desktop-settings.js?v=63"></script>
 </body>
 </html>

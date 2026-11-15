@@ -21,6 +21,7 @@ import * as Progress from './core/progress.js?v=2';
 import * as GameSave from './core/gamesave.js?v=3';
 import * as Difficulty from './core/difficulty.js?v=2';
 import * as Story from './core/story/story-state.js?v=2';
+import * as Inventory from './core/inventory.js?v=3';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -68,7 +69,7 @@ function show(tab, anchor) {
   if (tab === 'her') { HerWin.hello(); HerWin.loadHer(); }
   if (tab === 'account') HerWin.loadAccount();
   if (tab === 'saves') setTimeout(loadSaves);
-  if (tab === 'game') { setTimeout(loadGame); setTimeout(buildDifficulty); }
+  if (tab === 'game') { setTimeout(loadGame); setTimeout(buildDifficulty); setTimeout(loadOwned); }
   if (tab === 'her') setTimeout(buildBondByHand); // after this module has set itself up
   if (tab === 'comfort') loadComfort();
   soon();
@@ -1311,7 +1312,7 @@ $('gameFile').addEventListener('change', () => { gameImport($('gameFile').files[
   zone.addEventListener('drop', (e) => { e.preventDefault(); $('gameRows').classList.remove('drop'); gameImport(e.dataTransfer?.files?.[0]); });
 }
 // another window loaded a game: show the new list
-GameSave.onChange((e) => { if (e.type === 'loaded' && !$('tab-game').hidden) { loadGame(); buildDifficulty(); } });
+GameSave.onChange((e) => { if (e.type === 'loaded' && !$('tab-game').hidden) { loadGame(); buildDifficulty(); loadOwned(); } });
 
 // The game > Difficulty (#35 b, core/difficulty.js + core/story/story-state.js): Easy / Medium / Hard / Extreme, any time.
 // Kept with the game (story state), so a save remembers it. A line in words says how often she'd reach you in time.
@@ -1341,6 +1342,51 @@ async function buildDifficulty() {
     : `If you go down, today ${herName('subj')} would reach you in time ${Difficulty.chanceWords(c)}. A closer bond and her Support skill raise it.`;
   soon();
 }
+
+// The game > Everything you own (#9 base, core/inventory.js → api/inventory.php): money of every kind, things by kind,
+// keepsakes. Read-only here: things come from playing; spending happens where you spend (the shop, the harbor).
+let ownView = null;
+async function loadOwned() {
+  const box = $('ownBox');
+  if (!box) return;
+  const v = await Inventory.load();
+  if (!v || v.error) { box.textContent = Inventory.say(v?.error); return; }
+  ownView = v;
+  drawOwned();
+}
+function drawOwned() {
+  const box = $('ownBox');
+  if (!ownView) return;
+  const v = Inventory.filter(ownView, $('ownFilter').value);
+  box.textContent = '';
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  if (v.currencies.length) {
+    const cur = el('div', 'own-cur');
+    for (const c of v.currencies) {
+      const chip = el('span', 'own-chip' + (c.amount ? '' : ' zero'));
+      chip.title = c.line;
+      chip.append(el('i', '', c.icon), el('b', '', c.amount.toLocaleString()), document.createTextNode(c.name));
+      cur.append(chip);
+    }
+    box.append(cur);
+  }
+  const card = (name, line, cls, extra) => { const c = el('div', 'own-item' + (cls ? ' ' + cls : '')); if (extra) c.append(el('em', 'tier', extra)); c.append(el('b', '', name), el('span', '', line)); return c; };
+  if (v.keepsakes.length) {
+    box.append(el('div', 'own-kind', 'Keepsakes'));
+    const hint = el('p', 'hint', ownView.keepsakeLine);
+    const list = el('div', 'own-list');
+    for (const k of v.keepsakes) list.append(card(k.name, k.line + (k.from ? ` (${k.from})` : ''), 'keep'));
+    box.append(hint, list);
+  }
+  for (const k of v.kinds) {
+    box.append(el('div', 'own-kind', k.name));
+    const list = el('div', 'own-list');
+    for (const it of k.items) list.append(card(Inventory.countWords(it), it.line, '', Inventory.tierWords(it.tier)));
+    box.append(list);
+  }
+  if (!v.kinds.length && !v.keepsakes.length) box.append(el('p', 'hint', $('ownFilter').value ? 'Nothing like that.' : 'Nothing yet: things come from delves and everything else you do together.'));
+}
+$('ownFilter')?.addEventListener('input', drawOwned);
 
 // Her > Your bond > Set the bond by hand (Everything view only, registry `layer: "all"`): a stage, never a number.
 // Quiet: no stage-up moment; she only feels the shift softly for a day. A save point of her comes first.

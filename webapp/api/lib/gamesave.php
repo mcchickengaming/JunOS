@@ -35,7 +35,7 @@ const GAMESAVE_KINDS = ['auto', 'quick', 'named', 'before_load'];
 // player skills that belong to desktop Jun's world (the focus timer next to her on your desktop), not to a game
 const GAMESAVE_DESKTOP_SKILLS = ['focus'];
 // the player's side of the progression blob that a game save carries (his skills are handled on their own)
-const GAMESAVE_PROGRESS_KEYS = ['credits', 'items', 'keepsakes', 'buffs', 'story', 'jobs'];
+const GAMESAVE_PROGRESS_KEYS = ['credits', 'wallet', 'items', 'keepsakes', 'buffs', 'story', 'jobs'];
 const GAMESAVE_TUNE = [
     'autoKeep' => 3,            // rotating autosaves
     'beforeKeep' => 5,          // "before load" saves kept
@@ -245,6 +245,12 @@ function gamesave_clean(mixed $p, array $t = GAMESAVE_TUNE): array {
         $part[$k] = gettype($v) === gettype($blank[$k]) ? $v : $blank[$k];
     }
     $part['credits'] = max(0, (int)$part['credits']);
+    // counts of things: plain ids, whole numbers above zero (a file can't hold minus three swords)
+    foreach (['wallet', 'items'] as $k) {
+        $clean = [];
+        foreach ((array)$part[$k] as $id => $n) if (is_string($id) && preg_match('/^[a-z][a-z0-9_]{0,63}$/', $id) && (int)$n > 0) $clean[$id] = (int)$n;
+        $part[$k] = $clean;
+    }
     $bond = is_array($p['bond'] ?? null) ? $p['bond'] : [];
     $xp = max(0, (int)($bond['xp'] ?? 0));
     $out = [
