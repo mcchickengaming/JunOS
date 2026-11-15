@@ -6,7 +6,7 @@
 //   spawn    anything in the catalog (data/items.json): currencies, items, keepsakes, with an amount. Needs TEST MODE
 //            (api/debug.php, per account). Every spawn is logged; "Clear my things" empties the game's money and things.
 //            A new item in data/items.json shows up here by itself.
-//   labs     the feel lab, progress lab, delve lab and rig lab
+//   labs     the feel lab, progress lab, delve lab, story lab and rig lab
 //   jump     straight to a Settings section
 // Outside the desktop app (a plain browser) it still works: the console is the browser's own F12.
 
@@ -62,6 +62,7 @@ const LABS = [
   ['feel-lab.html', 'Feel lab', 'How she is inside: needs, tiredness, favorites, the reaction composer, what she starts on her own.'],
   ['progress-lab.html', 'Progress lab', 'Skills, xp, the reward roller, "is it fair?"'],
   ['delve-lab.html', 'Delve lab', 'A whole delve, fights at any pace, difficulty, a hundred delves in a moment.'],
+  ['story-lab.html', 'Story lab', 'The story-event engine in a sandbox: play events, see why and why not, the story\'s memory, a hundred playthroughs in a moment.'],
   ['rig-lab.html', 'Rig lab', 'The Inochi2D renderer and its checks.'],
 ];
 function buildLabs(host) {

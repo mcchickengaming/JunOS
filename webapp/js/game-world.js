@@ -54,7 +54,10 @@ function go(p) {
     else $('placeNote').textContent = 'That one opens once the story engine is in.';
   }
 }
-window.JunGame = { refresh: drawMap, open: openPlace, toMap: () => { toHub(); drawMap(); }, startStory: null };
+// the story-event engine's door (#34): a place with go: { story: <spot> } opens that spot of the story as a scene page
+// in the world (story.html + js/story-page.js; the engine is js/core/story/engine.js). The map redraws when you come back.
+const startStory = (sceneId, place) => openPlace('story.html?at=' + encodeURIComponent(sceneId), place?.name || 'The story');
+window.JunGame = { refresh: drawMap, open: openPlace, toMap: () => { toHub(); drawMap(); }, startStory };
 GameSave.onChange((e) => { if (e?.type === 'loaded') { toHub(); drawMap(); } });
 drawMap();
 // the menu: the game's own settings, loaded fresh each time it opens (a load in there changes everything)

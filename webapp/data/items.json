@@ -23,6 +23,15 @@
     "keepsake": { "name": "Keepsakes", "order": 12, "line": "Memories made physical. Never sold, never spent; one of each." }
   },
   "items": {
+    "gift_ribbon": {"name": "The ribbon you gave her", "kind": "keepsake", "line": "She tied it on wrong on purpose. Then fixed it when she thought you weren't looking.", "sample": true},
+    "gift_clip": {"name": "The hair clip you gave her", "kind": "keepsake", "line": "\"It pinches.\" She hasn't taken it off since.", "sample": true},
+    "gift_bolt_ring": {"name": "The bolt you bent into a ring", "kind": "keepsake", "line": "\"It's a bolt.\" A pause. \"...It's my bolt.\"", "sample": true},
+    "photo_first": {"name": "Her first photo of you", "kind": "keepsake", "line": "Mostly her thumb. You're in the corner, probably.", "sample": true},
+    "photo_steering": {"name": "\"I'm steering.\"", "kind": "keepsake", "line": "Her at the tiller, chin up, pretending not to pose.", "sample": true},
+    "fisher_lure": {"name": "The old fisherman's lure", "kind": "keepsake", "line": "Hand-tied. He said it has never caught anything and that's why it's lucky.", "sample": true},
+    "group_doodle": {"name": "Everyone so far, by her", "kind": "keepsake", "line": "She drew everyone you've met. Al is facing the wrong way. \"Accurate,\" she says.", "sample": true},
+    "hand_map": {"name": "Her hand-drawn map", "kind": "keepsake", "line": "Every place you've been, in her handwriting. The scrapyard is labelled \"where I'm from (unfortunately)\".", "sample": true},
+    "stabilizer_coil": {"name": "A stabilizer coil", "kind": "part", "tier": 2, "line": "Scorched, but the right kind. It stopped the whine in her leg.", "sell": false, "sample": true},
     "part_common": { "name": "Loose parts", "kind": "part", "tier": 1, "line": "Screws, springs and a wire or two. Always useful.", "sell": true, "sample": true },
     "part_good": { "name": "Good parts", "kind": "part", "tier": 2, "line": "Parts that still work. Rarer than they should be.", "sell": true, "sample": true },
     "part_rare": { "name": "A rare part", "kind": "part", "tier": 4, "line": "Somebody stopped making these a long time ago.", "sell": true, "sample": true },

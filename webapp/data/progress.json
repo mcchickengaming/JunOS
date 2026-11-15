@@ -118,6 +118,16 @@
     "sample_generals_gift": {
       "name": "The general's gift (sample)", "from": "A dish cooked for a military leader",
       "give": [ { "id": "moonlight_greatsword", "kind": "item" }, { "id": "generals_medal", "kind": "keepsake" } ]
-    }
+    },
+    "story_a1_coil": { "name": "The coil under the scrapyard (sample story)", "from": "The scrapyard's buried levels", "sample": true, "give": [ {"id": "stabilizer_coil", "kind": "item"} ] },
+    "story_a1_dock": { "name": "The first planks of Port Buffer (sample story)", "from": "Restoring the dock", "sample": true, "give": [ {"id": "materials", "kind": "currency", "amount": 20} ] },
+    "story_fisher_lure": { "name": "The old fisherman's lure (sample story)", "from": "He handed it over without looking up", "sample": true, "give": [ {"id": "fisher_lure", "kind": "keepsake"} ] },
+    "story_gift_ribbon": { "name": "Your gift to her: a ribbon (sample story)", "from": "One small thing", "sample": true, "give": [ {"id": "gift_ribbon", "kind": "keepsake"} ] },
+    "story_gift_clip": { "name": "Your gift to her: a hair clip (sample story)", "from": "One small thing", "sample": true, "give": [ {"id": "gift_clip", "kind": "keepsake"} ] },
+    "story_gift_bolt_ring": { "name": "Your gift to her: a bolt ring (sample story)", "from": "One small thing", "sample": true, "give": [ {"id": "gift_bolt_ring", "kind": "keepsake"} ] },
+    "story_photo_first": { "name": "Her first photo (sample story)", "from": "She took it the evening of the gift", "sample": true, "give": [ {"id": "photo_first", "kind": "keepsake"} ] },
+    "story_photo_steering": { "name": "\"I'm steering.\" (sample story)", "from": "A promise kept on the bay", "sample": true, "give": [ {"id": "photo_steering", "kind": "keepsake"} ] },
+    "story_codex_people": { "name": "Everyone so far (sample story)", "from": "The People page of your notebook, filled in", "sample": true, "give": [ {"id": "group_doodle", "kind": "keepsake"} ] },
+    "story_codex_places": { "name": "Her hand-drawn map (sample story)", "from": "The Places page of your notebook, filled in", "sample": true, "give": [ {"id": "hand_map", "kind": "keepsake"} ] }
   }
 }

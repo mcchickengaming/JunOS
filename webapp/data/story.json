@@ -1,0 +1,2285 @@
+{
+  "about": "The story-event engine's content (#34; engine: webapp/js/core/story/story-engine.js). EVERYTHING HERE IS A STAND-IN: a sample of Act 1's opening that proves every piece; not the real story. A new event, thread, card or person is one more entry; story-engine.js validate() is the rulebook and the tests run it. The story REMEMBERS through story state (flags, quests, seen, choices) and the map (data/places.json) opens places from those flags; a place's go: { story: <spot> } walks into one of the spots below. Things are given only by story grants (data/progress.json 'story', items in data/items.json). 18+ entries and 'agreed beforehand' entries never ship here: they are the owner's.",
+  "version": 1,
+  "sample": true,
+  "start": {
+    "spot": "home",
+    "event": "a1_bad_score",
+    "herFlag": "met_jun"
+  },
+  "words": {
+    "ribbon": "ribbon",
+    "clip": "hair clip",
+    "bolt_ring": "bolt bent into a ring"
+  },
+  "triggers": {
+    "enter": {
+      "name": "(arriving somewhere)",
+      "slots": 0,
+      "quiet": 0.55
+    },
+    "stroll": {
+      "name": "Take a walk",
+      "slots": 1,
+      "quiet": 0.3,
+      "nothing": [
+        "Nothing much. The street minds its own business.",
+        "A quiet walk. Somewhere, a vending machine argues with a customer.",
+        "You walk. The city hums. Nobody needs anything from you for once."
+      ]
+    },
+    "talk": {
+      "name": "Talk to {who}",
+      "slots": 1,
+      "quiet": 0.25,
+      "nothing": [
+        "Not much to say today.",
+        "Busy. A grunt, a nod, back to work."
+      ]
+    },
+    "home": {
+      "name": "Spend the evening in",
+      "slots": 1,
+      "quiet": 0.15,
+      "nothing": [
+        "A quiet evening. The roof only leaks in one place tonight."
+      ]
+    },
+    "voyage": {
+      "name": "Sail a while",
+      "slots": 1,
+      "quiet": 0.3,
+      "nothing": [
+        "Flat water, a fair wind. Nothing but gulls.",
+        "The bay keeps its secrets today."
+      ]
+    },
+    "sleep": {
+      "name": "Sleep until morning",
+      "slots": "morning",
+      "quiet": 0.5
+    }
+  },
+  "npcs": {
+    "al": {
+      "name": "Old Man Al",
+      "line": "A tinkerer who knows too much and looks at her too little."
+    },
+    "inspector": {
+      "name": "the inspector",
+      "line": "Citizen Pass compliance. A hard job he doesn't always agree with."
+    },
+    "fisher": {
+      "name": "the old fisherman",
+      "line": "Has out-waited every fish in the bay and most of the people."
+    },
+    "courier": {
+      "name": "the courier",
+      "line": "Watches from doorways. Carries things nobody signs for."
+    },
+    "scrapper": {
+      "name": "a scrapper",
+      "line": "Thinks your salvage is his salvage."
+    },
+    "jester": {
+      "name": "???",
+      "line": "A face on every screen at once."
+    }
+  },
+  "hooks": {
+    "delve": {
+      "name": "A delve",
+      "outcomes": [
+        "cleared",
+        "left",
+        "ko"
+      ],
+      "sim": {
+        "cleared": 6,
+        "left": 2,
+        "ko": 1
+      }
+    },
+    "voyage": {
+      "name": "A voyage",
+      "outcomes": [
+        "arrived",
+        "turned_back"
+      ],
+      "sim": {
+        "arrived": 5,
+        "turned_back": 1
+      }
+    },
+    "fight": {
+      "name": "A fight",
+      "outcomes": [
+        "won",
+        "backed_off",
+        "defeat"
+      ],
+      "danger": "defeat",
+      "sim": {
+        "won": 6,
+        "backed_off": 2,
+        "defeat": 2
+      }
+    },
+    "minigame": {
+      "name": "A hands-on moment",
+      "outcomes": [
+        "perfect",
+        "good",
+        "fail"
+      ],
+      "sim": {
+        "perfect": 1,
+        "good": 3,
+        "fail": 1
+      }
+    },
+    "build": {
+      "name": "Restoring something",
+      "outcomes": [
+        "done"
+      ],
+      "sim": {
+        "done": 1
+      }
+    }
+  },
+  "tells": {
+    "found_her": "He found the other her, in that world.",
+    "met_someone": "He met someone new in the story.",
+    "new_place": "He reached somewhere new in the story.",
+    "gift": "He gave the other her a small gift.",
+    "close_call": "Something in the story went badly for a moment.",
+    "she_saved_him": "The other her saved him in a fight.",
+    "took_care": "He lost a fight and the other her took care of him.",
+    "game_over": "A fight in the story beat him and he had to try again.",
+    "promise_made": "A promise was made in the story.",
+    "promise_kept": "A promise was kept in the story.",
+    "echo": "He played through a glimpse of another timeline.",
+    "old_friend": "Someone from earlier in the story came back.",
+    "broadcast": "Someone took over every screen in the story.",
+    "chapter_end": "A chapter of the story ended."
+  },
+  "threads": {
+    "the_hum": {
+      "name": "Her nervous hum",
+      "kind": "motif",
+      "line": "Al knew she hums when she's nervous before you'd ever heard it.",
+      "quiet": true
+    },
+    "shrines": {
+      "name": "Al's junk sculptures",
+      "kind": "mystery",
+      "line": "She went quiet in front of one of them and couldn't say why."
+    },
+    "not_this_time": {
+      "name": "\"Not this time.\"",
+      "kind": "motif",
+      "line": "What Al mutters before every danger. Counted, never explained (yet).",
+      "quiet": true
+    },
+    "excuses": {
+      "name": "She never quite hits them",
+      "kind": "motif",
+      "line": "Every time a person gets hurt around her, she has a reason it wasn't her. Counted for the reveal.",
+      "quiet": true
+    },
+    "name_slip": {
+      "name": "The wrong name",
+      "kind": "mystery",
+      "line": "Al called her something she's never been called, then covered it up.",
+      "quiet": true
+    },
+    "wave_sign": {
+      "name": "The wave on the walls",
+      "kind": "rumor",
+      "line": "An old wave symbol painted around the slums. Nobody can say what it means."
+    },
+    "stranger": {
+      "name": "The woman in the doorway",
+      "kind": "person",
+      "line": "She's been watching you. She hasn't decided about you yet."
+    },
+    "inspector": {
+      "name": "The inspector looked away",
+      "kind": "consequence",
+      "line": "He let an unregistered android walk. He remembers how you asked."
+    },
+    "fisher_crew": {
+      "name": "\"Not now.\"",
+      "kind": "person",
+      "line": "The old fisherman won't crew for someone who hasn't sailed. Yet."
+    },
+    "promise_steer": {
+      "name": "A promise: she steers next time",
+      "kind": "promise",
+      "line": "She said next time out, she's steering. She meant it."
+    }
+  },
+  "codex": {
+    "pages": {
+      "chapters": {
+        "name": "Chapters"
+      },
+      "people": {
+        "name": "People",
+        "grant": "story_codex_people"
+      },
+      "places": {
+        "name": "Places",
+        "grant": "story_codex_places"
+      },
+      "creatures": {
+        "name": "Things that bite"
+      },
+      "notes": {
+        "name": "Loose pages"
+      }
+    }
+  },
+  "cards": {
+    "ch1_start": {
+      "kind": "chapter",
+      "page": "chapters",
+      "title": "Chapter 1: Things people throw away",
+      "by": "jun",
+      "text": [
+        "Status: found. Location: a bin. Finder: {you}. I've had better launches.",
+        "Chapter one. He dug me out of a pile of scrap. I'm choosing to call that an entrance."
+      ]
+    },
+    "act1_end": {
+      "kind": "chapter",
+      "page": "chapters",
+      "title": "End of the sample: the boat is ready",
+      "by": "jun",
+      "text": [
+        "We have a boat, a harbor, an old man who won't look at me, and a clown on every screen. ...Previously on: everything was simpler."
+      ]
+    },
+    "p_jun": {
+      "kind": "person",
+      "page": "people",
+      "title": "{her}",
+      "by": "jun",
+      "text": [
+        "That's me. Unregistered. Slightly dented. Fully operational where it counts.",
+        "Me. I'd write more but I'm biased."
+      ]
+    },
+    "p_al": {
+      "kind": "person",
+      "page": "people",
+      "who": "al",
+      "title": "Old Man Al",
+      "by": "jun",
+      "text": [
+        "Fixes everything. Looks at everything. Except me. I'm keeping count.",
+        "Grumpy. Brilliant. Knows what's wrong with my cooling before I do. Suspicious."
+      ]
+    },
+    "p_inspector": {
+      "kind": "person",
+      "page": "people",
+      "who": "inspector",
+      "title": "The inspector",
+      "by": "jun",
+      "text": [
+        "He checked his scanner twice and saw nothing, twice. Bad at his job. I like him."
+      ]
+    },
+    "p_fisher": {
+      "kind": "person",
+      "page": "people",
+      "who": "fisher",
+      "title": "The old fisherman",
+      "by": "jun",
+      "text": [
+        "Says \"not now\" like other people say hello. Smells like the tide. Gave us a lure."
+      ]
+    },
+    "p_courier": {
+      "kind": "person",
+      "page": "people",
+      "who": "courier",
+      "title": "The courier",
+      "by": "jun",
+      "text": [
+        "She watched us for days before saying a word. I respect the patience. I don't like being the one watched."
+      ]
+    },
+    "p_jester": {
+      "kind": "person",
+      "page": "people",
+      "who": "jester",
+      "title": "???",
+      "by": "jun",
+      "text": [
+        "A face on every screen. She looked straight at me and winked. I didn't like how familiar it felt."
+      ]
+    },
+    "pl_scrapyard": {
+      "kind": "place",
+      "page": "places",
+      "title": "The scrapyard",
+      "by": "jun",
+      "text": [
+        "Where the city puts what it's done with. Present company included.",
+        "Everything here was somebody's future once. Good salvage, though."
+      ]
+    },
+    "pl_workshop": {
+      "kind": "place",
+      "page": "places",
+      "title": "Old Man Al's workshop",
+      "by": "jun",
+      "text": [
+        "Junk sculptures on every shelf. One of them made my chest go quiet. I didn't mention it."
+      ]
+    },
+    "pl_port_buffer": {
+      "kind": "place",
+      "page": "places",
+      "title": "Port Buffer",
+      "by": "jun",
+      "text": [
+        "A dead harbor with one good plank. We fixed a second one. It's a start.",
+        "First impression: rust. Second impression: possibility. Third: more rust."
+      ]
+    },
+    "pl_bay": {
+      "kind": "place",
+      "page": "places",
+      "title": "Brandwater Bay",
+      "by": "jun",
+      "text": [
+        "Water. A lot of it. I'm 40% electricity. We're going anyway."
+      ]
+    },
+    "c_crawler": {
+      "kind": "creature",
+      "page": "creatures",
+      "title": "Cable crawler",
+      "by": "jun",
+      "text": [
+        "Follows you. Chews wiring. I took it personally."
+      ]
+    },
+    "n_memo": {
+      "kind": "note",
+      "page": "notes",
+      "title": "A memo in the rubble",
+      "by": "narrator",
+      "text": [
+        "\"Harbor 3 closure: not profitable enough. Please vacate by Friday. Thank you for being part of the Everything family.\""
+      ]
+    },
+    "n_ledger_1": {
+      "kind": "note",
+      "page": "notes",
+      "title": "A torn ledger page",
+      "by": "narrator",
+      "text": [
+        "Tally marks, hundreds of them. Under the last row, in a shaking hand: \"the lamp. She laughed at the lamp. Remember that one.\""
+      ]
+    }
+  },
+  "scenes": {
+    "care": {
+      "name": "You lost a fight: she takes care of you",
+      "line": "On Easy nothing is lost. She gets you home and patches you up.",
+      "variants": {
+        "everyday": [
+          {
+            "id": "care_home_fuss",
+            "where": "home",
+            "beats": [
+              {
+                "face": "worried",
+                "t": "...Don't move. I said don't."
+              },
+              {
+                "face": "pout",
+                "t": "I told him to back off. He didn't listen. Nobody listens."
+              },
+              {
+                "face": "focused",
+                "t": "Hold still. This is the part that stings."
+              },
+              {
+                "face": "relieved",
+                "t": "There. You're staying in tonight. That wasn't a question."
+              }
+            ]
+          },
+          {
+            "id": "care_alone_wake",
+            "where": "alone",
+            "beats": [
+              {
+                "face": "worried",
+                "t": "You didn't come back, so I came to get you. Don't make it a thing."
+              },
+              {
+                "face": "relieved",
+                "t": "Up. Lean on me. Home."
+              }
+            ]
+          }
+        ],
+        "flirty": [
+          {
+            "id": "care_home_lap",
+            "where": "home",
+            "minStage": 4,
+            "beats": [
+              {
+                "face": "worried",
+                "t": "...There you are. No. Head stays where it is."
+              },
+              {
+                "face": "pout",
+                "t": "My lap is not a pillow. This is a medical position."
+              },
+              {
+                "face": "relieved",
+                "t": "...You can stay a little longer. For medical reasons."
+              }
+            ]
+          }
+        ],
+        "adult": []
+      }
+    },
+    "coming_home": {
+      "name": "Coming home",
+      "line": "The quiet end of a day out. One of the safe-spot moments.",
+      "variants": {
+        "everyday": [
+          {
+            "id": "home_tea",
+            "beats": [
+              {
+                "face": "neutral",
+                "t": "Sit. I made the hot leaf water. It's supposed to be relaxing."
+              },
+              {
+                "face": "curious",
+                "t": "...Is it? I can't tell. Tell me if it's relaxing."
+              }
+            ]
+          },
+          {
+            "id": "home_boots",
+            "beats": [
+              {
+                "face": "pout",
+                "t": "Boots off. You're tracking the whole scrapyard in."
+              },
+              {
+                "face": "relieved",
+                "t": "...It was a good day, though. Don't tell anyone I said so."
+              }
+            ]
+          }
+        ],
+        "flirty": [
+          {
+            "id": "home_shoulder",
+            "minStage": 4,
+            "beats": [
+              {
+                "face": "neutral",
+                "t": "Move over."
+              },
+              {
+                "face": "pout",
+                "t": "I'm not leaning on you. The wall is cold. You're the closest warm thing."
+              },
+              {
+                "face": "relieved",
+                "t": "...Five more minutes."
+              }
+            ]
+          }
+        ],
+        "adult": []
+      }
+    }
+  },
+  "events": {
+    "a1_bad_score": {
+      "name": "A bad score",
+      "spine": true,
+      "order": 10,
+      "on": [
+        "enter",
+        "home"
+      ],
+      "at": "home",
+      "start": "wake",
+      "nodes": {
+        "wake": {
+          "text": "Morning in the slums. The roof leaks in the usual place. Your Citizen Pass pings before you've opened both eyes.",
+          "next": "ping"
+        },
+        "ping": {
+          "text": "\"Good morning, valued citizen! Your score has been updated. Reason: insufficient enthusiasm. Have an Everything day!\"",
+          "choices": [
+            {
+              "id": "shrug",
+              "tone": "kind",
+              "text": "Same as yesterday. Get up anyway.",
+              "do": [
+                {
+                  "set": "outlook",
+                  "to": "steady"
+                }
+              ]
+            },
+            {
+              "id": "mock",
+              "tone": "joke",
+              "text": "\"Thank you for your enthusiasm about my enthusiasm.\"",
+              "do": [
+                {
+                  "set": "outlook",
+                  "to": "wry"
+                }
+              ]
+            },
+            {
+              "id": "mute",
+              "tone": "blunt",
+              "text": "Mute it. It un-mutes itself. Of course it does.",
+              "do": [
+                {
+                  "set": "outlook",
+                  "to": "tired"
+                }
+              ]
+            }
+          ],
+          "next": "out"
+        },
+        "out": {
+          "text": "With a score like yours, there's one place that still lets you work: the scrapyard, where the city leaves what it's done with.",
+          "do": [
+            {
+              "set": "day_started"
+            },
+            {
+              "quest": "act1",
+              "step": "scrapyard"
+            },
+            {
+              "chapter": "Act 1 (sample)"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_the_dump": {
+      "name": "What the ship threw away",
+      "spine": true,
+      "order": 20,
+      "on": [
+        "enter"
+      ],
+      "at": "scrapyard",
+      "when": {
+        "flag": "day_started"
+      },
+      "hears": "found_her",
+      "start": "ship",
+      "nodes": {
+        "ship": {
+          "text": "A corporate hauler drops out of the smog, far too clean for this sky. It dumps one load over the east heap and is gone before the dust lands.",
+          "next": "pile"
+        },
+        "pile": {
+          "text": "Fresh scrap. Unmarked crates, cut cables, and under all of it, a hand.",
+          "choices": [
+            {
+              "id": "careful",
+              "tone": "kind",
+              "text": "Dig her out carefully.",
+              "do": [
+                {
+                  "set": "dug_carefully"
+                }
+              ]
+            },
+            {
+              "id": "check",
+              "tone": "blunt",
+              "text": "Check the casing first. This is worth more than a year of scrap."
+            },
+            {
+              "id": "look",
+              "tone": "joke",
+              "text": "\"Please don't be haunted.\""
+            }
+          ],
+          "next": "boot"
+        },
+        "boot": {
+          "who": "jun",
+          "face": "curious",
+          "text": [
+            "...Diagnostic. Location: a bin. Outlook: poor. Who are you?",
+            "...Systems up. I'm in a pile of trash. You're staring. One of us should say something."
+          ],
+          "next": "name"
+        },
+        "name": {
+          "who": "jun",
+          "face": "neutral",
+          "text": [
+            {
+              "when": {
+                "flag": "dug_carefully"
+              },
+              "t": "{you}. Fine. You were careful with my arm. I noticed. Don't make it weird."
+            },
+            "{you}. Fine. I don't have a name on file for me. That's probably bad."
+          ],
+          "do": [
+            {
+              "set": "met_jun"
+            },
+            {
+              "card": "p_jun"
+            },
+            {
+              "card": "ch1_start"
+            }
+          ],
+          "next": "al_hint"
+        },
+        "al_hint": {
+          "text": "She can't walk straight: something in her leg whines with every step. There's one person in the slums who fixes things nobody else will touch.",
+          "do": [
+            {
+              "card": "pl_scrapyard"
+            },
+            {
+              "set": "needs_al"
+            },
+            {
+              "quest": "act1",
+              "step": "find_al"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_als_workshop": {
+      "name": "The man who fixes things",
+      "spine": true,
+      "order": 30,
+      "on": [
+        "enter",
+        "talk:al"
+      ],
+      "at": "als_workshop",
+      "when": {
+        "flag": "needs_al"
+      },
+      "hears": "met_someone",
+      "start": "door",
+      "nodes": {
+        "door": {
+          "card": "pl_workshop",
+          "text": "Shelves of junk sculptures, each one bolted together with more care than junk deserves. An old man doesn't look up from his bench.",
+          "next": "al1"
+        },
+        "al1": {
+          "who": "al",
+          "text": "\"Put her on the bench. Left leg. Stabilizer coil, I'd bet my good eye.\" He hasn't looked at her once.",
+          "do": [
+            {
+              "card": "p_al"
+            },
+            {
+              "rep": "al",
+              "by": 5
+            }
+          ],
+          "next": "quiet"
+        },
+        "quiet": {
+          "who": "jun",
+          "face": "uneasy",
+          "text": "She has stopped in front of one of the sculptures. A ribbon is tied around it. She doesn't say anything. She's humming, very quietly.",
+          "do": [
+            {
+              "open": "shrines"
+            }
+          ],
+          "next": "slip"
+        },
+        "slip": {
+          "who": "al",
+          "text": "\"She always hums when she's nervous.\" A beat too late, he adds: \"...They all do. That model.\"",
+          "do": [
+            {
+              "open": "the_hum"
+            }
+          ],
+          "choices": [
+            {
+              "id": "how",
+              "tone": "blunt",
+              "text": "\"How would you know what she always does?\"",
+              "do": [
+                {
+                  "set": "pressed_al"
+                }
+              ],
+              "next": "dodge"
+            },
+            {
+              "id": "sculpt",
+              "tone": "kind",
+              "text": "\"What are the sculptures?\"",
+              "next": "projects"
+            },
+            {
+              "id": "leave_it",
+              "tone": "kind",
+              "text": "Let it go. He's helping.",
+              "do": [
+                {
+                  "rep": "al",
+                  "by": 5
+                }
+              ],
+              "next": "job"
+            }
+          ]
+        },
+        "dodge": {
+          "who": "al",
+          "text": "\"I know machines.\" He turns a screw that didn't need turning.",
+          "next": "job"
+        },
+        "projects": {
+          "who": "al",
+          "text": "\"Projects.\" He moves between you and the shelf. \"Don't touch them.\"",
+          "next": "job"
+        },
+        "job": {
+          "who": "al",
+          "text": "\"I can't fix that leg with what I've got. There's a coil that fits in the scrapyard's buried levels. Bring it and I'll have her running by supper.\" Under his breath, to nobody: \"Not this time.\"",
+          "do": [
+            {
+              "set": "needs_part"
+            },
+            {
+              "open": "not_this_time"
+            },
+            {
+              "quest": "act1",
+              "step": "coil"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_the_gift": {
+      "name": "One small thing",
+      "spine": true,
+      "order": 40,
+      "on": [
+        "home"
+      ],
+      "at": "home",
+      "when": {
+        "flag": "needs_part"
+      },
+      "hears": "gift",
+      "start": "evening",
+      "nodes": {
+        "evening": {
+          "who": "jun",
+          "face": "neutral",
+          "text": "She's sitting on the one good crate, leg stretched out, cataloguing your shack out loud. \"One window. One pot. One person. Minimalist.\"",
+          "next": "give"
+        },
+        "give": {
+          "text": "You've been turning something over in your pocket all day.",
+          "choices": [
+            {
+              "id": "ribbon",
+              "tone": "kind",
+              "text": "A ribbon you found, still clean.",
+              "do": [
+                {
+                  "set": "gift",
+                  "to": "ribbon"
+                },
+                {
+                  "grant": "story_gift_ribbon"
+                }
+              ]
+            },
+            {
+              "id": "clip",
+              "tone": "kind",
+              "text": "A hair clip, one tooth missing.",
+              "do": [
+                {
+                  "set": "gift",
+                  "to": "clip"
+                },
+                {
+                  "grant": "story_gift_clip"
+                }
+              ]
+            },
+            {
+              "id": "bolt",
+              "tone": "joke",
+              "text": "A bolt you bent into a ring. Sort of.",
+              "do": [
+                {
+                  "set": "gift",
+                  "to": "bolt_ring"
+                },
+                {
+                  "grant": "story_gift_bolt_ring"
+                }
+              ]
+            }
+          ],
+          "next": "took"
+        },
+        "took": {
+          "who": "jun",
+          "face": "pout",
+          "text": [
+            "A {gift}. For me. ...Why. No, don't explain. I'm keeping it. Obviously I'm keeping it.",
+            "\"A {gift}.\" She holds it like it might be a trick. It isn't. She keeps holding it."
+          ],
+          "do": [
+            {
+              "set": "gift_given"
+            }
+          ],
+          "next": "photo"
+        },
+        "photo": {
+          "who": "jun",
+          "face": "grin",
+          "text": [
+            {
+              "when": {
+                "skill": {
+                  "who": "jun",
+                  "id": "photography",
+                  "gte": 20
+                }
+              },
+              "t": "\"Hold still.\" She waits for the light from the window, then something clicks behind her eyes. \"There. That one's a keeper.\""
+            },
+            "\"Hold still.\" Something clicks behind her eyes. \"There. Now we're even. I have one of you. Mostly. My thumb was in it.\""
+          ],
+          "do": [
+            {
+              "grant": "story_photo_first"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_buried_levels": {
+      "name": "The coil under the scrapyard",
+      "spine": true,
+      "order": 50,
+      "on": [
+        "enter",
+        "stroll"
+      ],
+      "at": "scrapyard",
+      "when": {
+        "flag": "needs_part"
+      },
+      "start": "hatch",
+      "nodes": {
+        "hatch": {
+          "text": "Behind the east heap, a hatch somebody welded shut and somebody else cut open again. Stairs go down.",
+          "next": "down"
+        },
+        "down": {
+          "who": "jun",
+          "face": "uneasy",
+          "text": [
+            {
+              "when": {
+                "with": "jun"
+              },
+              "t": "\"I'll scan. You walk in front. That's teamwork.\""
+            },
+            "You go down alone. She'd wanted to come; her leg had other ideas."
+          ],
+          "hook": {
+            "kind": "delve",
+            "area": "scrapyard",
+            "together": true
+          },
+          "on": {
+            "cleared": "got",
+            "left": "partial",
+            "ko": "carried"
+          }
+        },
+        "got": {
+          "text": "At the bottom, still in its cradle: the coil. And something that chews cable, which you've now met.",
+          "do": [
+            {
+              "card": "c_crawler"
+            },
+            {
+              "set": "has_part"
+            },
+            {
+              "grant": "story_a1_coil"
+            },
+            {
+              "quest": "act1",
+              "step": "fit_coil"
+            }
+          ],
+          "end": true
+        },
+        "partial": {
+          "text": "You come back up early with a coil from a wrecked unit near the stairs. Scorched, but the right kind. It'll do.",
+          "do": [
+            {
+              "set": "has_part"
+            },
+            {
+              "grant": "story_a1_coil"
+            },
+            {
+              "quest": "act1",
+              "step": "fit_coil"
+            }
+          ],
+          "end": true
+        },
+        "carried": {
+          "who": "jun",
+          "face": "worried",
+          "text": "You wake up at home. There's a coil on the table and scrapes on her knuckles. \"You dropped it. I picked it up. We're not discussing how.\"",
+          "do": [
+            {
+              "set": "has_part"
+            },
+            {
+              "grant": "story_a1_coil"
+            },
+            {
+              "tell": "took_care"
+            },
+            {
+              "quest": "act1",
+              "step": "fit_coil"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_fixed": {
+      "name": "Running by supper",
+      "spine": true,
+      "order": 60,
+      "on": [
+        "enter",
+        "talk:al"
+      ],
+      "at": "als_workshop",
+      "when": {
+        "flag": "has_part"
+      },
+      "start": "fit",
+      "nodes": {
+        "fit": {
+          "who": "al",
+          "text": "He fits the coil without looking anything up. \"Don't run her hard in the rain for a week. That housing leaks when it's new.\" He says it like he's watched it happen.",
+          "do": [
+            {
+              "rep": "al",
+              "by": 5
+            }
+          ],
+          "next": "walk"
+        },
+        "walk": {
+          "who": "jun",
+          "face": "proud",
+          "text": "She crosses the workshop without the whine. Then back, faster. Then a turn that is definitely showing off. \"Acceptable,\" she says, to Al's back.",
+          "next": "harbor"
+        },
+        "harbor": {
+          "who": "al",
+          "text": "\"You two want off scrap wages? There's a dead harbor past the pump road. Port Buffer. Half a dock, one good hull if nobody's burned it. The sea still pays people the Pass doesn't.\"",
+          "do": [
+            {
+              "set": "harbor_known"
+            },
+            {
+              "quest": "act1",
+              "step": "harbor"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_no_papers": {
+      "name": "No papers",
+      "spine": true,
+      "order": 70,
+      "on": [
+        "enter",
+        "stroll"
+      ],
+      "at": "slums",
+      "when": {
+        "flag": "harbor_known"
+      },
+      "start": "stop",
+      "nodes": {
+        "stop": {
+          "who": "inspector",
+          "text": "\"Citizen. Routine compliance.\" A grey coat, a scanner, tired eyes. The scanner swings toward her and chirps: NO PASS ON FILE.",
+          "do": [
+            {
+              "card": "p_inspector"
+            }
+          ],
+          "choices": [
+            {
+              "id": "honest",
+              "tone": "kind",
+              "text": "\"She was thrown away. I found her. That's all of it.\"",
+              "do": [
+                {
+                  "rep": "inspector",
+                  "by": 10
+                }
+              ],
+              "next": "honest"
+            },
+            {
+              "id": "hide",
+              "tone": "joke",
+              "text": "\"That? Appliance. Very advanced toaster.\"",
+              "do": [
+                {
+                  "rep": "inspector",
+                  "by": 4
+                }
+              ],
+              "next": "toaster"
+            },
+            {
+              "id": "bribe",
+              "tone": "blunt",
+              "text": "Hold out the few credits you have.",
+              "next": "bribe"
+            }
+          ]
+        },
+        "honest": {
+          "who": "inspector",
+          "text": "He looks at her for a long moment. \"Scanner's been faulty all week.\" He taps it against his palm until it stops chirping.",
+          "next": "after"
+        },
+        "toaster": {
+          "who": "jun",
+          "face": "pout",
+          "text": "\"Ding,\" she says, flatly. The inspector's mouth does something he clearly didn't authorize. \"...Faulty scanner. All week.\"",
+          "next": "after"
+        },
+        "bribe": {
+          "who": "inspector",
+          "text": "\"Put that away. You need it more than I do, and I'd have to report us both.\" He turns the scanner off himself.",
+          "next": "after"
+        },
+        "after": {
+          "who": "inspector",
+          "text": "\"Get her papers, or keep her out of the main roads on audit days. I didn't say which days. I don't know which days.\" He walks on.",
+          "do": [
+            {
+              "open": "inspector"
+            },
+            {
+              "set": "papers_problem"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_port_buffer": {
+      "name": "A dead harbor",
+      "spine": true,
+      "order": 80,
+      "on": [
+        "enter"
+      ],
+      "at": "port_buffer",
+      "when": {
+        "seen": "a1_no_papers"
+      },
+      "hears": "new_place",
+      "start": "arrive",
+      "nodes": {
+        "arrive": {
+          "card": "pl_port_buffer",
+          "text": "Port Buffer. Gull-white pilings, a crane rusted mid-reach, and one stretch of dock that still holds weight.",
+          "next": "memo"
+        },
+        "memo": {
+          "card": "n_memo",
+          "text": "Under a fallen sign, a laminated notice has outlived everything it was nailed to.",
+          "next": "build"
+        },
+        "build": {
+          "text": "The planks are stacked where someone left them, years ago, meaning to come back.",
+          "hook": {
+            "kind": "build",
+            "what": "dock"
+          },
+          "on": {
+            "done": "fisher"
+          }
+        },
+        "fisher": {
+          "who": "fisher",
+          "text": "By the time the last plank is down, an old man is sitting on the end of your dock as if it had always been there. \"Hm. Holds.\" He hands you a lure without looking away from the water.",
+          "do": [
+            {
+              "set": "dock_restored"
+            },
+            {
+              "card": "p_fisher"
+            },
+            {
+              "grant": "story_fisher_lure"
+            },
+            {
+              "grant": "story_a1_dock"
+            },
+            {
+              "rep": "fisher",
+              "by": 8
+            }
+          ],
+          "choices": [
+            {
+              "id": "crew",
+              "tone": "kind",
+              "text": "\"We'll need hands when we sail. Interested?\"",
+              "next": "notnow"
+            },
+            {
+              "id": "thanks",
+              "tone": "kind",
+              "text": "\"Thanks for the lure.\"",
+              "next": "hull"
+            }
+          ]
+        },
+        "notnow": {
+          "who": "fisher",
+          "text": "\"Not now.\" He reels in nothing, contentedly. \"Ask me when you've been out there and come back.\"",
+          "do": [
+            {
+              "open": "fisher_crew"
+            }
+          ],
+          "next": "hull"
+        },
+        "hull": {
+          "who": "jun",
+          "face": "curious",
+          "text": "\"There's a hull under that tarp. Dinghy. It has a hole in it, but only the one.\"",
+          "do": [
+            {
+              "set": "hull_found"
+            },
+            {
+              "quest": "act1",
+              "step": "boat"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_dinghy": {
+      "name": "Only the one hole",
+      "spine": true,
+      "order": 90,
+      "on": [
+        "stroll",
+        "enter"
+      ],
+      "at": "port_buffer",
+      "when": {
+        "flag": "hull_found"
+      },
+      "start": "patch",
+      "nodes": {
+        "patch": {
+          "text": "Pitch, a patch, and a mallet. The trick is the timing.",
+          "hook": {
+            "kind": "minigame",
+            "game": "timing_ring",
+            "what": "patch the hull"
+          },
+          "on": {
+            "perfect": "tight",
+            "good": "fine",
+            "fail": "again"
+          }
+        },
+        "tight": {
+          "who": "jun",
+          "face": "proud",
+          "text": "\"Watertight. First try. Who taught you that? Don't say me, I'll get smug.\"",
+          "next": "promise"
+        },
+        "fine": {
+          "who": "jun",
+          "face": "neutral",
+          "text": "\"It weeps a little. So do most boats. It floats.\"",
+          "next": "promise"
+        },
+        "again": {
+          "who": "jun",
+          "face": "grin",
+          "text": "\"That's your thumb. That's the patch. Different things.\" She holds the patch for the second try, and it takes.",
+          "next": "promise"
+        },
+        "promise": {
+          "who": "jun",
+          "face": "pout",
+          "text": "She runs a hand along the gunwale. \"First time out, you row. I'm 40% electricity. But next time? I'm steering.\"",
+          "do": [
+            {
+              "set": "dinghy_ready"
+            },
+            {
+              "open": "promise_steer"
+            },
+            {
+              "tell": "promise_made"
+            },
+            {
+              "quest": "act1",
+              "step": "sail"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_first_voyage": {
+      "name": "Out past the pilings",
+      "spine": true,
+      "order": 100,
+      "on": [
+        "enter"
+      ],
+      "at": "brandwater_bay",
+      "when": {
+        "flag": "dinghy_ready"
+      },
+      "hears": "new_place",
+      "start": "out",
+      "nodes": {
+        "out": {
+          "card": "pl_bay",
+          "who": "jun",
+          "face": "uneasy",
+          "text": "\"Heading: out. Weather: mostly fine. Me: fine. Stop looking at me, look at the water.\"",
+          "hook": {
+            "kind": "voyage",
+            "route": "bay_loop",
+            "together": true
+          },
+          "on": {
+            "arrived": "loop",
+            "turned_back": "short"
+          }
+        },
+        "loop": {
+          "text": "Once around the near buoys and back. From out here the slums are a smudge and the harbor is yours.",
+          "do": [
+            {
+              "set": "sailed"
+            }
+          ],
+          "end": true
+        },
+        "short": {
+          "who": "jun",
+          "face": "relieved",
+          "text": "The chop turns you around at the first buoy. \"That counts,\" she says, gripping the seat. \"We went. We came back. That's a voyage.\"",
+          "do": [
+            {
+              "set": "sailed"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "a1_broadcast": {
+      "name": "Every screen at once",
+      "spine": true,
+      "order": 110,
+      "on": [
+        "enter",
+        "stroll",
+        "home"
+      ],
+      "at": [
+        "port_buffer",
+        "slums",
+        "home"
+      ],
+      "when": {
+        "flag": "sailed"
+      },
+      "hears": "broadcast",
+      "start": "flicker",
+      "nodes": {
+        "flicker": {
+          "text": "Every screen in sight flickers at once: the billboards, the Pass kiosk, a dead monitor in a heap that hasn't worked in years.",
+          "next": "face"
+        },
+        "face": {
+          "who": "jester",
+          "text": "\"Gooood evening, valued audience! We interrupt your regularly scheduled despair. A little boat went out today. A little boat came back. I just love a show with legs.\" The face looks straight at her. \"Hi, Sis.\"",
+          "do": [
+            {
+              "card": "p_jester"
+            }
+          ],
+          "next": "gone"
+        },
+        "gone": {
+          "who": "jun",
+          "face": "scared",
+          "text": "The screens go back to their ads. She hasn't moved. She's humming.",
+          "do": [
+            {
+              "advance": "the_hum"
+            },
+            {
+              "set": "act1_done"
+            },
+            {
+              "card": "act1_end"
+            },
+            {
+              "tell": "chapter_end"
+            },
+            {
+              "quest": "act1",
+              "step": "done",
+              "done": true
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "stroll_graffiti": {
+      "name": "The wave on the wall",
+      "on": [
+        "stroll"
+      ],
+      "at": "slums",
+      "w": 2,
+      "limit": 3,
+      "cooldown": 2,
+      "start": "see",
+      "nodes": {
+        "see": {
+          "text": [
+            "A wave, painted in one stroke on a shutter. Old paint, under newer ads. Someone keeps scraping the ads off it.",
+            "The same wave again, low on a wall where a child or a kneeling adult would paint it.",
+            "A wave scratched into a lamp post. You'd have walked past it a week ago."
+          ],
+          "do": [
+            {
+              "open": "wave_sign"
+            }
+          ],
+          "next": [
+            {
+              "when": {
+                "with": "jun"
+              },
+              "to": "jun"
+            },
+            {
+              "to": "end"
+            }
+          ]
+        },
+        "jun": {
+          "who": "jun",
+          "face": "curious",
+          "text": [
+            "\"That symbol isn't in any registry I can reach. Somebody wanted it forgotten properly.\"",
+            "\"Again. Whoever paints these isn't selling anything. That's the strange part.\""
+          ],
+          "end": true
+        }
+      }
+    },
+    "wave_rumor": {
+      "name": "\"We don't talk about the docks\"",
+      "on": [
+        "stroll"
+      ],
+      "at": [
+        "slums",
+        "port_buffer"
+      ],
+      "thread": {
+        "id": "wave_sign",
+        "after": [
+          2,
+          4
+        ]
+      },
+      "limit": 1,
+      "hears": "old_friend",
+      "start": "woman",
+      "nodes": {
+        "woman": {
+          "text": "An old woman repainting a shutter catches you looking at the wave beside it.",
+          "choices": [
+            {
+              "id": "ask",
+              "tone": "kind",
+              "text": "\"What does it mean?\"",
+              "next": "told"
+            },
+            {
+              "id": "pass",
+              "tone": "kind",
+              "text": "Nod and keep walking.",
+              "next": "nod"
+            }
+          ]
+        },
+        "told": {
+          "text": "\"It means people stood together once and got erased for it. We don't talk about the docks.\" She goes back to painting. She leaves the wave alone.",
+          "do": [
+            {
+              "close": "wave_sign",
+              "as": "heard"
+            },
+            {
+              "set": "undertow_rumor"
+            }
+          ],
+          "end": true
+        },
+        "nod": {
+          "text": "She nods back, and you both let it be. The wave will still be there tomorrow.",
+          "do": [
+            {
+              "advance": "wave_sign"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "stroll_ad": {
+      "name": "A word from our sponsors",
+      "on": [
+        "stroll"
+      ],
+      "at": [
+        "slums",
+        "port_buffer"
+      ],
+      "w": 2,
+      "cooldown": 1,
+      "start": "ad",
+      "nodes": {
+        "ad": {
+          "text": [
+            "A billboard: \"EVERYTHING WATER. Now with 30% more water!\"",
+            "A kiosk chirps: \"Terms Update 41 is here! By continuing to exist, you agree.\"",
+            "A poster: \"Lonely? Everything Inc cares. Loneliness Plus, first month free.\"",
+            "A drone trails a banner: \"Your score could be worse! Don't find out how.\""
+          ],
+          "next": [
+            {
+              "when": {
+                "with": "jun"
+              },
+              "to": "jun"
+            },
+            {
+              "to": "end"
+            }
+          ]
+        },
+        "jun": {
+          "who": "jun",
+          "face": "pout",
+          "text": [
+            "\"I'd file a complaint, but the complaint form is also an ad.\"",
+            "\"I ran the numbers. The numbers are also sponsored.\"",
+            "\"Don't read it. Reading it counts as agreeing.\""
+          ],
+          "end": true
+        }
+      }
+    },
+    "stroll_stranger": {
+      "name": "Someone in a doorway",
+      "on": [
+        "stroll"
+      ],
+      "at": "slums",
+      "once": true,
+      "when": {
+        "flag": "met_jun"
+      },
+      "start": "watch",
+      "nodes": {
+        "watch": {
+          "text": "A woman in a courier's jacket leans in a doorway across the street. She isn't looking at you. She's looking at who you're with.",
+          "choices": [
+            {
+              "id": "nod",
+              "tone": "kind",
+              "text": "Nod to her.",
+              "do": [
+                {
+                  "set": "stranger_nodded"
+                }
+              ]
+            },
+            {
+              "id": "ignore",
+              "tone": "blunt",
+              "text": "Keep walking."
+            },
+            {
+              "id": "call",
+              "tone": "joke",
+              "text": "\"Take a picture, it lasts longer.\""
+            }
+          ],
+          "next": "gone"
+        },
+        "gone": {
+          "text": "By the time the next cart passes, the doorway is empty.",
+          "do": [
+            {
+              "open": "stranger"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "stranger_again": {
+      "name": "The woman in the doorway, again",
+      "on": [
+        "stroll"
+      ],
+      "at": [
+        "slums",
+        "port_buffer"
+      ],
+      "thread": {
+        "id": "stranger",
+        "after": [
+          1,
+          3
+        ]
+      },
+      "hears": "old_friend",
+      "start": "again",
+      "nodes": {
+        "again": {
+          "who": "courier",
+          "text": [
+            {
+              "when": {
+                "thread": "stranger",
+                "gte": 1
+              },
+              "t": "The courier again, in a different doorway. \"Still not now? I can wait. I'm good at it.\""
+            },
+            {
+              "when": {
+                "flag": "stranger_nodded"
+              },
+              "t": "The courier steps out of the doorway this time. \"You nodded. Most people pretend I'm a wall.\""
+            },
+            "The courier steps out of the doorway this time. \"You two are easy to follow. That's a problem you should fix.\""
+          ],
+          "choices": [
+            {
+              "id": "hear",
+              "tone": "kind",
+              "text": "\"Go on, then.\"",
+              "next": "ask"
+            },
+            {
+              "id": "later",
+              "tone": "kind",
+              "text": "\"Not now.\"",
+              "next": "wait"
+            }
+          ]
+        },
+        "ask": {
+          "who": "courier",
+          "text": "\"I move things for people the Pass doesn't see. Some day you'll need something moved, or I will. That's all. Now we've met.\"",
+          "do": [
+            {
+              "card": "p_courier"
+            },
+            {
+              "rep": "courier",
+              "by": 10
+            },
+            {
+              "close": "stranger",
+              "as": "met"
+            }
+          ],
+          "end": true
+        },
+        "wait": {
+          "who": "courier",
+          "text": "\"Fair.\" She's already walking. \"I'll find you.\"",
+          "do": [
+            {
+              "advance": "stranger"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "inspector_returns": {
+      "name": "Audit day",
+      "on": [
+        "stroll",
+        "enter"
+      ],
+      "at": "slums",
+      "thread": {
+        "id": "inspector",
+        "after": [
+          2,
+          4
+        ]
+      },
+      "hears": "old_friend",
+      "start": "warn",
+      "nodes": {
+        "warn": {
+          "who": "inspector",
+          "text": [
+            {
+              "when": {
+                "choice": "a1_no_papers.stop",
+                "is": "honest"
+              },
+              "t": "The inspector falls into step beside you, eyes forward. \"You were straight with me. So: main road, tomorrow, a sweep. Take the pump road.\""
+            },
+            {
+              "when": {
+                "choice": "a1_no_papers.stop",
+                "is": "bribe"
+              },
+              "t": "The inspector passes you without stopping. A folded note lands in your hand: \"Sweep tomorrow. Main road. Keep your credits.\""
+            },
+            "The inspector stops to retie a boot that didn't need it. \"If I owned an advanced toaster, I'd keep it off the main road tomorrow.\""
+          ],
+          "do": [
+            {
+              "close": "inspector",
+              "as": "warned"
+            },
+            {
+              "rep": "inspector",
+              "by": 6
+            },
+            {
+              "set": "sweep_warned"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "fisher_joins": {
+      "name": "\"Now.\"",
+      "on": [
+        "talk:fisher",
+        "enter"
+      ],
+      "at": "port_buffer",
+      "thread": {
+        "id": "fisher_crew",
+        "after": [
+          0,
+          2
+        ]
+      },
+      "when": {
+        "flag": "sailed"
+      },
+      "hears": "old_friend",
+      "start": "now",
+      "nodes": {
+        "now": {
+          "who": "fisher",
+          "text": "\"Saw you go out. Saw you come back.\" He stands, which seems to take most of a minute. \"Now.\"",
+          "do": [
+            {
+              "close": "fisher_crew",
+              "as": "joined"
+            },
+            {
+              "set": "crew_fisher"
+            },
+            {
+              "rep": "fisher",
+              "by": 12
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "promise_steer_kept": {
+      "name": "\"I'm steering.\"",
+      "on": [
+        "voyage"
+      ],
+      "at": "brandwater_bay",
+      "thread": {
+        "id": "promise_steer",
+        "after": [
+          0,
+          1
+        ]
+      },
+      "when": [
+        {
+          "flag": "sailed"
+        },
+        {
+          "with": "jun"
+        }
+      ],
+      "chance": 1,
+      "hears": "promise_kept",
+      "start": "tiller",
+      "nodes": {
+        "tiller": {
+          "who": "jun",
+          "face": "proud",
+          "text": "She's already at the tiller when you step aboard. \"You promised. Well. I promised. Same thing. Sit.\"",
+          "next": "sail"
+        },
+        "sail": {
+          "text": "She steers like she's defusing something, then like she's done it all her life, in the space of a hundred meters.",
+          "do": [
+            {
+              "grant": "story_photo_steering"
+            },
+            {
+              "close": "promise_steer",
+              "as": "kept"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "sea_crate": {
+      "name": "Something floating",
+      "on": [
+        "voyage"
+      ],
+      "at": "brandwater_bay",
+      "w": 2,
+      "cooldown": 1,
+      "when": {
+        "flag": "sailed"
+      },
+      "start": "crate",
+      "nodes": {
+        "crate": {
+          "text": [
+            "A crate rides low in the swell, stamped EVERYTHING INC: RETURNS.",
+            "Something square bobs off the port side, trailing kelp like a wig."
+          ],
+          "hook": {
+            "kind": "minigame",
+            "game": "timing_ring",
+            "what": "hook the crate"
+          },
+          "on": {
+            "fail": "lost",
+            "else": "got"
+          }
+        },
+        "got": {
+          "text": [
+            "Inside: forty identical left gloves.",
+            "Inside: a waterlogged manual for a product that was never released.",
+            "Inside: sealed ration bars, best before a year that hasn't happened yet."
+          ],
+          "do": [
+            {
+              "inc": "crates"
+            }
+          ],
+          "end": true
+        },
+        "lost": {
+          "text": "It rolls under and is gone. The bay keeps that one.",
+          "end": true
+        }
+      }
+    },
+    "sea_fog": {
+      "name": "Fog on the bay",
+      "on": [
+        "voyage"
+      ],
+      "at": "brandwater_bay",
+      "w": 1,
+      "cooldown": 2,
+      "when": {
+        "flag": "sailed"
+      },
+      "start": "fog",
+      "nodes": {
+        "fog": {
+          "text": "The fog comes in sideways and takes the shore with it.",
+          "choices": [
+            {
+              "id": "trust",
+              "tone": "kind",
+              "text": "\"You navigate. I'll row where you point.\"",
+              "when": {
+                "with": "jun"
+              },
+              "next": "nav"
+            },
+            {
+              "id": "wait",
+              "tone": "kind",
+              "text": "Ship the oars and wait it out.",
+              "next": "wait"
+            },
+            {
+              "id": "back",
+              "tone": "blunt",
+              "text": "Turn for where the harbor was.",
+              "next": "wait"
+            }
+          ]
+        },
+        "nav": {
+          "who": "jun",
+          "face": "focused",
+          "text": "\"Two points left. More. Stop. ...That was a rock. You're welcome.\" She sounds terrified and delighted in equal parts.",
+          "do": [
+            {
+              "inc": "fog_navigated"
+            }
+          ],
+          "end": true
+        },
+        "wait": {
+          "text": "It thins in its own time. It always does. The harbor is right where you left it.",
+          "end": true
+        }
+      }
+    },
+    "home_evening": {
+      "name": "An evening in",
+      "on": [
+        "home"
+      ],
+      "at": "home",
+      "w": 2,
+      "cooldown": 1,
+      "when": {
+        "flag": "gift_given"
+      },
+      "start": "in",
+      "nodes": {
+        "in": {
+          "scene": "coming_home",
+          "where": "home",
+          "choices": [
+            {
+              "id": "talk",
+              "tone": "kind",
+              "text": "Ask about her day.",
+              "next": "day"
+            },
+            {
+              "id": "quiet",
+              "tone": "kind",
+              "text": "Just sit with her.",
+              "next": "sit"
+            },
+            {
+              "id": "forehead",
+              "tone": "kind",
+              "tier": "flirty",
+              "minStage": 4,
+              "text": "Kiss her forehead.",
+              "next": "kiss"
+            }
+          ]
+        },
+        "day": {
+          "who": "jun",
+          "face": "neutral",
+          "text": [
+            "\"I counted the leaks. Four. I named them. Don't ask.\"",
+            "\"I reorganized your pot. There's only one pot. It took a while.\""
+          ],
+          "end": true
+        },
+        "sit": {
+          "who": "jun",
+          "face": "relieved",
+          "text": [
+            "She doesn't say anything, which from her is a kind of compliment.",
+            "After a while she starts humming. Not the nervous one. A different one."
+          ],
+          "end": true
+        },
+        "kiss": {
+          "who": "jun",
+          "face": "pout",
+          "text": "\"...Unauthorized.\" She doesn't move away. \"Log it under maintenance.\"",
+          "end": true
+        }
+      }
+    },
+    "al_tinkering": {
+      "name": "Shop talk",
+      "on": [
+        "talk:al"
+      ],
+      "at": "als_workshop",
+      "w": 1,
+      "cooldown": 1,
+      "when": {
+        "seen": "a1_fixed"
+      },
+      "start": "tip",
+      "nodes": {
+        "tip": {
+          "who": "al",
+          "text": [
+            "\"That cooling unit you're eyeing? Fails in the rain. Trust me.\" He doesn't say how he knows.",
+            "\"Solder from the cold side. She'll thank you. Not out loud.\"",
+            "\"Crying over a damn bot,\" he mutters at something on his bench, and then notices you're there."
+          ],
+          "next": [
+            {
+              "when": [
+                {
+                  "not": {
+                    "thread": "name_slip"
+                  }
+                },
+                {
+                  "thread": "the_hum",
+                  "gte": 1
+                }
+              ],
+              "to": "slip"
+            },
+            {
+              "to": "end"
+            }
+          ]
+        },
+        "slip": {
+          "who": "al",
+          "text": "\"Tell Jo I said—\" He stops. \"Tell her. Tell {her} to watch that knee.\" He goes back to work very hard.",
+          "do": [
+            {
+              "open": "name_slip"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "scrap_scuffle": {
+      "name": "Your salvage, his salvage",
+      "on": [
+        "stroll",
+        "enter"
+      ],
+      "at": "scrapyard",
+      "chance": 0.5,
+      "limit": 2,
+      "cooldown": 2,
+      "when": {
+        "seen": "a1_fixed"
+      },
+      "start": "block",
+      "nodes": {
+        "block": {
+          "who": "scrapper",
+          "text": "A scrapper steps out from behind a heap with a length of pipe. \"East heap's mine. Whatever's in that bag is mine. Simple.\"",
+          "choices": [
+            {
+              "id": "talk",
+              "tone": "kind",
+              "text": "\"There's enough scrap here for two lifetimes. Walk away.\"",
+              "next": "talked"
+            },
+            {
+              "id": "bolt",
+              "tone": "joke",
+              "text": "Hand him a bent bolt. \"Finest piece in the bag.\"",
+              "next": "talked"
+            },
+            {
+              "id": "stand",
+              "tone": "blunt",
+              "text": "Put the bag down and don't move.",
+              "next": "fight"
+            }
+          ]
+        },
+        "talked": {
+          "who": "scrapper",
+          "text": "He weighs it, and you, and the android standing very still beside you. \"...Tomorrow, then.\" He doesn't come back tomorrow.",
+          "end": true
+        },
+        "fight": {
+          "text": "He swings first.",
+          "hook": {
+            "kind": "fight",
+            "foe": "scrapper"
+          },
+          "on": {
+            "won": "trip",
+            "backed_off": "talked",
+            "saved": "savedby",
+            "care": "home"
+          }
+        },
+        "trip": {
+          "who": "jun",
+          "face": "neutral",
+          "text": [
+            {
+              "when": {
+                "with": "jun"
+              },
+              "t": [
+                "He goes down over her foot, which wasn't there a second ago. \"I tripped,\" she says. \"Into him. It happens.\"",
+                "His pipe ends up in her hand and he ends up sitting. \"He dropped it. I caught it. Reflexes.\""
+              ]
+            },
+            "He overreaches, and you're still standing when he isn't. He leaves the pipe."
+          ],
+          "do": [
+            {
+              "open": "excuses",
+              "when": {
+                "with": "jun"
+              }
+            }
+          ],
+          "end": true
+        },
+        "savedby": {
+          "who": "jun",
+          "face": "worried",
+          "text": "The pipe is coming down and then it isn't: she's holding the other end. She doesn't hit him. She just doesn't let go until he does. \"...You're bleeding. Home. Now.\"",
+          "do": [
+            {
+              "open": "excuses"
+            },
+            {
+              "tell": "she_saved_him"
+            }
+          ],
+          "end": true
+        },
+        "home": {
+          "text": "The scrapyard keeps the bag. No: she went back for the bag. Of course she did.",
+          "do": [
+            {
+              "tell": "took_care"
+            }
+          ],
+          "end": true
+        }
+      }
+    },
+    "echo_lamp": {
+      "name": "An echo: the lamp",
+      "on": [
+        "home",
+        "sleep"
+      ],
+      "at": "home",
+      "once": true,
+      "chance": 0.6,
+      "when": [
+        {
+          "thread": "shrines",
+          "is": "open"
+        },
+        {
+          "flag": "gift_given"
+        }
+      ],
+      "hears": "echo",
+      "start": "glitch",
+      "nodes": {
+        "glitch": {
+          "text": "The room stutters. For a moment the light is colder, the walls are different, and your hands are not your hands.",
+          "next": "lamp"
+        },
+        "lamp": {
+          "text": "A workbench. A lamp in pieces. A younger man's hands, and beside them an android with shorter hair and a ribbon you don't recognize, holding the shade like evidence.",
+          "choices": [
+            {
+              "id": "joke",
+              "tone": "joke",
+              "text": "\"It's not broken. It's resting.\"",
+              "next": "laugh"
+            },
+            {
+              "id": "fix",
+              "tone": "kind",
+              "text": "Hand her the screwdriver.",
+              "next": "laugh"
+            }
+          ]
+        },
+        "laugh": {
+          "text": "She laughs: at the lamp, at you, at the rain starting on a roof that isn't yours. It is the easiest sound in the world. Static creeps in at the edges. Then the room is your room again.",
+          "next": "after"
+        },
+        "after": {
+          "who": "jun",
+          "face": "uneasy",
+          "text": "\"...I think I just watched someone else's memory. Rude.\" She's quiet for a while after that.",
+          "do": [
+            {
+              "card": "n_ledger_1"
+            },
+            {
+              "advance": "the_hum"
+            },
+            {
+              "advance": "shrines"
+            }
+          ],
+          "end": true
+        }
+      }
+    }
+  },
+  "spots": {
+    "home": {
+      "name": "Home",
+      "tags": [
+        "home"
+      ],
+      "triggers": [
+        "home",
+        "sleep"
+      ]
+    },
+    "slums": {
+      "name": "The slums",
+      "tags": [
+        "town"
+      ],
+      "triggers": [
+        "stroll"
+      ]
+    },
+    "scrapyard": {
+      "name": "The scrapyard",
+      "tags": [
+        "wild"
+      ],
+      "triggers": [
+        "stroll"
+      ]
+    },
+    "als_workshop": {
+      "name": "Old Man Al's workshop",
+      "tags": [
+        "town"
+      ],
+      "triggers": [
+        "talk:al"
+      ]
+    },
+    "port_buffer": {
+      "name": "Port Buffer",
+      "tags": [
+        "town",
+        "harbor"
+      ],
+      "triggers": [
+        "stroll",
+        "talk:fisher"
+      ]
+    },
+    "brandwater_bay": {
+      "name": "Brandwater Bay",
+      "tags": [
+        "sea"
+      ],
+      "triggers": [
+        "voyage"
+      ]
+    }
+  }
+}

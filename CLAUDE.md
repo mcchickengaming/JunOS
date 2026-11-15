@@ -709,7 +709,59 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   against the game's story state (redrawn after a load, back to the map, closing the menu). `go: { url }` opens one of her
   pages inside the world; `go: { story: sceneId }` calls **`window.JunGame.startStory(sceneId, place)`**, the hook the story
   engine sets (also `JunGame.refresh()`, `open(url, title)`, `toMap()`). A new place = one entry. Tests:
-  `.github/scripts/js/places.test.mjs`.
+  `.github/scripts/js/places.test.mjs`. Since the story engine (#34) the map holds the SAMPLE story's places (Home open from the
+  start; the rest opened by its flags).
+
+- **The story-event engine** (#34, Nov 15, on Fable): the game's backbone, standing ON story state, game saves, the map,
+  difficulty and the gate (nothing of those is copied). Pure modules in `webapp/js/core/story/` (no DOM, storage or clock;
+  seeded): **`story-engine.js`** (rules in its header), `cond.js`, `story-sim.js`, `story-tune.js` (EVERY number); content in
+  **`webapp/data/story.json`** (a STAND-IN sample of Act 1's opening: 11 main-story beats, 14 by-chance / returning events).
+  The game is `g = { s, x }`: `s` = story state (story-state.js; every effect goes through its functions: `set` / `unset` /
+  `inc` → flags, `quest`, `agree`, `chapter`; a choice is remembered as `choose('<event>.<node>', '<choice id>')`, an event
+  played as `markSeen(<event id>)`); `x` = the game's **`events` section** (`blankX` / `cleanX`): the story clock (day + 4
+  slots; the game runs on story time), the dice, threads, people's two meters, the codex, the queue, the event in play.
+  **Events** = nodes: `text` (a string, variants, or `{ when, t }` lines; `{you}` `{her}` and flag values fill in; never the
+  same variant twice running), `who` / `face`, `card`, `do` (effects), then `choices` (each: tone, `when`, tier / minStage /
+  themes / who / consent+agreement through the gate, `do`, `next`; `tease` shows a locked one), a **`hook`** (`delve`, `voyage`,
+  `fight`, `minigame`, `build`: the page plays it and answers `{ result }`; `on` branches; outcomes in the data's `hooks`), a
+  `scene` slot (delve/scenes.js `pick`: the highest tier that's on, always Everyday), or `next` (an id or `[{ when, to }]`).
+  **The picker** (`pick` / `trigger(g, 'stroll' | 'enter' | 'talk:al' | 'home' | 'voyage' | 'sleep')`): queued → the MAIN STORY
+  (`spine: true` + `order`: never chance, never gated by bond / skill / liking / weather / difficulty, Everyday) → a LOOSE END
+  that is due (`thread: { id, after: [days] }`; ≤ `threadsPerDay`, a gap between, never certain) → BY CHANCE (weights, `chance`,
+  `cooldown`, `limit`, `once`, less likely if recent, never the thing that just happened, and the trigger's `quiet` share of
+  nothing at all). `can()` gives "why not" in words; `spineNext()` says where the main story goes on. **Threads**: `open` /
+  `advance` / `close as`; `quiet: true` = a counted motif (her excuses, "Not this time."). **Ceremony**: `card` = a card the
+  first time (kinds chapter / person / place / creature / note, written by her), a nod after; codex pages; a finished page
+  gives its `grant`. **People**: `rep` / `aff` meters shown as a word (`standing`); `who: <npc>` reads the gate with that
+  person's closeness. **Conditions** (`cond.js`): story-state leaves are answered by the map's own `places.js when()`
+  (flag, flag+is, quest, questDone, seen, choice); the engine adds counted flags, thread, since, at, spotTag, slot, weather,
+  with, day, bond, skill, rep, aff, card, difficulty; `why()` in words. **Losing a fight** (a hook with `danger`):
+  `ctx.preset` from difficulty.js: knockout care → the `care` scene slot; else `saveChance` (bond, her Support, whether she's
+  along) → `saved` or `gameover` (`x.over`; the page offers Load your last save). **Saving**: the engine only emits
+  `autosave` (the moment before a danger hook; the end of every main-story beat or an event with `save`); the door
+  **`story.js`** (`loadData`, `open`, `context`, `settle`, `loadLastSave`) writes BOTH sections in one `GameSave.put` with the
+  epoch it read (`reloaded` → the page reloads), asks `Progress.story(id)` for each `grant`, then `GameSave.autosave(reason,
+  { force })`. `pending()` carries on an event left half-way (a closed window, a save from before a fight). **The map**:
+  story.json `spots` (tags + what you can do there) are what `data/places.json` `go: { story: <spot> }` walks into;
+  `game-world.js` `JunGame.startStory` opens **`story.html?at=<spot>`** (+ `js/story-page.js`, drawn by `js/story-view.js`:
+  dialogue box, her stand-in face, choices, cards, stand-in buttons for hooks) in the world's frame; arriving = the `enter`
+  trigger; flags the story sets open the next places (the sample: Home is open → `day_started` opens the scrapyard and the
+  slums → `needs_al` shows the workshop → `harbor_known` → Port Buffer → `hull_found` / `dinghy_ready` → Brandwater Bay).
+  Things: keepsakes and the coil are entries in data/items.json given by `story_*` grants in data/progress.json. What desktop
+  Jun may hear later (#36): `tell` kinds only (story.json `tells`), kept in localStorage `jun.story.heard` (nothing reads it
+  yet; never in a save; cleared by factory reset). **Story lab** `webapp/story-lab.html` + `js/story-lab.js` (**F12 > Labs**;
+  main.js allows the url): a SANDBOX game on the page (never the real game, no grants, no saves): play, the map as the
+  sandbox's story opened it, "why, and why not" for every event, both halves of the memory, the real game's summary + copy
+  it in, check the data (`validate` + `Places.check`), "a hundred playthroughs in a moment" (`story-sim.js`: a stand-in with a
+  temperament; a game over = back to its last autosave), every number (tried, never saved). **Rules, tested**
+  (`validate(data, { grants, areas, places })` + `.github/scripts/js/story-engine.test.mjs`): the main story is told to its
+  end by every kind of player at any bond, on every difficulty, with everything rated off; every choice list has a plain
+  Everyday choice; every road ends; shipped data has no 18+ and no "agreed beforehand" entries (the owner's); the engine
+  files are pure and never touch the bond or xp. Registry: `story`, `story_lab`. NOT built: real hooks (a delve / voyage /
+  fight / minigame / build actually played from an event: stand-in "how did it go?" buttons today), Game Jun's lines flavored
+  by the local model, her real portrait and voice, the two books (her journal chapters, your notebook's codex pages), an
+  event / scene maker for the owner, desktop Jun hearing about it (#36), weather and who's-along as real game state (the
+  page passes them), places' art. NOT seen in the desktop app (cloud test: Playwright + Chrome with `**/api/**` stubbed).
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

@@ -447,6 +447,8 @@ function wireAccount() {
     try { localStorage.removeItem('jun.feel'); } catch (e) {}
     // … and any delve in progress or just finished (#32)
     try { localStorage.removeItem('jun.delve'); } catch (e) {}
+    // … and what desktop Jun heard about the game's story (#34; the story itself is in the game's sections, erased on her server)
+    try { localStorage.removeItem('jun.story.heard'); } catch (e) {}
     post({ type: 'reload' });
     location.reload();
   });

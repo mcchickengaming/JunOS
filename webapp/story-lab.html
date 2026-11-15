@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story lab · the story-event engine</title>
+<link rel="icon" href="favicon.png">
+<style>
+  :root { --bg: #17131f; --panel: #221c2d; --ink: #e9e3f2; --dim: #a79cb8; --edge: #3a3149; --accent: #b83a66; --ok: #5fd39a; --bad: #ff6b81;
+    --sv-box: #1c1726; --sv-edge: #3a3149; --sv-dim: #a79cb8; --sv-accent: #ff7aa2; --sv-her: #7ac8ff; --sv-ink: #e9e3f2; --sv-btn: #2f2640; --sv-card: #ffd76a; --sv-cardbg: #2a2416; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 14px 18px 4px; }
+  h1 { font-size: 17px; margin: 0; }
+  header p { margin: 2px 0 0; color: var(--dim); font-size: 12px; max-width: 900px; }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; padding: 12px 18px 40px; }
+  section { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  section.wide { grid-column: 1 / -1; }
+  h2 { font-size: 12px; margin: 0 0 8px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  h3 { font-size: 13px; margin: 10px 0 4px; }
+  .note { margin: 4px 0 8px; color: var(--dim); font-size: 12px; }
+  .warn { color: #ffd76a; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--edge); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.yes { color: var(--ok); } td.no { color: var(--dim); }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; align-items: center; }
+  button, select, input { background: #2f2640; color: var(--ink); border: 1px solid var(--edge); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 13px; }
+  input[type=number] { width: 84px; }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .setup { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 12px; margin-bottom: 8px; }
+  .setup label { display: grid; gap: 2px; font-size: 12px; color: var(--dim); }
+  .play { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .play { grid-template-columns: 1fr; } }
+  #scene { max-height: 520px; overflow: auto; padding-right: 4px; }
+  .chip { display: inline-block; padding: 1px 7px; border: 1px solid var(--edge); border-radius: 10px; margin: 2px 4px 2px 0; font-size: 12px; }
+  .chip.on { border-color: var(--ok); }
+  .tune { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 14px; }
+  .tune label { display: grid; grid-template-columns: 1fr 84px; gap: 6px; align-items: center; font-size: 12px; color: var(--dim); }
+  pre { white-space: pre-wrap; font-size: 12px; color: var(--dim); margin: 6px 0 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Story lab · the story-event engine</h1>
+  <p>Play the story in a <b>sandbox</b>: a pretend game kept only on this page. Nothing here touches your real game, gives you anything or
+    makes a save. The story in it is a stand-in sample (Act 1's opening). See why something happened or didn't, look inside the story's
+    memory, and play a hundred playthroughs in a moment.</p>
+</header>
+<main>
+  <section class="wide">
+    <h2>Play it</h2>
+    <div class="setup">
+      <label>Your bond with her <select id="bond"></select></label>
+      <label>Difficulty <select id="diff"></select></label>
+      <label><span class="herName">She</span> <select id="together"><option value="1">comes along</option><option value="0">stays home</option></select></label>
+      <label>Seed (the same number, the same luck) <input type="number" id="seed" value="1" min="0"></label>
+    </div>
+    <div class="btns"><button id="restart">Start over</button><span class="note" id="when"></span></div>
+    <div class="play">
+      <div>
+        <div id="scene" aria-live="polite"></div>
+      </div>
+      <div>
+        <h3>The map (as the sandbox's story has opened it)</h3>
+        <div class="btns" id="map"></div>
+        <h3>Where the main story goes next</h3>
+        <div class="note" id="next"></div>
+        <h3>Loose ends</h3>
+        <div id="threads" class="note"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wide">
+    <h2>Why, and why not</h2>
+    <p class="note">Every event, and what stands between it and happening right now (wherever you are, whatever you do).</p>
+    <table id="why"></table>
+  </section>
+
+  <section>
+    <h2>What the story remembers</h2>
+    <p class="note">Story state: what game saves keep and the map reads.</p>
+    <div id="state"></div>
+  </section>
+  <section>
+    <h2>The engine's own part</h2>
+    <p class="note">The story clock, people, the notebook's cards, what's queued.</p>
+    <div id="extras"></div>
+  </section>
+
+  <section>
+    <h2>Your real game</h2>
+    <p class="note" id="real">…</p>
+    <div class="btns"><button id="copyReal">Copy it into the sandbox</button></div>
+  </section>
+  <section>
+    <h2>Check the story's data</h2>
+    <p class="note">The rulebook: every link lands, every road ends, the main story can't be blocked, nothing rated is shipped.</p>
+    <div class="btns"><button id="check">Check it</button></div>
+    <pre id="checkOut"></pre>
+  </section>
+
+  <section class="wide">
+    <h2>A hundred playthroughs in a moment</h2>
+    <p class="note">A stand-in player lives through the story with the real rules. Does the main story always get told? How often does each
+      by-chance event show up? Do loose ends come back?</p>
+    <div class="btns">
+      <label>playthroughs <input type="number" id="simN" value="100" min="5" max="500" style="width:70px"></label>
+      <label>story days each <input type="number" id="simDays" value="12" min="2" max="60" style="width:64px"></label>
+      <label>the player <select id="simPolicy"></select></label>
+      <button id="simRun">Play them</button><span id="simBusy" class="note"></span>
+    </div>
+    <div id="simSum" class="note"></div>
+    <table id="simOut"></table>
+    <table id="simThreads" style="margin-top:10px"></table>
+  </section>
+
+  <section class="wide">
+    <h2>Every number</h2>
+    <p class="note">Change a number and the next thing you do uses it. <b>Nothing here is saved</b>: it's for trying.
+      Found numbers you like? Tell Claude which ones, and they become the real ones.</p>
+    <div id="tune"></div>
+    <div class="btns"><button id="tuneReset">Back to the real numbers</button></div>
+  </section>
+</main>
+<script type="module" src="js/story-lab.js?v=2"></script>
+</body>
+</html>

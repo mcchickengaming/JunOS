@@ -16,11 +16,19 @@ test('the shipped map is valid, and every page it opens exists', () => {
   for (const p of data.places) if (p.go?.url) assert.ok(fs.existsSync(new URL('../../../webapp/' + p.go.url.split(/[?#]/)[0], import.meta.url)), p.go.url);
 });
 
-test('a fresh game: only under the city opens; the rest show as coming', () => {
+test('a fresh game: Home (where the sample story begins) and the delve are open; the story opens the rest', () => {
   const v = P.view(data, S.blank());
-  assert.deepEqual(v.map(p => [p.id, p.state]), [['under_city', 'open'], ['scrapyard', 'locked'], ['port_buffer', 'locked'], ['home', 'locked']]);
-  assert.equal(v[1].line, 'Coming with the story.');
-  assert.equal(v[1].go, null);
+  assert.deepEqual(v.map(p => [p.id, p.state]), [['home', 'open'], ['slums', 'locked'], ['scrapyard', 'locked'], ['under_city', 'open'], ['port_buffer', 'locked']]);
+  assert.deepEqual(v[0].go, { story: 'home' });
+  assert.equal(v[2].line, 'Coming with the story.');
+  assert.equal(v[2].go, null);
+  // a flag the story sets opens a place; a hidden one shows once its flag is there
+  const s = S.blank();
+  S.setFlag(s, 'day_started'); S.setFlag(s, 'needs_al');
+  const w = P.view(data, s);
+  assert.equal(w.find(p => p.id === 'scrapyard').state, 'open');
+  assert.equal(w.find(p => p.id === 'als_workshop').state, 'open');
+  assert.equal(w.some(p => p.id === 'brandwater_bay'), false);
 });
 
 test('conditions read story state: flags, quests, seen, choices, all / any / not', () => {
