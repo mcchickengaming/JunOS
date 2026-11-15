@@ -171,6 +171,9 @@ jobs:
       - name: Delves (her prompt lines)
         run: php .github/scripts/delve.test.php
 
+      - name: Game saves
+        run: php .github/scripts/gamesave.test.php
+
       - name: Consent + ratings gate
         run: php .github/scripts/gate.test.php
 

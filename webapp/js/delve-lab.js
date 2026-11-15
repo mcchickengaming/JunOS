@@ -11,6 +11,7 @@ import * as Progress from './core/progress.js?v=2';
 import * as F from './core/features.js?v=3';
 import { dayMood, dayKey } from './core/feel/initiative.js?v=2';
 import * as Store from './core/feel/store.js?v=4';
+import * as GameSave from './core/gamesave.js?v=3';
 
 const { Run, Party, Gate } = Delve;
 const { Enc, Ab } = Run;
@@ -477,3 +478,7 @@ async function init() {
 }
 
 init().catch(e => { say('The lab could not start: ' + (e && e.message)); console.error(e); });
+
+// a game save was loaded (or a new game started) in another window: the delve in progress here belongs to the old
+// game, so start over from the one the save put back instead of writing the old one over it (game saves, #35 a)
+GameSave.onChange((e) => { if (e.type === 'loaded') location.reload(); });

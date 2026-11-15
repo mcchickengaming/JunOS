@@ -173,8 +173,35 @@ check 'tts voices with the sidecar down'   502 -b "$cookies" "$BASE/api/tts.php?
 body_has 'tts says why' 'tts_unreachable'
 check 'stt with the sidecar down'          502 -b "$cookies" -X POST -H "Origin: $ORIGIN" \
 	-H 'Content-Type: audio/wav' --data 'RIFF' "$BASE/api/stt.php?action=stt"
+# game saves (#35 a): the game's own progress in slots; she is never in a save
+check 'game saves need a session'       401 "$BASE/api/gamesave.php"
+check 'game saves list'                 200 -b "$cookies" "$BASE/api/gamesave.php"
+check 'game section write'              200 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"put","sections":{"story":{"chapter":1}},"epoch":1}' "$BASE/api/gamesave.php"
+check 'game save'                       200 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"save","kind":"named","name":"smoke"}' "$BASE/api/gamesave.php"
+gsave=$(sed -n 's/.*"result":{"ok":true,"id":\([0-9]*\).*/\1/p' "$work/body")
+check 'game load'                       200 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data "{\"action\":\"load\",\"id\":${gsave:-0}}" "$BASE/api/gamesave.php"
+body_has 'a load can be undone' '"canUndo":true'
+check 'a page on the old game is refused' 409 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"put","sections":{"story":{"chapter":2}},"epoch":1}' "$BASE/api/gamesave.php"
+check 'game section read'               200 -b "$cookies" "$BASE/api/gamesave.php?section=story"
+body_has 'the loaded game is live' '"chapter":1'
+check 'a file that is not a save'       400 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"import","file":{"format":"zip"}}' "$BASE/api/gamesave.php"
+check 'a game save of nobody'           404 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"load","id":999999}' "$BASE/api/gamesave.php"
+check 'the bond by hand'                200 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"bond","stage":2}' "$BASE/api/relationship.php"
+body_has 'the bond was set, quietly' '"set_why":"hand"'
+check 'the bond by hand needs a stage'  400 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"bond","stage":"lots"}' "$BASE/api/relationship.php"
 check 'unlock developer access'         200 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
 	--data '{"key":"ci-dev-key"}' "$BASE/api/auth.php?action=promote"
+# the gauges are capped by the bond stage (35 at Stranger): set it to Devoted first so an override of 99 can stick
+check 'the bond by hand, all the way'   200 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+	--data '{"action":"bond","stage":6}' "$BASE/api/relationship.php"
 check 'relationship override for dev'   200 -b "$cookies" -X PUT -H "Origin: $ORIGIN" \
 	-H "$(json)" --data '{"affection":99,"trust":99,"tension":0}' "$BASE/api/relationship.php"
 body_has 'relationship override stored' '"affection":99'

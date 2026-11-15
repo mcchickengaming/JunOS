@@ -60,6 +60,7 @@ php .github/scripts/quirks.test.php
 php .github/scripts/feel.test.php
 php .github/scripts/progress.test.php
 php .github/scripts/delve.test.php
+php .github/scripts/gamesave.test.php
 node --test .github/scripts/js/*.test.mjs
 ```
 New backend features get their own `.github/scripts/<feature>.test.php` (see `bond.test.php` for the pattern:
@@ -508,6 +509,53 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   way in, never onto a thing, a backed-off creature stays put; own rng stream `run.ms`; positions in `run.mob[depth][id]`;
   `Run.thingAt` shows them where they are. Her line moment `followed`. Switch "Creatures move" (`feature:delve_moving`,
   default on → `Run.start({ mobs })`). Balance unchanged in the time-lapse (~18 min, ~11 meetings).
+
+- **Game saves** (#35 a, Nov 15, Opus): the game in her window (windowed mode = an authored story, Nov 14) keeps its own
+  progress in slots; desktop Jun (chats, memories, feelings, needs, HER skills, the bond's growth) is shared and NEVER in a
+  save. `webapp/api/lib/gamesave.php` (rules in its header), migration 035 (`game_state`, `game_saves`, and `bond.set_at /
+  set_from / set_why`; both tables in the factory-reset list), `api/gamesave.php`, client `js/core/gamesave.js`, `JUN_GAMESAVES`
+  (default on; off = every call 404 `off`, nothing lost). **The live game** = named SECTIONS (`game_section_get/put`,
+  `game_sections_put` for several at once; names `^[a-z][a-z0-9_]{0,31}$`, ≤ 256 KB each, ≤ 2 MB together; null removes one).
+  A game system owns its section's shape; gamesave.php only reads an optional `_summary` (`place`, `chapter`, `difficulty`,
+  `note`: short words for the save card). **`epoch`** changes on every load / undo / new game: a page writes with the epoch it
+  read (`put {sections, epoch}`), a stale one gets 409 `reloaded` (and js/core/gamesave.js broadcasts `loaded` so every window
+  reloads its game; the delve lab reloads itself). The play clock: `tick {seconds}` (the server counts no more than real time,
+  ≤ 300 s a tick); `GameSave.startClock()` on a game page. **A save** = `{ made, game: { sections, played, startedAt },
+  progress: the player's side of the progression blob (his skills EXCEPT `GAMESAVE_DESKTOP_SKILLS` = focus, credits, items,
+  keepsakes, buffs, story, jobs), client: page parts, bond: a RECORD { xp, stage } }`. Page parts: `GameSave.part(name, { get,
+  set, clear })` / `localPart(name, key, field)`; registered: `delve` = `jun.delve` → `run` (NOT `last`, which is desktop Jun's
+  memory of the last delve). Loading puts registered parts back or clears them. **Slots** (`GAMESAVE_TUNE`): auto (3, rotating,
+  at most one per 30 s unless `force`, off in Settings = `local:jun.game.autosave` 'false'), quick (one, replaced), named (≤ 50,
+  imports count), before_load (5; made before every load / undo / new game; the one "Undo" points at is never rotated away).
+  **Load** (`gamesave_load`): before-load save of what's live (with the page's current parts and the bond as it is) → the
+  slot goes live (`gamesave_apply`: sections, play clock, his progress part via `gamesave_progress_apply`, which keeps her
+  skills, Focus, today's caps, opt-ins, and drops a running GAME session but not a desktop-only one) → `lastLoad` { before,
+  loaded, name, usedBond }. **Undo** loads `lastLoad.before` (its own safety save is "Before undoing"), so undo twice = redo.
+  **New game**: a before-load save, then everything the game holds back to empty; the bond and her untouched. **The bond**:
+  only with `useBond` ("Use this save's bond", off by default, Nov 15), the page makes a desktop save point first
+  (`junDesktop.saves('save', …)`; a failed one stops the load; no desktop app = skipped, the before-load save still keeps the
+  bond for Undo), then `bond_set(user, xp, 'save')`. **`bond_set`** (lib/bond.php) is the ONE way the bond can go down, only by
+  the player's choice: quiet (no pending stage-up, no memory note, a history event `bond_set:N`), keeps today's cap, records
+  set_at/from/why; for 36 h `bond_context` adds "A shift you can't quite place" (a save: like another timeline's her left
+  something behind, a half-remembered dream; by hand: closer / a little further apart, no blame), never stages or game words.
+  **Files** `.jungame` = `{ format: 'jungame', v: 1, name, kind, saved, summary, sum, payload }`; `gamesave_sum` = sha256 of
+  the payload with sorted keys (catches damage, not cheating: editing your own save is the player's business). Import →
+  checked (`format`, `v` newer → `newer`, sum → `damaged`), cleaned (`gamesave_clean`: known shape only, xp/credits ≥ 0, bad
+  names refused, the bond's stage recomputed from its xp, unknown keys dropped), kept as a NEW named save marked `imported`;
+  never loaded on its own. **Settings** > Saves & updates > Game saves (`loadGame` / `drawGame` / `gameRow` in
+  desktop-settings.js): save with a name, the list (kind badge, when, `GameSave.cardLine`, "made as <bond>"), Load → a panel
+  with the bond box (says the save's bond and yours now), ⋯ → rename / Keep it (auto → named) / Download / Delete (click
+  twice), Undo last load / Redo, Upload a save… or drop a file on the list, Autosaves switch, Start a new game (click twice).
+  **Set the bond by hand** (Her > Your bond; registry `bond_by_hand` with **`layer: "all"`** = only in the Everything view,
+  a new registry option: controls.js `decorate` sets `data-only="all"`, CSS hides it in Simple, search's `reveal` adds `.found`):
+  a stage picker + Set (click twice), a desktop save point first, `POST api/relationship.php {action: 'bond', stage}` →
+  `bond_set(…, 'hand')`. Registry: `game_saves` (`env:JUN_GAMESAVES`), `game_autosave`, `bond_by_hand`. How to play: "Game
+  saves". All words in `GameSave.WORDS` (a test keeps them in step with every error code of the server). Tests:
+  `.github/scripts/gamesave.test.php`, `.github/scripts/js/gamesave.test.mjs`, game save + bond-by-hand checks in
+  api-checks.sh (which now sets the test account's bond to Devoted before the gauge override, fixing the two long-known
+  smoke failures). For the story engine (#34) and story state (#35 b): keep your state in a section of your own, put a
+  `_summary` in it for the save cards, call `GameSave.autosave(reason, { force: true })` at beats that must be kept, write with
+  the epoch you read, and listen to `GameSave.onChange` for `loaded`.
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

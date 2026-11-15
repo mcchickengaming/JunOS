@@ -82,6 +82,7 @@
   .row.off, .row.paused { opacity: .55; }
   /* the registry's layers: in Simple, extra rows wait behind "More settings" (js/home/controls.js) */
   body.layer-simple .row[data-more="1"] { display: none; }
+  body.layer-simple .row[data-only="all"]:not(.found) { display: none; }
   body.layer-simple .folds-open > .row[data-more="1"], body.layer-simple .folds-one > .row[data-more="1"] { display: flex; }
   .more-btn { margin: 2px 0 10px; font-size: 12.5px; }
   .fnote { display: block; margin-top: 3px; font-size: 12px; color: var(--accent); }
@@ -173,6 +174,27 @@
   .save-path { word-break: break-all; }
   #saveMsg.err, #saveNote.err { color: #ff8a8a; }
   @media (max-width: 440px) { .save-row { flex-wrap: wrap; } .save-row .acts { width: 100%; justify-content: flex-end; } }
+  /* game saves (#35 a): the same rows as her saves, plus a load panel and a few more actions */
+  .save-kind.auto, .save-kind.quick { background: color-mix(in srgb, var(--fg) 12%, transparent); }
+  .save-kind.before_load { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--fg); }
+  .save-kind.imported { background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--fg); }
+  .game-rows { position: relative; border-radius: 10px; transition: outline-color .15s; outline: 2px dashed transparent; outline-offset: 2px; }
+  .game-rows.drop { outline-color: var(--accent); }
+  .game-row { flex-wrap: wrap; }
+  .game-row .what .card-line { display: block; opacity: .85; }
+  .game-more { display: none; width: 100%; justify-content: flex-end; gap: 6px; padding-top: 6px; }
+  .game-row.open .game-more { display: flex; flex-wrap: wrap; }
+  .game-load { display: none; width: 100%; margin-top: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .game-row.loading .game-load { display: block; }
+  .game-load label { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0; cursor: pointer; }
+  .game-load label input { margin-top: 3px; }
+  .game-load .acts { justify-content: flex-end; }
+  .game-rename { flex: 1; min-width: 120px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--bg-2); color: var(--fg); font: inherit; }
+  .game-undo { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+  .game-undo span { flex: 1; }
+  .game-drop { margin-left: 6px; }
+  #gameMsg.err { color: #ff8a8a; }
 </style>
 </head>
 <body>
@@ -220,6 +242,7 @@
       <div class="mood-row mood-row--tension"><span class="mood-label">Tension</span><div class="mood-track"><div class="mood-meter" aria-hidden="true"></div></div><span class="mood-val">-</span></div>
     </div>
   </div>
+  <div id="bondHandRows"></div>
   <h3 class="sub" id="at-touches">Touches</h3>
   <div class="card touch-block" id="touchBlock" hidden>
     <div class="bond-head"><span class="bond-label">Today's touches</span></div>
@@ -414,6 +437,24 @@
     <button type="button" class="btn" id="saveDefault">Use the default</button>
     <button type="button" class="btn" id="saveOpen">Open the folder</button></p>
   <p class="hint">Tip: a folder on another drive (like D:) keeps her safe even if this drive ever fails.</p>
+  <h2 id="at-gamesaves">Game saves</h2>
+  <p class="hint">The game in her window keeps its own saves. She isn't in them: her memories, her feelings and how she is
+    with you stay hers, whichever game you load.</p>
+  <div id="gameOff" class="hint" hidden></div>
+  <div id="gameBox">
+    <div class="save-new">
+      <input type="text" id="gameName" maxlength="80" placeholder="Name it, like &quot;Before the harbor&quot;" aria-label="Name for the game save">
+      <button type="button" class="btn accent" id="gameSaveNow">Save the game</button>
+    </div>
+    <p class="hint" id="gameMsg" role="status"></p>
+    <div class="game-undo" id="gameUndo" hidden></div>
+    <div id="gameRows" class="game-rows" aria-label="Game saves"></div>
+    <p class="hint" id="noGameSaves" hidden>No game saves yet. Once the story arrives the game saves itself as you play; you can save now too.</p>
+    <p class="adds"><button type="button" class="btn" id="gameUpload">Upload a save…</button>
+      <input type="file" id="gameFile" accept=".jungame,application/json" hidden>
+      <span class="hint game-drop">or drop a .jungame file on this list</span></p>
+    <div id="gameRowsSettings"></div>
+  </div>
   <h2>Updates</h2>
   <div class="row"><div class="what"><b>Get the latest update</b><span>Jun checks GitHub for new changes, saves herself, updates and restarts.
     If anything goes wrong she tells you and stays as she is.</span></div>
@@ -514,6 +555,10 @@
   <div class="row"><div class="gesture">🕯️</div><div class="what"><b>Go down</b><span>Settings &gt; Her &gt; Delves &gt; Open the delve lab &gt; Go down. Alone, or with her along. <b>W</b> <b>S</b> walk, <b>A</b> <b>D</b> sidestep, <b>Q</b> <b>E</b> turn, <b>Space</b> uses what's in front of you or feels along the wall.</span></div></div>
   <div class="row"><div class="gesture">⚔️</div><div class="what"><b>Fights</b><span>Walk into something to meet it. Pick what to do with the number keys; most places wait for you as long as you like. Backing off always works.</span></div></div>
   <div class="row"><div class="gesture">🩹</div><div class="what"><b>Nothing is ever lost</b><span>Head home any time. If you go down she patches you up, and you keep everything.</span></div></div>
+  <h2>Game saves</h2>
+  <div class="row"><div class="gesture">💾</div><div class="what"><b>Save and load the game</b><span>Settings &gt; Saves &amp; updates &gt; Game saves. Name a save, or let the game autosave as you play. Load any save; the game you had is saved first, so <b>Undo last load</b> always brings it back.</span></div></div>
+  <div class="row"><div class="gesture">🫶</div><div class="what"><b>She isn't in a save</b><span>Her memories, her feelings and how she is with you stay hers whichever game you load. A save remembers the bond it was made with; tick <b>Use this save's bond</b> when loading only if you want that one.</span></div></div>
+  <div class="row"><div class="gesture">📤</div><div class="what"><b>Share a save</b><span>⋯ &gt; Download makes a .jungame file. Upload a save… (or drop the file on the list) adds it as a new save; it's never loaded until you load it.</span></div></div>
   <h2>Talking</h2>
   <div class="row"><div class="gesture">💬</div><div class="what"><b>Chat</b><span>Click her torso, legs or anywhere without its own reaction. Double-click to send her back inside.</span></div></div>
   <div class="row"><div class="gesture">🖱️</div><div class="what"><b>Her menu</b><span>Right-click her: talk, spots, go back inside, hide.</span></div></div>
@@ -525,6 +570,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=55"></script>
+<script type="module" src="js/desktop-settings.js?v=59"></script>
 </body>
 </html>

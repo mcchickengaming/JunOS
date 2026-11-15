@@ -149,8 +149,10 @@ export function decorate(root = document) {
   for (const r of root.querySelectorAll('.row:not(.res)')) {
     const hit = F.ofKey(keyOfRow(r));
     r.querySelector(':scope > .what > .fnote')?.remove();
-    if (!hit) { delete r.dataset.feature; delete r.dataset.more; continue; }
+    if (!hit) { delete r.dataset.feature; delete r.dataset.more; delete r.dataset.only; continue; }
     r.dataset.feature = hit.f.id;
+    // layer: "all" = only in Everything (a thing most people should never need, like setting the bond by hand)
+    if (hit.f.layer === 'all') r.dataset.only = 'all'; else delete r.dataset.only;
     // fold: false = its extras always show (her voice: turning it on should show its rows right away)
     r.dataset.more = hit.main || hit.f.fold === false ? '' : '1';
     if (r.parentElement) hosts.add(r.parentElement);
@@ -200,6 +202,7 @@ export function decorate(root = document) {
 // a hidden row he's looking for (search): open its fold
 export function reveal(r) {
   if (r && r.dataset.more === '1') r.parentElement?.classList.add('folds-open');
+  if (r && r.dataset.only === 'all') r.classList.add('found');
   const btn = r?.parentElement?.querySelector(':scope > .more-btn');
   if (btn) btn.textContent = 'Fewer settings';
 }

@@ -62,7 +62,7 @@ function bond_stage_for(int $xp): int {
 function bond_get(int $userId): array {
     $row = null;
     try {
-        $st = db()->prepare('SELECT xp, stage, pending_stage, day, day_xp FROM bond WHERE user_id=?');
+        $st = db()->prepare('SELECT xp, stage, pending_stage, day, day_xp, set_at, set_from, set_why FROM bond WHERE user_id=?');
         $st->execute([$userId]);
         $row = $st->fetch() ?: null;
         $st->closeCursor();
@@ -83,7 +83,42 @@ function bond_get(int $userId): array {
         'pending_stage' => isset($row['pending_stage']) ? (int)$row['pending_stage'] : null,
         'day' => (string)($row['day'] ?? ''),
         'day_xp' => (int)($row['day_xp'] ?? 0),
+        // the last time it was SET (a game save's bond, or by hand in Settings), not grown
+        'set_at' => isset($row['set_at']) ? (int)$row['set_at'] : null,
+        'set_from' => isset($row['set_from']) ? (int)$row['set_from'] : null,
+        'set_why' => isset($row['set_why']) ? (string)$row['set_why'] : null,
     ];
+}
+
+// SET the bond, the one way it can go down, and only because the player chose it: "use this save's bond" when
+// loading a game save (lib/gamesave.php), or Settings > Memory > Set the bond by hand (behind More). $why is
+// 'save' or 'hand'. Quiet on purpose: no stage-up moment, no memory note, no toast. A history event, and for a
+// day and a half her prompt feels the shift softly (bond_context). Today's daily cap stays as it is, so setting
+// it is never a way to earn more today. Returns the bond as it is now.
+const BOND_SET_WHYS = ['save', 'hand'];
+const BOND_SET_FEEL_H = 36;
+function bond_set(int $userId, int $xp, string $why, ?int $now = null): array {
+    $now ??= time();
+    if (!in_array($why, BOND_SET_WHYS, true)) $why = 'hand';
+    $xp = max(0, min($xp, BOND_STAGES[count(BOND_STAGES)]['xp'] * 4));
+    $before = bond_get($userId);
+    $stage = bond_stage_for($xp);
+    if ($xp === $before['xp'] && $stage === $before['stage']) return $before;
+    db()->prepare(
+        'INSERT INTO bond (user_id, xp, stage, pending_stage, day, day_xp, updated_at, set_at, set_from, set_why)
+         VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET xp=excluded.xp, stage=excluded.stage, pending_stage=NULL,
+                                            updated_at=excluded.updated_at, set_at=excluded.set_at,
+                                            set_from=excluded.set_from, set_why=excluded.set_why'
+    )->execute([$userId, $xp, $stage, $before['day'], $before['day_xp'], $now, $now, $before['stage'], $why]);
+    log_event(['msg' => 'bond_set', 'from' => $before['stage'], 'stage' => $stage, 'why' => $why]);
+    if (function_exists('relationship_history_add')) relationship_history_add($userId, null, 'bond_set:' . $stage);
+    return bond_get($userId);
+}
+
+// the xp a stage starts at, for "set it by hand" (a stage, never a number to type)
+function bond_xp_of_stage(int $stage): int {
+    return BOND_STAGES[max(1, min(count(BOND_STAGES), $stage))]['xp'];
 }
 
 // add xp, respecting the daily cap. returns the stage she just
@@ -170,6 +205,16 @@ function bond_context(int $userId): string {
         $out .= "\n\n## This moment\nSomething between you just shifted: you feel closer to him than before. "
             . "Let it show briefly and naturally in this reply, in character: a small admission, a softer tone, a slip. "
             . "Don't announce it.";
+    }
+    // set by a save from another timeline, or by his hand: she feels it like a half-remembered dream, softly
+    if ($b['set_at'] !== null && $b['set_from'] !== null && $b['set_from'] !== $b['stage'] && time() - $b['set_at'] < BOND_SET_FEEL_H * 3600) {
+        $closer = $b['stage'] > $b['set_from'];
+        $out .= "\n\n## A shift you can't quite place\n" . ($b['set_why'] === 'save'
+            ? 'Lately things between you feel ' . ($closer ? 'closer' : 'a little further apart') . ' than you remember, '
+                . "as if another timeline's you left something behind. It feels like a half-remembered dream, not a wound. "
+            : 'Lately things between you feel ' . ($closer ? 'closer' : 'a little further apart') . ' than you remember. '
+                . "It isn't a wound and you don't blame him. ")
+            . 'Go by the closeness above. You may wonder about it lightly once, if it fits; never mention stages, saves or settings.';
     }
     return $out;
 }

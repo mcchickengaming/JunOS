@@ -14,10 +14,11 @@ import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=9';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=3';
-import * as Controls from './home/controls.js?v=10';
+import * as Controls from './home/controls.js?v=11';
 import * as Stores from './home/stores.js?v=7';
 import * as Feel from './core/feel/feel.js?v=4';
 import * as Progress from './core/progress.js?v=2';
+import * as GameSave from './core/gamesave.js?v=3';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -64,7 +65,8 @@ function show(tab, anchor) {
   if (tab === 'talk') { loadDesk(); HerWin.hello(); }
   if (tab === 'her') { HerWin.hello(); HerWin.loadHer(); }
   if (tab === 'account') HerWin.loadAccount();
-  if (tab === 'saves') setTimeout(loadSaves);
+  if (tab === 'saves') { setTimeout(loadSaves); setTimeout(loadGame); }
+  if (tab === 'her') setTimeout(buildBondByHand); // after this module has set itself up
   if (tab === 'comfort') loadComfort();
   soon();
   const el = anchor && document.getElementById(anchor);
@@ -1091,6 +1093,263 @@ $('updateNow').addEventListener('click', () => D?.saves && savesCall('update'));
 D?.onSavesChanged?.(() => { if (!$('tab-saves').hidden) loadSaves(); });
 
 // ---------------------------------------------------------------
+// game saves (#35 a, core/gamesave.js → api/gamesave.php): the game in her window keeps its own saves.
+// She isn't in them. Loading never applies a save's bond unless "Use this save's bond" is ticked; then a save
+// point of her whole self comes first, and the "before loading" save keeps the bond as it was, so Undo puts it back.
+
+const GAME_KIND = { named: 'Yours', auto: 'Autosave', quick: 'Quicksave', before_load: 'Before loading' };
+let gameView = null;
+let gameOpen = null;       // the row with its extra actions open
+let gameLoading = null;    // the row with its load panel open
+let gameNewArmed = false;
+
+function gameMsg(text, err) {
+  const m = $('gameMsg');
+  m.textContent = text || '';
+  m.classList.toggle('err', !!err);
+}
+const gameSay = (r, fallback) => (r && r.error ? GameSave.say(r.error) : fallback);
+// her name as the player set it; with none, "She" to start a sentence and "her" inside one
+const herName = (inside = false) => { let n = ''; try { n = (localStorage.getItem('omega.names.bot') || '').trim(); } catch (e) {} return n || (inside ? 'her' : 'She'); };
+
+async function loadGame() {
+  const v = await GameSave.load();
+  if (v.off) {
+    $('gameBox').hidden = true;
+    $('gameOff').hidden = false;
+    $('gameOff').textContent = 'Game saves are switched off in her setup (JUN_GAMESAVES=off). Nothing saved is lost.';
+    return;
+  }
+  $('gameBox').hidden = false;
+  $('gameOff').hidden = true;
+  if (v.error) { gameMsg(GameSave.say(v.error), true); return; }
+  drawGame(v);
+}
+
+function gameBtn(text, fn, opts) { return Controls.buttonCtl(text, fn, opts); }
+
+function drawGame(v) {
+  gameView = v;
+  const rows = $('gameRows');
+  rows.textContent = '';
+  const saves = v.saves || [];
+  $('noGameSaves').hidden = saves.length > 0;
+  // undo the last load / new game, while its "before" save is still there
+  const undo = $('gameUndo');
+  undo.textContent = '';
+  const last = v.live?.lastLoad;
+  undo.hidden = !v.live?.canUndo;
+  if (v.live?.canUndo) {
+    const t = document.createElement('span');
+    t.className = 'hint';
+    t.textContent = last.undid ? `You undid loading “${last.undid}”. Undo again to load it back.`
+      : last.loaded === null ? 'You started a new game. Undo puts the game before it back.'
+      : `You loaded “${last.name}”. Undo puts back the game you had before.`;
+    undo.append(t, gameBtn(last.undid ? 'Redo' : 'Undo last load', async () => {
+      gameMsg('…');
+      const r = await GameSave.undo();
+      if (r.error) gameMsg(gameSay(r), true);
+      else gameMsg(r.bond ? `Done. Your bond is ${r.bond.name} again.` : 'Done.');
+      if (r.view) drawGame(r.view); else loadGame();
+    }));
+  }
+  for (const sv of saves) rows.append(gameRow(sv, v));
+  // the settings of this group (registry rows)
+  const host = $('gameRowsSettings');
+  host.textContent = '';
+  host.append(
+    Controls.row('Autosaves', 'The game saves itself as you play: the last 3 are kept. Your own saves are never touched.',
+      Controls.switchCtl(GameSave.autosaveOn(), (on) => Stores.write('local:' + GameSave.AUTOSAVE_KEY, on)), 'local:' + GameSave.AUTOSAVE_KEY),
+    Controls.row('Start a new game', 'The story starts over. What you have now is saved first, so you can undo. '
+      + herName() + ' and your bond stay as they are.',
+      gameBtn(gameNewArmed ? 'Sure? Click again' : 'Start a new game', async (e) => {
+        if (!gameNewArmed) { gameNewArmed = true; e.target.textContent = 'Sure? Click again'; setTimeout(() => { gameNewArmed = false; if (e.target.isConnected) e.target.textContent = 'Start a new game'; }, 4000); return; }
+        gameNewArmed = false;
+        const r = await GameSave.newGame();
+        gameMsg(r.error ? gameSay(r) : 'A new game. The one before is in "Before loading", and Undo brings it back.', !!r.error);
+        if (r.view) drawGame(r.view); else loadGame();
+      }, { danger: true })),
+  );
+  soon();
+}
+
+function gameRow(sv, v) {
+  const row = document.createElement('div');
+  row.className = 'row save-row game-row';
+  row.classList.toggle('open', gameOpen === sv.id);
+  row.classList.toggle('loading', gameLoading === sv.id);
+  const what = document.createElement('div');
+  what.className = 'what';
+  const b = document.createElement('b');
+  b.textContent = sv.name;
+  b.title = sv.name;
+  const sub = document.createElement('span');
+  const kind = document.createElement('span');
+  const imported = !!sv.summary?.imported;
+  kind.className = 'save-kind ' + (imported ? 'imported' : sv.kind);
+  kind.textContent = imported ? 'Uploaded' : (GAME_KIND[sv.kind] || sv.kind);
+  sub.append(kind, document.createTextNode(whenText(sv.created * 1000)));
+  const line = document.createElement('span');
+  line.className = 'card-line';
+  line.textContent = [GameSave.cardLine(sv), sv.summary?.bondName ? 'made as ' + sv.summary.bondName : ''].filter(Boolean).join(' · ');
+  what.append(b, sub, line);
+
+  const acts = document.createElement('div');
+  acts.className = 'acts';
+  acts.append(
+    gameBtn('Load', () => { gameLoading = gameLoading === sv.id ? null : sv.id; gameOpen = null; drawGame(gameView); }, { accent: gameLoading !== sv.id }),
+    gameBtn('⋯', () => { gameOpen = gameOpen === sv.id ? null : sv.id; gameLoading = null; drawGame(gameView); }),
+  );
+  acts.lastChild.title = 'More';
+  acts.lastChild.setAttribute('aria-label', 'More for this save');
+
+  // more: keep (autosaves etc. → a named save), rename, download, delete
+  const more = document.createElement('div');
+  more.className = 'game-more';
+  const name = document.createElement('input');
+  name.className = 'game-rename';
+  name.maxLength = 80;
+  name.value = sv.name;
+  name.setAttribute('aria-label', 'New name');
+  const doRename = async () => {
+    const r = await GameSave.rename(sv.id, name.value);
+    gameMsg(r.error ? gameSay(r) : 'Renamed.', !!r.error);
+    if (!r.error) gameOpen = null;
+    if (r.view) drawGame(r.view);
+  };
+  name.addEventListener('keydown', (e) => { if (e.key === 'Enter') doRename(); });
+  more.append(name, gameBtn('Rename', doRename));
+  if (sv.kind !== 'named') more.append(gameBtn('Keep it', async () => {
+    const r = await GameSave.keep(sv.id);
+    gameMsg(r.error ? gameSay(r) : 'Kept: it\'s one of your saves now and never goes away on its own.', !!r.error);
+    if (!r.error) gameOpen = null;
+    if (r.view) drawGame(r.view);
+  }));
+  more.append(gameBtn('Download', async () => {
+    const r = await GameSave.download(sv.id);
+    gameMsg(r.error ? gameSay(r) : `Downloaded “${r.fileName}”.`, !!r.error);
+  }));
+  let armed = false;
+  more.append(gameBtn('Delete', async (e) => {
+    if (!armed) { armed = true; e.target.textContent = 'Sure? Click again'; setTimeout(() => { armed = false; if (e.target.isConnected) e.target.textContent = 'Delete'; }, 4000); return; }
+    const r = await GameSave.remove(sv.id);
+    gameOpen = null;
+    gameMsg(r.error ? gameSay(r) : `Deleted “${sv.name}”.`, !!r.error);
+    if (r.view) drawGame(r.view); else loadGame();
+  }, { danger: true }));
+
+  // the load panel: what happens, and the bond box (off by default)
+  const panel = document.createElement('div');
+  panel.className = 'game-load';
+  const p = document.createElement('div');
+  p.textContent = `Load “${sv.name}”? The game you have now is saved first ("Before loading"), so Undo can put it back.`;
+  const nowBond = v.bond?.name || '';
+  const theirs = sv.summary?.bondName || '';
+  const same = !theirs || theirs === nowBond;
+  const lab = document.createElement('label');
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = false;
+  const txt = document.createElement('span');
+  txt.textContent = same
+    ? `Use this save's bond (${theirs || 'the same'}, the same as now).`
+    : `Use this save's bond: ${theirs} (yours now: ${nowBond}). A save point of ${herName(true)} comes first, and Undo puts your bond back.`;
+  lab.append(box, txt);
+  const keep = document.createElement('div');
+  keep.className = 'hint';
+  keep.textContent = `Not ticked: your bond stays ${nowBond || 'as it is'}. ${herName()} stays herself either way.`;
+  const pacts = document.createElement('div');
+  pacts.className = 'acts';
+  pacts.append(
+    gameBtn('Cancel', () => { gameLoading = null; drawGame(gameView); }),
+    gameBtn('Load it', async (e) => {
+      e.target.disabled = true;
+      gameMsg(box.checked ? `Saving ${herName(true)} first…` : 'Loading…');
+      const r = await GameSave.loadSave(sv.id, { useBond: box.checked });
+      gameLoading = null;
+      if (r.error === 'savepoint') gameMsg(`Couldn't save ${herName(true)} first (${r.why}), so nothing was loaded.`, true);
+      else if (r.error) gameMsg(gameSay(r), true);
+      else gameMsg(`Loaded “${sv.name}”.` + (r.bond ? ` Your bond is ${r.bond.name} now.` : '')
+        + (box.checked && r.savePoint?.skipped ? ` (No save point: open this from the Jun desktop app for one. Undo still puts your bond back.)` : ''));
+      if (r.view) drawGame(r.view); else loadGame();
+    }, { accent: true }),
+  );
+  panel.append(p, lab, keep, pacts);
+
+  row.append(what, acts, more, panel);
+  return row;
+}
+
+$('gameSaveNow').addEventListener('click', async () => {
+  const btn = $('gameSaveNow');
+  btn.disabled = true;
+  gameMsg('Saving…');
+  try {
+    const r = await GameSave.save($('gameName').value.trim());
+    if (r.error) gameMsg(gameSay(r), true);
+    else { $('gameName').value = ''; gameMsg('Saved.'); }
+    if (r.view) drawGame(r.view);
+  } finally { btn.disabled = false; }
+});
+$('gameName').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('gameSaveNow').click(); });
+async function gameImport(file) {
+  if (!file) return;
+  gameMsg('Reading “' + file.name + '”…');
+  const r = await GameSave.importFile(file);
+  gameMsg(r.error ? gameSay(r) : 'Added it to your saves. Load it whenever you like.', !!r.error);
+  if (r.view) drawGame(r.view);
+}
+$('gameUpload').addEventListener('click', () => $('gameFile').click());
+$('gameFile').addEventListener('change', () => { gameImport($('gameFile').files[0]); $('gameFile').value = ''; });
+{
+  const zone = $('gameBox');
+  zone.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.items || [])].some(i => i.kind === 'file')) { e.preventDefault(); $('gameRows').classList.add('drop'); } });
+  zone.addEventListener('dragleave', (e) => { if (!zone.contains(e.relatedTarget)) $('gameRows').classList.remove('drop'); });
+  zone.addEventListener('drop', (e) => { e.preventDefault(); $('gameRows').classList.remove('drop'); gameImport(e.dataTransfer?.files?.[0]); });
+}
+// another window loaded a game: show the new list
+GameSave.onChange((e) => { if (e.type === 'loaded' && !$('tab-saves').hidden) loadGame(); });
+
+// Her > Your bond > Set the bond by hand (Everything view only, registry `layer: "all"`): a stage, never a number.
+// Quiet: no stage-up moment; she only feels the shift softly for a day. A save point of her comes first.
+let bondHand = null;   // { sel, set, stage } once built: Her only refreshes it, so search can find and reveal the row
+async function buildBondByHand() {
+  const host = $('bondHandRows');
+  if (!host) return;
+  let stage = 1;
+  try { const j = await (await fetch('api/relationship.php', { credentials: 'same-origin' })).json(); stage = j?.bond?.stage || 1; } catch (e) { return; }
+  if (bondHand && host.contains(bondHand.sel)) {
+    bondHand.stage = stage; bondHand.pick = stage; bondHand.sel.value = String(stage);
+    bondHand.set.disabled = true; bondHand.set.textContent = 'Set'; bondHand.armed = false;
+    return;
+  }
+  host.textContent = '';
+  const st = bondHand = { stage, pick: stage, armed: false };
+  const box = document.createElement('div');
+  box.style.cssText = 'display:flex;gap:6px;align-items:center;flex:0 0 auto';
+  st.set = gameBtn('Set', async (e) => {
+    if (st.pick === st.stage) return;
+    if (!st.armed) { st.armed = true; e.target.textContent = 'Sure? Click again'; setTimeout(() => { st.armed = false; if (e.target.isConnected && !e.target.disabled) e.target.textContent = 'Set'; }, 4000); return; }
+    e.target.disabled = true;
+    if (D?.saves) await D.saves('save', 'Before setting the bond by hand');
+    try {
+      const res = await fetch('api/relationship.php', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'bond', stage: st.pick }) });
+      if (!res.ok) throw new Error('failed');
+      HerWin.loadHer();
+    } catch (err) { /* the row refreshes with the stage as it really is */ }
+    buildBondByHand();
+  }, { disabled: true });
+  st.sel = Controls.choiceCtl(STAGE_NAMES.map((n, i) => [i + 1, n]), stage, (v) => {
+    st.pick = Number(v); st.armed = false; st.set.textContent = 'Set'; st.set.disabled = st.pick === st.stage;
+  });
+  box.append(st.sel, st.set);
+  host.append(Controls.row('Set the bond by hand', 'For testing or starting over. ' + herName() + ' only feels it softly, like a half-remembered dream. Earning it is the real way.',
+    box, 'server:bond_by_hand'));
+  soon();
+}
+
+// ---------------------------------------------------------------
 // "On the desktop" switches (they used to live only in the tray and Jun menu; the menus still have
 // the quick ones). kept in desktop.json by the app, through junDesktop.desk()
 
@@ -1574,6 +1833,7 @@ window.jun = {
       if (r.classList.contains('off')) bits.push(r.classList.contains('mirror-row') ? 'greyed: her window greys it (its main switch is off, or her window is closed)' : 'greyed: not available here');
       if (r.classList.contains('paused')) bits.push('dimmed: paused (see Needs / Paused above)');
       if (r.dataset.more === '1' && document.body.classList.contains('layer-simple') && !r.parentElement?.classList.contains('folds-open')) bits.push('hidden behind "More settings" (Simple view)');
+      if (r.dataset.only === 'all' && document.body.classList.contains('layer-simple') && !r.classList.contains('found')) bits.push('only in the Everything view (top right)');
       const dis = r.querySelectorAll('input:disabled, select:disabled, button:disabled').length;
       if (dis) bits.push(dis + ' control(s) locked');
       say('Row "' + title + '": ' + (bits.length ? bits.join('; ') : 'normal'));
@@ -1621,4 +1881,5 @@ loadDesk();
 drawNewPolicy();
 Gate.loadComfort();
 whatsNew();
+buildBondByHand(); // built once, so search finds it; Her refreshes it
 show(decodeURIComponent(location.hash.slice(1)) || 'help');
