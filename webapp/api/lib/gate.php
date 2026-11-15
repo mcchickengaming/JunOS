@@ -62,14 +62,15 @@ function gate_check(array $item, array $ctx = []): array {
     $minStage = $num($item['minStage'] ?? null, 1);
     $minTrust = max($num($item['minTrust'] ?? null, 0), $tier === 'everyday' ? 0 : GATE_TUNE['trustNo']);
     if (!empty($ctx['stop'])) return $out(true, 'no', 'stop');
-    // "agreed beforehand" (#35 b): the agreement stands in for the live say while the one it's about is asleep
+    // "agreed beforehand" (#35 b): a given agreement is a yes (the game: once agreed, it stays agreed); only desktop Jun
+    // passes awake: true, and then the live say counts again
     if (($item['consent'] ?? 'live') === 'beforehand') {
         $id = $item['agreement'] ?? null;
         $a = is_string($id) && is_array($ctx['agreements'] ?? null) ? ($ctx['agreements'][$id] ?? null) : null;
         if ($a === 'revoked') return $out(true, 'no', 'revoked');
         if ($a !== 'given') return $out(true, 'no', 'not_agreed');
         if ($stage < $minStage) return $out(true, 'no', 'bond');
-        if (($ctx['awake'] ?? true) === false) return $out(true, 'yes', 'agreed');
+        if (($ctx['awake'] ?? null) !== true) return $out(true, 'yes', 'agreed');
     }
     if ($stage < $minStage) return $out(true, 'no', 'bond');
     if ($trust < $minTrust) return $out(true, 'no', 'trust');

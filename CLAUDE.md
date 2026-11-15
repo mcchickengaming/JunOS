@@ -300,8 +300,9 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   Achievements): rows have `data-group` (out/play/in), buttons still wired by main.js `wireDatesPanel`; a new activity
   is one more row.
   The settings window opens at 820×760 (fitted to the screen) so the sidebar shows on the left.
-  **F12 / Ctrl+Shift+I** in any of her windows opens its developer tools in their own window (main.js
-  `web-contents-created`), for the owner's own debugging (Console = errors). Settings window Console helpers (desktop-settings.js
+  **Ctrl+Shift+I** in any of her windows opens its developer tools in their own window (main.js
+  `web-contents-created`), for the owner's own debugging (Console = errors); **F12 opens the debug menu** (see "The debug
+  menu" below), which can open any window's console too. Settings window Console helpers (desktop-settings.js
   `window.jun`): `jun.help()`, `jun.find('glow')`, `jun.set('glow', false)`, `jun.set('walks around', 85)`,
   `jun.why('engine')` (where it's stored, now vs default, needs / paused by, rating, why its row is greyed/hidden),
   `jun.changed()`, `jun.state()`, `jun.reset('touch')`, by the plain names from the registry OR a row title on the page
@@ -562,7 +563,8 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   **Story state** `js/core/story/story-state.js` (pure; `now` passed in; every edit mutates and logs, the last 200 changes):
   `flags` (true / a number / a short string: `setFlag`, `flag`, `has`, `addTo`, `clearFlag`), `quests` ({ step, done, at }:
   `setQuest`, `finishQuest`, `questStep`, `questDone`), `seen` (counts: `markSeen`, `seenIt`), `choices` (`choose`, `chose`),
-  `agreements` (`agree`, `revoke`, `agreement` → 'given' | 'revoked' | null, `agreementsFor` = the gate's ctx shape),
+  `agreements` (`agree` only: in the game once agreed it stays agreed; `agreement` → 'given' | 'revoked' (an old save) | null,
+  `agreementsFor` = the gate's ctx shape),
   `difficulty`, `place` / `chapter` (`setPlace`; `summary()` → the save card's `_summary`). Ids `^[a-z][a-z0-9_.:-]{0,63}$`,
   values ≤ 120 chars; `clean()` makes anything from a save safe. The door: `open(GameSave)` → { state, epoch } from the
   game's `story` section, `commit(GameSave, state, epoch, difficultyName)` writes it back with the epoch it read + `_summary`.
@@ -582,9 +584,10 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   last save** (the newest non-before-load save). **The gate's "agreed beforehand"** (gate.js = gate.php, 12 new shared cases):
   item `{ consent: 'beforehand', agreement: id }`, ctx `{ agreements: { id: 'given' | 'revoked' }, awake }`; after the
   switches (they still decide the tier) and the stop signal (always first): revoked → no (`revoked`), not given → no
-  (`not_agreed`), the item's minStage still counts, asleep (`awake: false`) → yes (`agreed`): the agreement stands in for the
-  live say; awake → the normal live say. Claude builds the option only; the entries (and which story flag gives one) are
-  the owner's. **Settings > The game** (new section `game`, 🎮; main.js `SETTINGS_TABS` knows it): Difficulty
+  (`not_agreed`), the item's minStage still counts, then a given agreement = yes (`agreed`). **The game (owner, Nov 15): once
+  agreed it stays agreed** (a linear story with only happy, consenting scenes): story state has `agree` only, no revoke,
+  and the game never passes `awake` or `stop`. Only DESKTOP Jun may pass `awake: true` (her live say counts again) or a
+  stop signal. Claude builds the option only; the entries (and which story flag gives one) are the owner's. **Settings > The game** (new section `game`, 🎮; main.js `SETTINGS_TABS` knows it): Difficulty
   (`buildDifficulty`: the pick, the preset's line, and "today she'd reach you in time …" in words from the bond + her Support
   level) and Game saves (moved here from Saves & updates). Registry: `difficulty` (`server:difficulty`, default easy);
   `game_saves` / `game_autosave` now in `game`. Name forms in Settings: `herName()` "She", `herName('subj')` "she",
@@ -610,6 +613,23 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   Tests: `.github/scripts/inventory.test.php`, `.github/scripts/js/inventory.test.mjs`, api-checks. The current item entries are
   stand-ins (`sample`) for the sample activities; the shop, prices, selling, gear, crafting and the legend of everything come
   with the economy (#9) and crafting (#8).
+
+- **The debug menu (F12)** (Nov 15, Opus; owner: "a secret menu… a spawn menu so we can test any new items"):
+  **F12 in any of her windows opens `webapp/debug-menu.html`** in its own window (desktop/main.js `openDebugMenu`, remembers
+  the window F12 came from in `debugSource`); **Ctrl+Shift+I still opens a window's developer tools** straight away; F12 inside
+  the menu opens the menu's own console. `ipcMain.handle('jun:debug')` (only from the menu): `devtools` for `source` / `self` /
+  `settings`; preload `junDesktop.debug(action, which)`; the menu may open Settings and the labs (its window-open handler).
+  `js/debug-menu.js` is a small framework: `TOOLS` = `{ id, name, build(host) }`, one tab each (a new tool is one entry):
+  **Spawn** (anything in data/items.json: currencies with an amount, items with a count, keepsakes one of each; "have N" from
+  the inventory view; a find box; `groupCatalog`, `haveOf`, `SAY`), **Console** (the window you pressed F12 in, the menu's
+  own, Settings' with its `jun.help()` helpers), **Labs** (feel, progress, delve, rig), **Settings** (jump to a section).
+  Server `api/lib/debug.php` + `api/debug.php`: GET { test, catalog, recent, view }, POST `test {on}` / `spawn {id, amount}` /
+  `clear`. **Spawning is the one way around "a page never gives", so it's fenced**: TEST MODE first (per account,
+  `opt.test` in the progression blob; off = 409 `test_off`), every spawn / clear / switch logged with `test: true`, amounts
+  capped at `DEBUG_SPAWN_MAX`, ids must be in the catalog, keepsakes still one of each (from "Spawned (test mode)"), and only
+  the game's side is touched (never the bond, her skills, her feelings or desktop Jun). "Clear my things" (test mode only)
+  empties Credits, the wallet, items and keepsakes. A new item in data/items.json is spawnable at once. Registry
+  `debug_menu`. Tests: the spawn part of `.github/scripts/inventory.test.php`, `.github/scripts/js/debug-menu.test.mjs`.
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

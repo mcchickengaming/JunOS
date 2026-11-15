@@ -139,18 +139,56 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(boot);
 }
 
-// F12 (or Ctrl+Shift+I) opens the developer tools of the window it's pressed in, in their own
-// window (several of hers are tiny, transparent or click-through). For the owner's own debugging:
-// the Console tab shows errors; nothing in there can change her unless typed in on purpose.
+// F12 in any of her windows opens the DEBUG MENU (owner, Nov 15: a secret menu; webapp/debug-menu.html): the console,
+// the spawn tools, the labs. It remembers which window F12 came from, so "open the console of the window I came from"
+// works. Ctrl+Shift+I still opens a window's developer tools straight away, in their own window (several of hers are
+// tiny, transparent or click-through). F12 in the debug menu itself opens ITS console. For the owner's own debugging:
+// nothing in the console can change her unless typed in on purpose.
+let debugWin = null;
+let debugSource = null;   // the webContents F12 was last pressed in
+function toggleDevTools(wc) {
+  if (!wc || wc.isDestroyed()) return false;
+  if (wc.isDevToolsOpened()) wc.closeDevTools(); else wc.openDevTools({ mode: 'detach' });
+  return true;
+}
+function openDebugMenu(fromWc) {
+  if (fromWc && (!debugWin || fromWc !== debugWin.webContents)) debugSource = fromWc;
+  if (debugWin) { if (debugWin.isMinimized()) debugWin.restore(); debugWin.show(); debugWin.focus(); return; }
+  const wa = screen.getPrimaryDisplay().workAreaSize;
+  debugWin = new BrowserWindow({
+    width: Math.min(760, wa.width - 40), height: Math.min(820, wa.height - 40), minWidth: 360, minHeight: 360, title: 'Debug menu', icon: ICON_PNG,
+    backgroundColor: '#120f18', show: false, autoHideMenuBar: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
+  });
+  debugWin.setMenu(null);
+  // the labs open in their own window from here, like from Settings; nothing else does
+  debugWin.webContents.setWindowOpenHandler(({ url }) => (['/feel-lab.html', '/progress-lab.html', '/delve-lab.html', '/rig-lab.html', '/desktop-settings.html'].some(p => url.startsWith(ORIGIN + p))
+    ? { action: 'allow', overrideBrowserWindowOptions: { width: 1100, height: 860, autoHideMenuBar: true } }
+    : { action: 'deny' }));
+  debugWin.loadURL(`${JUN_URL}/debug-menu.html`);
+  debugWin.once('ready-to-show', () => debugWin && debugWin.show());
+  debugWin.on('closed', () => { debugWin = null; });
+}
 app.on('web-contents-created', (_e, wc) => {
   wc.on('before-input-event', (ev, input) => {
     if (input.type !== 'keyDown') return;
     const k = String(input.key || '').toLowerCase();
-    if (k === 'f12' || (input.control && input.shift && k === 'i')) {
+    if (input.control && input.shift && k === 'i') { ev.preventDefault(); toggleDevTools(wc); return; }
+    if (k === 'f12') {
       ev.preventDefault();
-      if (wc.isDevToolsOpened()) wc.closeDevTools(); else wc.openDevTools({ mode: 'detach' });
+      if (debugWin && wc === debugWin.webContents) toggleDevTools(wc);   // F12 in the menu = the menu's own console
+      else openDebugMenu(wc);
     }
   });
+});
+// the debug menu's calls: open a console (the window F12 came from / the menu's own / Settings')
+ipcMain.handle('jun:debug', (e, action, which) => {
+  if (!debugWin || e.sender !== debugWin.webContents) return null;
+  if (action === 'devtools') {
+    const wc = which === 'self' ? debugWin.webContents : which === 'settings' ? settingsWin?.webContents : debugSource;
+    return toggleDevTools(wc) ? { ok: true } : { error: 'That window is closed.' };
+  }
+  return null;
 });
 
 app.on('window-all-closed', () => { /* she lives in the tray */ });
@@ -910,7 +948,7 @@ ipcMain.on('jun:menu', (e) => {
 // old tab names keep working (the page maps them onto the new sections)
 const SETTINGS_TABS = ['help', 'her', 'talk', 'touch', 'desktop', 'visuals', 'game', 'saves', 'account', 'comfort', 'colors', 'feedback', 'spots', 'size'];
 ipcMain.on('jun:open-settings', (e, tab) => {
-  if (!fromWin(e)) return;
+  if (!fromWin(e) && !(debugWin && !debugWin.isDestroyed() && e.sender === debugWin.webContents)) return;   // her window or the debug menu
   openSettings(SETTINGS_TABS.includes(tab) ? tab : 'help');
 });
 ipcMain.on('jun:focus', (e, on) => {

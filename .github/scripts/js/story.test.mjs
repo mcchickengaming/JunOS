@@ -250,17 +250,19 @@ test('the time-lapse counts saves and game overs', () => {
 
 // ---------------------------------------------------------------- the gate's "agreed beforehand", from story state
 
-test('agreed beforehand: story state feeds the gate; taking it back always wins', () => {
+test('agreed beforehand in the game: story state feeds the gate; once agreed it stays agreed', () => {
   const s = S.blank();
   const item = { tier: 'flirty', consent: 'beforehand', agreement: 'asleep_cuddles' };
-  const ctx = (extra) => ({ comfort: {}, stage: 4, trust: 60, awake: false, agreements: S.agreementsFor(s), ...extra });
+  const ctx = (extra) => ({ comfort: {}, stage: 4, trust: 60, agreements: S.agreementsFor(s), ...extra });   // the game passes no awake / stop
   assert.equal(Gate.check(item, ctx()).her, 'no', 'never asked');
   S.agree(s, 'asleep_cuddles', 100);
+  S.agree(s, 'asleep_cuddles', 200);
+  assert.equal(s.agreements.asleep_cuddles.at, 100, 'agreeing again changes nothing');
   assert.deepEqual([Gate.check(item, ctx()).her, Gate.check(item, ctx()).why], ['yes', 'agreed']);
-  assert.equal(Gate.check(item, ctx({ stop: true })).her, 'no', 'the stop signal always counts');
-  S.revoke(s, 'asleep_cuddles', 200);
-  assert.deepEqual([Gate.check(item, ctx()).her, Gate.check(item, ctx()).why], ['no', 'revoked']);
-  assert.equal(Gate.WHY.revoked.length > 0 && Gate.WHY.not_agreed.length > 0, true);
+  assert.equal(typeof S.revoke, 'undefined', 'no taking back in the game');
+  assert.equal(Gate.check(item, ctx({ comfort: { flirty: false } })).show, false, 'the Flirty switch still decides');
+  const old = S.clean({ agreements: { x: { given: false, at: 1, revokedAt: 2 } } });
+  assert.equal(S.agreement(old, 'x'), 'revoked', 'an old save that says revoked is read as revoked');
 });
 
 // ---------------------------------------------------------------- the registry

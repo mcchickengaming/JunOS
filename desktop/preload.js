@@ -10,6 +10,8 @@ const on = (channel) => (cb) => {
 };
 
 contextBridge.exposeInMainWorld('junDesktop', {
+  // the debug menu (F12): open a console. which = 'source' (the window F12 came from) | 'self' | 'settings'
+  debug: (action, which) => ipcRenderer.invoke('jun:debug', String(action || ''), String(which || '')),
   // the transparent parts of her window let clicks through to
   // whatever is under it, only she and her bubble catch them
   setClickThrough: (on) => ipcRenderer.send('jun:click-through', !!on),

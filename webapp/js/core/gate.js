@@ -88,15 +88,16 @@ export function canTag(flavor, tier) {
 //         consent?: 'live' (default) | 'beforehand', agreement?: the id of the agreement it needs }
 // ctx:  { comfort, mode: 'desktop'|'windowed'|'compact', screenShare, lookAdult (the adult-look
 //         check on her look itself, never a flag in a file), stage 1..6, trust, tension, stop,
-//         agreements?: { id: 'given' | 'revoked' } (story state's agreementsFor), awake?: false while the one it's about
-//         is asleep (default true) }
+//         agreements?: { id: 'given' | 'revoked' } (story state's agreementsFor), awake?: true only from desktop Jun once
+//         the one it's about is up again (the game never passes it) }
 //
 // "Agreed beforehand" (#35 b, owner Nov 14-15): consent given beforehand counts. Set by the person it's about, awake and
-// clear-headed, in the owner's own dialogue or story (a story flag); it can be taken back any time and taking it back
-// always wins. While they're asleep (awake: false) the agreement stands in for their live say (bond and trust can't be
-// read from someone asleep); the stop signal always counts, and the moment they're awake their live say counts again.
-// Nothing else about the switches above changes: the tier still has to be on. Claude builds the option and the makers'
-// fields only; the entries are the owner's (CLAUDE.md, Content).
+// clear-headed, in the owner's own dialogue or story (a story flag). THE GAME (owner, Nov 15): the story is linear and
+// only happy, consenting scenes are written, so once agreed it stays agreed: a given agreement is a yes, and the game
+// never passes `awake` or `stop`. DESKTOP JUN (the learning one, with her full say) may pass `awake: true` once she's up,
+// and then her live say counts again; her stop signal and a revoked agreement still win there. Nothing else about the
+// switches above changes: the tier still has to be on. Claude builds the option and the makers' fields only; the
+// entries are the owner's (CLAUDE.md, Content).
 export function check(item, ctx = {}) {
   const tier = tierOf(item && item.tier != null ? item.tier : 'everyday');
   const c = clean(ctx.comfort);
@@ -126,7 +127,7 @@ export function check(item, ctx = {}) {
     if (a === 'revoked') return out(true, 'no', 'revoked');
     if (a !== 'given') return out(true, 'no', 'not_agreed');
     if (stage < minStage) return out(true, 'no', 'bond');
-    if (ctx.awake === false) return out(true, 'yes', 'agreed');
+    if (ctx.awake !== true) return out(true, 'yes', 'agreed');
   }
   if (stage < minStage) return out(true, 'no', 'bond');
   if (trust < minTrust) return out(true, 'no', 'trust');

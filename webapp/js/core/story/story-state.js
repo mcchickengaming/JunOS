@@ -7,9 +7,11 @@
 //   quests      id → { step, done, at }                      a quest's current step (a word or a number)
 //   seen        id → how many times                          a beat, a line, a place: "seen it" for once-only beats
 //   choices     id → the option picked                       "spare_the_jester" → "spared"
-//   agreements  id → { given, at, revokedAt? }               consent given beforehand (the gate's "agreed beforehand"
-//                                                            kind): set by the owner's own dialogue/story flags, can be
-//                                                            taken back any time; the gate reads it (agreementsFor)
+//   agreements  id → { given, at }                           consent given beforehand (the gate's "agreed beforehand"
+//                                                            kind), set by the owner's own dialogue / story flags. In the
+//                                                            game, once agreed it stays agreed (owner, Nov 15: a linear
+//                                                            story with only happy, consenting scenes); the gate reads it
+//                                                            (agreementsFor)
 //   difficulty  'easy' | 'medium' | 'hard' | 'extreme'       the player's pick (data/difficulty.json), any time
 //   place / chapter                                          short words for the save card (the `_summary`)
 //   log         the last LOG_MAX changes, newest last         what changed and when, for the lab and "why"
@@ -120,21 +122,15 @@ export function choose(s, id, option, now = 0) {
 }
 
 // ---------------------------------------------------------------
-// agreements: consent given beforehand (the gate's "agreed beforehand" kind)
-// given by the owner's own dialogue line or story flag; taken back any time; the gate reads `agreementsFor`.
-// Taking it back always wins and is never a penalty.
+// agreements: consent given beforehand (the gate's "agreed beforehand" kind), given by the owner's own dialogue line or
+// story flag. In the game it stays given (no taking back: owner, Nov 15). An old save that says "revoked" still reads
+// as revoked, so nothing is ever assumed.
 
 export function agree(s, id, now = 0) {
   need(id);
+  if (s.agreements[id]?.given) return s;
   s.agreements[id] = { given: true, at: now };
   return note(s, 'agreed', id, undefined, now);
-}
-export function revoke(s, id, now = 0) {
-  need(id);
-  const a = s.agreements[id];
-  if (!a || !a.given) return s;
-  s.agreements[id] = { given: false, at: a.at, revokedAt: now };
-  return note(s, 'revoked', id, undefined, now);
 }
 // 'given' | 'revoked' | null (never asked)
 export function agreement(s, id) {

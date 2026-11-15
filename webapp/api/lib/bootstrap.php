@@ -23,6 +23,7 @@ require_once __DIR__ . '/progress.php';
 require_once __DIR__ . '/delve.php';
 require_once __DIR__ . '/gamesave.php';
 require_once __DIR__ . '/inventory.php';
+require_once __DIR__ . '/debug.php';
 require_once __DIR__ . '/achievements.php';
 require_once __DIR__ . '/providers/config.php';
 require_once __DIR__ . '/providers/ollama.php';

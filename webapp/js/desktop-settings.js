@@ -13,14 +13,14 @@ import * as Moods from './desktop/moods.js?v=16';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=9';
 import * as F from './core/features.js?v=3';
-import * as Gate from './core/gate.js?v=4';
-import * as Controls from './home/controls.js?v=12';
-import * as Stores from './home/stores.js?v=8';
+import * as Gate from './core/gate.js?v=5';
+import * as Controls from './home/controls.js?v=13';
+import * as Stores from './home/stores.js?v=9';
 import * as Feel from './core/feel/feel.js?v=4';
 import * as Progress from './core/progress.js?v=2';
 import * as GameSave from './core/gamesave.js?v=3';
 import * as Difficulty from './core/difficulty.js?v=2';
-import * as Story from './core/story/story-state.js?v=2';
+import * as Story from './core/story/story-state.js?v=3';
 import * as Inventory from './core/inventory.js?v=3';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new

@@ -14,13 +14,13 @@
 
 import * as F from '../features.js?v=3';
 import * as Progress from '../progress.js?v=2';
-import * as Gate from '../gate.js?v=4';
+import * as Gate from '../gate.js?v=5';
 import * as Run from './run.js?v=3';
 import * as Party from './party.js?v=2';
 import { tune as getTune } from './delve-tune.js?v=2';
 import { lastDelve } from './last.js?v=1';
 import * as Difficulty from '../difficulty.js?v=2';
-import * as Story from '../story/story-state.js?v=2';
+import * as Story from '../story/story-state.js?v=3';
 import * as GameSave from '../gamesave.js?v=3';
 
 export const KEY = 'jun.delve';

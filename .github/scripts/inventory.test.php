@@ -15,6 +15,7 @@ require "$repo/lib/bond.php";
 require "$repo/lib/progress.php";
 require "$repo/lib/gamesave.php";
 require "$repo/lib/inventory.php";
+require "$repo/lib/debug.php";
 if (!function_exists('log_event')) { function log_event(array $e): void {} }
 function memory_note_add(int $u, string $c, string $t): array { return ['ok' => true]; }
 function ach_on_relationship(...$a): void {}
@@ -89,6 +90,39 @@ $snap = gamesave_snapshot(1, [], $now);
 $eq('a save holds the wallet', $snap['progress']['wallet'], ['salvage_sigils' => 3]);
 $c = gamesave_clean(['progress' => ['wallet' => ['whispers' => -5, 'credits_x' => 2, 'Bad!' => 3], 'items' => ['delve_greatsword' => -3, 'part_rare' => '2']]]);
 $eq('negative or junk counts are dropped, strings become numbers', [$c['progress']['wallet'], $c['progress']['items']], [['credits_x' => 2], ['part_rare' => 2]]);
+
+// --- the debug menu's spawn (test mode only, logged, never the bond)
+$st = progress_blank();
+$eq('spawning needs test mode', debug_spawn($st, $d, 'part_rare', 2, $now)['error'] ?? '', 'test_off');
+$eq('…and so does clearing', debug_clear($st, $now)['error'] ?? '', 'test_off');
+debug_set_test($st, true, $now);
+$ok('test mode on (logged)', debug_test_on($st) && end($st['log'])['type'] === 'test_on');
+debug_spawn($st, $d, 'part_rare', 2, $now);
+debug_spawn($st, $d, 'part_rare', 3, $now);
+$eq('spawn an item, any count', $st['items']['part_rare'], 5);
+debug_spawn($st, $d, 'whispers', 40, $now);
+debug_spawn($st, $d, 'credits', 1000, $now);
+$eq('spawn currencies', [$st['wallet']['whispers'], $st['credits']], [40, 1000]);
+debug_spawn($st, $d, 'generals_medal', 9, $now);
+debug_spawn($st, $d, 'generals_medal', 1, $now);
+$eq('a keepsake is still one of each', count($st['keepsakes']), 1);
+$eq('…marked as spawned', $st['keepsakes'][0]['from'], 'Spawned (test mode)');
+$eq('something not in the catalog', debug_spawn($st, $d, 'mystery_box', 1, $now)['error'] ?? '', 'unknown');
+debug_spawn($st, $d, 'part_common', 99999999, $now);
+$eq('a huge amount is capped', $st['items']['part_common'], DEBUG_SPAWN_MAX);
+$ok('every spawn is logged as a test', count(array_filter($st['log'], fn($e) => ($e['type'] ?? '') === 'spawned' && !empty($e['test']))) === 7);
+$eq('the menu\'s recent list, newest first', debug_recent($st)[0]['id'], 'part_common');
+$cat = debug_catalog($d);
+$eq('the catalog lists every currency and item', count($cat), count($d['currencies']) + count($d['items']));
+$eq('…keepsakes as keepsakes', array_values(array_unique(array_column(array_filter($cat, fn($e) => $e['id'] === 'generals_medal'), 'kind'))), ['keepsake']);
+$st['skills']['jun'] = ['scanning' => ['xp' => 500, 'marks' => 0]];
+debug_clear($st, $now);
+$eq('clear: the game\'s money and things are gone', [$st['credits'], $st['wallet'], $st['items'], $st['keepsakes']], [0, [], [], []]);
+$eq('…her skills untouched', $st['skills']['jun']['scanning']['xp'], 500);
+debug_set_test($st, false, $now);
+$eq('test mode off: spawning refused again', debug_spawn($st, $d, 'part_rare', 1, $now)['error'] ?? '', 'test_off');
+$dsrc = file_get_contents("$repo/lib/debug.php") . file_get_contents("$repo/debug.php");
+$eq('spawning never touches the bond or her', preg_match('/bond_|relationship_|feel_|memory_/', $dsrc), 0);
 
 // --- never the bond or desktop Jun
 $src = file_get_contents("$repo/lib/inventory.php") . file_get_contents("$repo/inventory.php");
