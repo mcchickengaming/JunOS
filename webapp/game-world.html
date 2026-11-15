@@ -24,6 +24,7 @@
   .place { background: var(--card); border: 1px solid var(--edge); border-radius: 12px; padding: 14px; text-align: left; color: var(--ink); font: inherit; }
   .place b { display: block; margin-bottom: 4px; }
   .place span { color: var(--muted); font-size: 12.5px; }
+  .note { color: var(--muted); min-height: 1.4em; }
   .place[disabled] { opacity: .45; cursor: default; }
   .place:not([disabled]) { cursor: pointer; }
   .place:not([disabled]):hover { border-color: var(--accent); }
@@ -45,13 +46,9 @@
 <div class="world">
   <div class="hub" id="hub">
     <h2>Cache</h2>
-    <p>Stand-in map. The story, the slums and the harbor arrive with the story engine; for now there's one place to go.</p>
-    <div class="places">
-      <button type="button" class="place" id="goDelve"><b>Under the city</b><span>A delve, with stand-in art. Bring her or go alone.</span></button>
-      <button type="button" class="place" disabled><b>The scrapyard</b><span>Coming with the story.</span></button>
-      <button type="button" class="place" disabled><b>Port Buffer</b><span>Coming with the story.</span></button>
-      <button type="button" class="place" disabled><b>Home</b><span>Your house, later.</span></button>
-    </div>
+    <p>Stand-in map. Places come from data/places.json: the story opens them as you go.</p>
+    <div class="places" id="places" aria-label="Places"></div>
+    <p class="note" id="placeNote" role="status"></p>
   </div>
 </div>
 <div class="menu" id="menu" hidden>
@@ -60,6 +57,6 @@
     <iframe id="menuFrame" title="The game's menu"></iframe>
   </div>
 </div>
-<script type="module" src="js/game-world.js?v=1"></script>
+<script type="module" src="js/game-world.js?v=2"></script>
 </body>
 </html>

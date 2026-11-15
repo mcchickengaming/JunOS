@@ -703,6 +703,13 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   pages may frame each other (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`, router + nginx). Tests:
   `.github/scripts/js/settings-split.test.mjs`. NOT built: the real way into the game (the owner's concept art), the
   game's own How to play, the secret code, more places on the map.
+  **The map is data** (Nov 15, prep for the story engine): `webapp/data/places.json` (id, name, line, lockedLine, `show`,
+  `open`, `go`) read by `js/core/world/places.js` (pure: `view(data, storyState)`, `when(cond, state)` with `flag` / `flag+is`
+  / `quest(+step)` / `questDone` / `seen` / `choice(+is)` / `all` / `any` / `not`, `check(data)`), drawn by js/game-world.js
+  against the game's story state (redrawn after a load, back to the map, closing the menu). `go: { url }` opens one of her
+  pages inside the world; `go: { story: sceneId }` calls **`window.JunGame.startStory(sceneId, place)`**, the hook the story
+  engine sets (also `JunGame.refresh()`, `open(url, title)`, `toMap()`). A new place = one entry. Tests:
+  `.github/scripts/js/places.test.mjs`.
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

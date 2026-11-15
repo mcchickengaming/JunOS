@@ -1,0 +1,10 @@
+{
+  "about": "The game world's map (game-world.html), as data: a new place is one more entry, no code. Read by js/core/world/places.js (the rules, pure, tested by .github/scripts/js/places.test.mjs). show / open: true, false, or a condition on story state: { flag }, { flag, is }, { quest, step }, { questDone }, { seen }, { choice, is }, { all: [...] }, { any: [...] }, { not: cond }. go: { url } opens a page inside the world, { story: scene id } asks the story engine (#34) to play a scene (game-world.js startStory hook). lockedLine shows while it can be seen but not entered. Owner, Nov 15: built so the story engine adds and unlocks places by data.",
+  "v": 1,
+  "places": [
+    { "id": "under_city", "name": "Under the city", "line": "A delve, with stand-in art. Bring her or go alone.", "show": true, "open": true, "go": { "url": "delve-lab.html" } },
+    { "id": "scrapyard", "name": "The scrapyard", "line": "Old Man Al's yard.", "lockedLine": "Coming with the story.", "show": true, "open": false },
+    { "id": "port_buffer", "name": "Port Buffer", "line": "The first harbor. Yours to bring back.", "lockedLine": "Coming with the story.", "show": true, "open": false },
+    { "id": "home", "name": "Home", "line": "Your house. Hers too.", "lockedLine": "Your house, later.", "show": true, "open": false }
+  ]
+}
