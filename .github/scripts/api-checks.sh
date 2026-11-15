@@ -203,7 +203,7 @@ check 'unlock developer access'         200 -b "$cookies" -X POST -H "Origin: $O
 check 'inventory needs a session'       401 "$BASE/api/inventory.php"
 check 'inventory'                       200 -b "$cookies" "$BASE/api/inventory.php"
 body_has 'all five currencies show' 'citizen_pass'
-check 'spending what you don\'t have'   409 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
+check 'spending more than you have'   409 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
 	--data '{"action":"spend","cost":{"currencies":{"credits":5}}}' "$BASE/api/inventory.php"
 check 'a page can never give'           400 -b "$cookies" -X POST -H "Origin: $ORIGIN" -H "$(json)" \
 	--data '{"action":"give","cost":{"currencies":{"credits":5}}}' "$BASE/api/inventory.php"
