@@ -4,7 +4,8 @@
 // GET ?section=name       → { data, epoch, rev }   one section of the live game (a game system's own)
 // POST {action, ...}:
 //   save    {kind: named|quick|auto, name?, client?, force?}   save what's live now (+ the page's own parts)
-//   load    {id, useBond?, client?}   a "before load" save first, then the slot goes live → { client, epoch, bond }
+//   load    {id, useBond?, keep?, client?}   a "before load" save first, then the slot goes live → { client, epoch, bond }
+//           keep: ['skills', 'things'] = his parts that stay as they are now (the player's "what goes where" picks)
 //   undo    {client?}                  load the save made right before the last load (again = redo)
 //   new     {client?}                  a new game (a "before load" save first; the bond is untouched)
 //   keep    {id}                       an autosave / quicksave / before-load save becomes a named save
@@ -39,7 +40,7 @@ $id = (int)($body['id'] ?? 0);
 
 $r = match ($action) {
     'save' => gamesave_save($userId, (string)($body['kind'] ?? 'named'), (string)($body['name'] ?? ''), $client, $now, !empty($body['force'])),
-    'load' => gamesave_load($userId, $id, ($body['useBond'] ?? false) === true, $client, $now),
+    'load' => gamesave_load($userId, $id, ($body['useBond'] ?? false) === true, $client, $now, null, (array)($body['keep'] ?? [])),
     'undo' => gamesave_undo($userId, $client, $now),
     'new' => gamesave_new_game($userId, $client, $now),
     'keep' => gamesave_keep($userId, $id),

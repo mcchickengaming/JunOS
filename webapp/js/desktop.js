@@ -1688,6 +1688,21 @@ D?.onCommand((cmd) => {
 });
 
 // ---------------------------------------------------------------
+// a Jun profile (.jun) dropped onto her: it goes into the profiles folder and Settings opens on it (#18)
+window.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.items || [])].some(i => i.kind === 'file')) e.preventDefault(); });
+window.addEventListener('drop', async (e) => {
+  const f = [...(e.dataTransfer?.files || [])].find(x => /\.jun$/i.test(x.name));
+  if (!f) return;
+  e.preventDefault();
+  if (!D?.profiles || f.size > 20 * 1024 * 1024) return;
+  const u = new Uint8Array(await f.arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode(...u.subarray(i, i + 0x8000));
+  if (ready) { Body.play('catch'); showEmote('star'); }
+  D.profiles('import', f.name, btoa(bin));
+});
+
+// ---------------------------------------------------------------
 // hide / unhide (#29) and her house cube: desktop/main.js decides (desktop/presence.js has the rules), this plays HER
 // part. While she's hidden she starts nothing (initTick) but keeps living (her feelings move on by the clock).
 // Coming back she's never upset: webapp/js/desktop/welcome-back.js picks how big the hello is.

@@ -2,7 +2,7 @@
 // the progress lab; every rule it shows lives in js/core/delve/ (run.js, encounter.js, party.js,
 // scenes.js, sim.js) and this file only draws and listens.
 
-import * as Delve from './core/delve/delve.js?v=4';
+import * as Delve from './core/delve/delve.js?v=5';
 import * as Scenes from './core/delve/scenes.js?v=1';
 import * as Sim from './core/delve/sim.js?v=3';
 import { createView, drawMap } from './core/delve/view.js?v=1';
@@ -11,7 +11,7 @@ import * as Progress from './core/progress.js?v=2';
 import * as F from './core/features.js?v=3';
 import { dayMood, dayKey } from './core/feel/initiative.js?v=2';
 import * as Store from './core/feel/store.js?v=4';
-import * as GameSave from './core/gamesave.js?v=3';
+import * as GameSave from './core/gamesave.js?v=4';
 import * as Difficulty from './core/difficulty.js?v=2';
 
 const { Run, Party, Gate } = Delve;

@@ -249,6 +249,24 @@ $eq('a stage\'s xp', [bond_xp_of_stage(1), bond_xp_of_stage(6), bond_xp_of_stage
 $eq('an unknown reason is "by hand"', bond_set($u, 0, 'cheat', $now + 9)['set_why'], 'hand');
 $eq('…and the daily cap is untouched', bond_get($u)['day_xp'], $b['day_xp']);
 
+// --- what goes where: his skills / things can stay as they are now when he loads a save
+$p = progress_load($u); $p['credits'] = 1000; $p['items'] = ['old_servo' => 2]; $p['skills']['player']['delving'] = ['xp' => 5000, 'marks' => 0];
+progress_save($u, $p);
+$k = gamesave_save($u, 'named', 'Keep test', [], $now + 900);
+$p = progress_load($u); $p['credits'] = 7; $p['items'] = []; $p['skills']['player']['delving'] = ['xp' => 10, 'marks' => 0];
+progress_save($u, $p);
+gamesave_load($u, $k['id'], false, [], $now + 910, null, ['things', 'nonsense']);
+$p = progress_load($u);
+$eq('keep things: his Credits and items stay as they are now', [$p['credits'], $p['items']], [7, []]);
+$eq('…his skills come from the save', $p['skills']['player']['delving']['xp'], 5000);
+$eq('…unknown keep words are dropped', gamesave_live($u)['lastLoad']['kept'], ['things']);
+$p['skills']['player']['delving'] = ['xp' => 10, 'marks' => 0]; progress_save($u, $p);
+gamesave_load($u, $k['id'], false, [], $now + 920, null, ['skills']);
+$p = progress_load($u);
+$eq('keep skills: the save\'s things, his skills as they are now', [$p['credits'], $p['skills']['player']['delving']['xp']], [1000, 10]);
+gamesave_load($u, $k['id'], false, [], $now + 930);
+$eq('the natural way: everything from the save', progress_load($u)['skills']['player']['delving']['xp'], 5000);
+
 // --- the rest of the app
 $ok('in the factory reset', str_contains(file_get_contents("$repo/auth.php"), "'game_state', 'game_saves'"));
 $src = file_get_contents("$repo/lib/gamesave.php");

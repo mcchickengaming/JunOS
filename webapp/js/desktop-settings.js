@@ -18,11 +18,14 @@ import * as Controls from './home/controls.js?v=14';
 import * as Stores from './home/stores.js?v=10';
 import * as Feel from './core/feel/feel.js?v=4';
 import * as Progress from './core/progress.js?v=2';
-import * as GameSave from './core/gamesave.js?v=3';
+import * as GameSave from './core/gamesave.js?v=4';
 import * as Difficulty from './core/difficulty.js?v=2';
 import * as Story from './core/story/story-state.js?v=3';
 import * as Inventory from './core/inventory.js?v=3';
 import * as HouseCube from './desktop/house-cube.js?v=1';
+import * as Profile from './core/profile.js?v=1';
+import * as Prefs from './core/prefs.js?v=7';
+await Profile.loadParts().catch(() => null);
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -70,7 +73,7 @@ function show(tab, anchor) {
   if (tab === 'talk') { loadDesk(); HerWin.hello(); }
   if (tab === 'her') { HerWin.hello(); HerWin.loadHer(); }
   if (tab === 'account') HerWin.loadAccount();
-  if (tab === 'saves') setTimeout(loadSaves);
+  if (tab === 'saves') { setTimeout(loadSaves); setTimeout(loadProfiles); setTimeout(drawCarry); }
   if (tab === 'game') { setTimeout(loadGame); setTimeout(buildDifficulty); setTimeout(loadOwned); }
   if (tab === 'her') setTimeout(buildBondByHand); // after this module has set itself up
   if (tab === 'comfort') loadComfort();
@@ -1255,12 +1258,25 @@ function gameRow(sv, v) {
   const lab = document.createElement('label');
   const box = document.createElement('input');
   box.type = 'checkbox';
-  box.checked = false;
+  // what goes where (Saves & updates): the bond's box starts as he set it, off by default
+  const carryNow = Profile.gameKeep(Profile.readCarry(localStorage));
+  box.checked = carryNow.useBond;
   const txt = document.createElement('span');
   txt.textContent = same
     ? `Use this save's bond (${theirs || 'the same'}, the same as now).`
     : `Use this save's bond: ${theirs} (yours now: ${nowBond}). A save point of ${herName('obj')} comes first, and Undo puts your bond back.`;
   lab.append(box, txt);
+  // his skills and things: from the save (the natural way) or kept as they are now
+  const bring = (label, on) => {
+    const l = document.createElement('label');
+    const c = document.createElement('input');
+    c.type = 'checkbox'; c.checked = on;
+    const t = document.createElement('span'); t.textContent = label;
+    l.append(c, t);
+    return [l, c];
+  };
+  const [skillsLab, skillsBox] = bring("Bring this save's skills (not ticked: you keep the skills you have now).", !carryNow.keep.includes('skills'));
+  const [thingsLab, thingsBox] = bring("Bring this save's things: Credits, items, keepsakes (not ticked: you keep what you own now).", !carryNow.keep.includes('things'));
   const keep = document.createElement('div');
   keep.className = 'hint';
   keep.textContent = `Not ticked: your bond stays ${nowBond || 'as it is'}. ${herName()} stays herself either way.`;
@@ -1271,7 +1287,7 @@ function gameRow(sv, v) {
     gameBtn('Load it', async (e) => {
       e.target.disabled = true;
       gameMsg(box.checked ? `Saving ${herName('obj')} first…` : 'Loading…');
-      const r = await GameSave.loadSave(sv.id, { useBond: box.checked });
+      const r = await GameSave.loadSave(sv.id, { useBond: box.checked, keep: [skillsBox.checked ? null : 'skills', thingsBox.checked ? null : 'things'].filter(Boolean) });
       gameLoading = null;
       if (r.error === 'savepoint') gameMsg(`Couldn't save ${herName('obj')} first (${r.why}), so nothing was loaded.`, true);
       else if (r.error) gameMsg(gameSay(r), true);
@@ -1280,11 +1296,272 @@ function gameRow(sv, v) {
       if (r.view) drawGame(r.view); else loadGame();
     }, { accent: true }),
   );
-  panel.append(p, lab, keep, pacts);
+  panel.append(p, lab, skillsLab, thingsLab, keep, pacts);
 
   row.append(what, acts, more, panel);
   return row;
 }
+
+// ---------------------------------------------------------------
+// Jun profiles (#18): .jun files in the profiles folder (desktop/main.js "Jun profiles"), made and applied with
+// js/core/profile.js. Applying one makes a save point first. And "what goes where": which pieces go into a profile and
+// come with a game save (data/profile-parts.json; his picks in localStorage jun.carry)
+
+const profChan = 'BroadcastChannel' in window ? new BroadcastChannel('jun-settings') : null;
+const profIO = {
+  local: {
+    get: (k) => localStorage.getItem(k),
+    set: (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* full */ } },
+    keys: () => Object.keys(localStorage),
+  },
+  desk: D?.profile ? { get: () => D.profile('get'), set: (d) => D.profile('set', d), spots: () => D.profile('spots'), setSpots: (d) => D.profile('setSpots', d) } : null,
+  comfort: { get: () => Gate.loadComfort(), set: (p) => Gate.saveComfort(p) },
+  bond: {
+    get: async () => { try { const j = await (await fetch('api/relationship.php', { credentials: 'same-origin' })).json(); return { stage: j?.bond?.stage || 1 }; } catch (e) { return null; } },
+    set: async (stage) => {
+      const r = await fetch('api/relationship.php', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'bond', stage }) });
+      if (!r.ok) throw new Error('the bond could not be set');
+    },
+  },
+  // after applying: her window's settings go to her server and her window reloads; this page redraws
+  after: async (ids) => {
+    if (ids.some(id => Profile.part(id)?.herWindow)) { Prefs.pushToServer(); setTimeout(() => profChan?.postMessage({ type: 'reload' }), 700); }
+    Fx.applyFx(Fx.readFx());
+    try { previewTheme(); } catch (e) { /* not drawn yet */ }
+    loadDesk();
+  },
+};
+let profList = [];
+const profMsg = (t, bad) => { const el = $('profMsg'); el.textContent = t || ''; el.classList.toggle('bad', !!bad); };
+const b64ToBytes = (b64) => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+const bytesToB64 = (u) => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+async function loadProfiles(focus) {
+  const host = $('profRows');
+  if (!host) return;
+  if (!D?.profiles) { host.textContent = ''; $('noProfs').hidden = false; $('noProfs').textContent = 'Profiles live in a folder on your PC: open Settings from the Jun desktop app to use them.'; return; }
+  const r = await D.profiles('list').catch(() => null);
+  const files = r?.files || [];
+  profList = await Promise.all(files.map(async (f) => {
+    const got = await D.profiles('read', f.file).catch(() => null);
+    const parsed = got?.b64 ? await Profile.fromFile(b64ToBytes(got.b64)) : { error: 'damaged' };
+    return { ...f, ...parsed };
+  }));
+  drawProfiles(focus);
+}
+function drawProfiles(focus) {
+  const host = $('profRows');
+  host.textContent = '';
+  $('noProfs').hidden = profList.length > 0;
+  for (const pf of profList) host.append(profRow(pf, pf.file === focus));
+  soon();
+}
+function profRow(pf, open) {
+  const m = pf.manifest;
+  const sum = m ? Profile.summary(m) : [];
+  const what = document.createElement('div');
+  what.className = 'what';
+  const b = document.createElement('b');
+  b.textContent = m ? m.name : pf.file;
+  const sw = document.createElement('span');
+  sw.className = 'prof-swatch';
+  for (const c of m ? Profile.swatches(m) : []) { const i = document.createElement('i'); i.style.background = c; sw.append(i); }
+  b.append(sw);
+  const line = document.createElement('span');
+  line.textContent = pf.error ? Profile.say(pf.error) + ` (${pf.file})` : (m.note ? m.note + ' · ' : '') + sum.map(x => x.name).join(', ') + (m.made ? ' · made ' + new Date(m.made).toLocaleDateString() : '');
+  what.append(b, line);
+  const r = document.createElement('div');
+  r.className = 'row';
+  r.append(what);
+  const acts = document.createElement('div');
+  acts.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+  const panel = document.createElement('div');
+  panel.className = 'prof-panel';
+  panel.hidden = !open;
+  if (m) {
+    acts.append(gameBtn('Apply…', () => { panel.hidden = !panel.hidden; }, { accent: true }));
+    // choose the parts: the ones out by default (names, comfort, the bond) start unticked
+    const pick = new Set(Profile.defaultPick(m));
+    const head = document.createElement('div');
+    head.textContent = 'Apply these parts (a save point of ' + herName('obj') + ' comes first, so you can always go back):';
+    panel.append(head);
+    for (const x of sum) {
+      const l = document.createElement('label');
+      const c = document.createElement('input');
+      c.type = 'checkbox'; c.checked = pick.has(x.id);
+      c.addEventListener('change', () => { if (c.checked) pick.add(x.id); else pick.delete(x.id); });
+      const t = document.createElement('span');
+      t.innerHTML = '';
+      const nb = document.createElement('b'); nb.textContent = x.name;
+      const sm = document.createElement('small'); sm.textContent = x.words + (x.offByDefault ? ' · out unless you tick it' : '') + (x.id === 'bond' ? ' · not the natural way: earning it is' : '');
+      t.append(nb, sm);
+      l.append(c, t);
+      panel.append(l);
+    }
+    if (pf.dropped?.length) { const d = document.createElement('div'); d.className = 'hint'; d.textContent = 'Left out (not something a profile may change): ' + pf.dropped.join(', '); panel.append(d); }
+    const go = document.createElement('div');
+    go.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+    go.append(gameBtn('Cancel', () => { panel.hidden = true; }), gameBtn('Apply them', async (e) => {
+      if (!pick.size) return;
+      e.target.disabled = true;
+      profMsg(`Saving ${herName('obj')} first…`);
+      if (D?.saves) {
+        const sp = await D.saves('save', `Before the profile “${m.name}”`).catch((err) => ({ error: err?.message || 'failed' }));
+        if (!sp || sp.error) { profMsg(Profile.say('savepoint'), true); e.target.disabled = false; return; }
+      }
+      const res = await Profile.apply(m, [...pick], profIO);
+      panel.hidden = true;
+      e.target.disabled = false;
+      const names = (ids) => ids.map(id => Profile.part(id)?.name || id).join(', ');
+      profMsg(`Applied “${m.name}”: ${names(res.applied) || 'nothing'}.` + (res.skipped.length ? ' Not applied: ' + res.skipped.map(x => (Profile.part(x.id)?.name || x.id) + ' (' + x.why + ')').join(', ') + '.' : '') + ' Undo: Her saves, just above.', res.applied.length === 0);
+      loadSaves();
+    }, { accent: true }));
+    panel.append(go);
+  }
+  acts.append(gameBtn('Rename', async () => {
+    const n = prompt('A new name for this profile', m?.name || pf.file.replace(/\.jun$/i, ''));
+    if (!n) return;
+    // the name inside the file follows too
+    if (m) { const bytes = await Profile.toFile({ ...m, name: n.slice(0, 60) }); await D.profiles('write', n, bytesToB64(bytes)); await D.profiles('delete', pf.file); }
+    else await D.profiles('rename', pf.file, n);
+    loadProfiles();
+  }), gameBtn('Show the file', () => D.profiles('show', pf.file)), confirmBtn('Delete', async () => { await D.profiles('delete', pf.file); loadProfiles(); }));
+  r.append(acts, panel);
+  return r;
+}
+// a button that needs a second click
+function confirmBtn(text, fn) {
+  let armed = false;
+  return gameBtn(text, async (e) => {
+    if (!armed) { armed = true; e.target.textContent = 'Sure? Click again'; setTimeout(() => { armed = false; if (e.target.isConnected) e.target.textContent = text; }, 4000); return; }
+    await fn(e);
+  }, { danger: true });
+}
+// making one: the parts, ticked the way "what goes where" says
+$('profMake').addEventListener('click', () => {
+  const panel = $('profMakePanel');
+  if (!panel.hidden) { panel.hidden = true; return; }
+  panel.hidden = false;
+  panel.textContent = '';
+  const carry = Profile.readCarry(localStorage);
+  const pick = new Set(Profile.parts().filter(p => Profile.isIn(p, 'profile', carry)).map(p => p.id));
+  const head = document.createElement('div');
+  head.textContent = 'Put these in it:';
+  panel.append(head);
+  for (const p of Profile.parts().filter(x => Profile.defaultIn(x, 'profile') !== 'never')) {
+    const l = document.createElement('label');
+    const c = document.createElement('input');
+    c.type = 'checkbox'; c.checked = pick.has(p.id);
+    c.addEventListener('change', () => { if (c.checked) pick.add(p.id); else pick.delete(p.id); });
+    const t = document.createElement('span');
+    const nb = document.createElement('b'); nb.textContent = p.name;
+    const sm = document.createElement('small'); sm.textContent = p.line + (p.privacy === 'pc' || p.privacy === 'rated' ? ' (think twice before sharing this one)' : '');
+    t.append(nb, sm);
+    l.append(c, t);
+    panel.append(l);
+  }
+  const note = document.createElement('input');
+  note.type = 'text'; note.className = 'btn'; note.maxLength = 300; note.placeholder = 'A note for whoever gets it (optional)';
+  note.style.cssText = 'width:100%;margin:6px 0';
+  const go = document.createElement('div');
+  go.style.cssText = 'display:flex;gap:6px';
+  go.append(gameBtn('Cancel', () => { panel.hidden = true; }), gameBtn('Make it', async (e) => {
+    e.target.disabled = true;
+    const name = $('profName').value.trim() || 'My Jun';
+    const m = await Profile.collect(profIO, { name, note: note.value.trim(), pick: [...pick] });
+    const bytes = await Profile.toFile(m);
+    if (D?.profiles) {
+      const r = await D.profiles('write', name, bytesToB64(bytes));
+      profMsg(r?.ok ? `Made “${name}” (${r.file}). Share the file, or keep it to switch back to.` : 'Could not write the file.', !r?.ok);
+      $('profName').value = '';
+      panel.hidden = true;
+      loadProfiles();
+    } else {
+      // a plain browser: download it
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+      a.download = Profile.fileName(name);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      panel.hidden = true;
+    }
+    e.target.disabled = false;
+  }, { accent: true }));
+  panel.append(note, go);
+});
+$('profOpen').addEventListener('click', () => D?.profiles?.('openDir'));
+$('profUpload').addEventListener('click', () => $('profFile').click());
+async function addProfileFile(file) {
+  if (!file || !D?.profiles) return;
+  if (file.size > 20 * 1024 * 1024) { profMsg(Profile.say('too_big'), true); return; }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const r = await Profile.fromFile(bytes);
+  if (r.error) { profMsg(Profile.say(r.error), true); return; }
+  const w = await D.profiles('write', r.manifest.name || file.name, bytesToB64(bytes));
+  profMsg(w?.ok ? `Added “${r.manifest.name}”. Open Apply… to use it.` : 'Could not add it.', !w?.ok);
+  loadProfiles(w?.file);
+}
+$('profFile').addEventListener('change', (e) => { addProfileFile(e.target.files[0]); e.target.value = ''; });
+{
+  const host = $('profRows');
+  const zone = host.parentElement;
+  zone.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.items || [])].some(i => i.kind === 'file')) { e.preventDefault(); host.classList.add('drop'); } });
+  zone.addEventListener('dragleave', () => host.classList.remove('drop'));
+  zone.addEventListener('drop', (e) => {
+    const f = [...(e.dataTransfer?.files || [])].find(x => /\.(jun|json)$/i.test(x.name));
+    if (!f || !/\.jun$|\.json$/i.test(f.name) || (f.name.endsWith('.json') && current !== 'saves')) return;
+    if (f.name.endsWith('.jungame')) return;
+    e.preventDefault(); host.classList.remove('drop');
+    addProfileFile(f);
+  });
+}
+D?.onProfilesChanged?.((file) => { if (current === 'saves') loadProfiles(typeof file === 'string' ? file : undefined); });
+
+// what goes where: a table of every piece × profile / game save / save point
+function drawCarry() {
+  const host = $('carryRows');
+  if (!host || !Profile.parts().length) return;
+  const carry = Profile.readCarry(localStorage);
+  const C = Profile.containers();
+  const t = document.createElement('table');
+  const head = document.createElement('tr');
+  head.append(...['', 'profile', 'gamesave', 'savepoint'].map((c) => { const th = document.createElement('th'); th.textContent = c ? C[c]?.name || c : 'Piece'; if (c) th.title = C[c]?.line || ''; return th; }));
+  t.append(head);
+  const changed = new Set(Profile.changedCarry(carry).map(x => x.id));
+  for (const p of Profile.parts()) {
+    const tr = document.createElement('tr');
+    if (changed.has(p.id)) tr.className = 'changed';
+    const td = document.createElement('td');
+    const nb = document.createElement('b'); nb.textContent = p.name;
+    const sm = document.createElement('small'); sm.textContent = p.line;
+    td.append(nb, sm);
+    tr.append(td);
+    for (const c of ['profile', 'gamesave', 'savepoint']) {
+      const cell = document.createElement('td');
+      const v = Profile.defaultIn(p, c);
+      if (Profile.canChange(p, c)) {
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = Profile.isIn(p, c, carry);
+        box.title = v === 'on' ? 'In, the way we made it' : 'Out, the way we made it';
+        box.setAttribute('aria-label', `${p.name} in a ${C[c]?.name || c}`);
+        box.addEventListener('change', () => { Profile.setIn(localStorage, c, p.id, box.checked); drawCarry(); });
+        cell.append(box);
+      } else {
+        cell.className = 'fixed';
+        cell.textContent = v === 'always' ? 'Always' : '—';
+        if (p.why?.[c]) cell.title = p.why[c];
+      }
+      tr.append(cell);
+    }
+    t.append(tr);
+  }
+  host.textContent = '';
+  host.append(t);
+  const n = changed.size;
+  $('carryReset').disabled = !n;
+  $('carryReset').textContent = n ? `Back to the way we made it (${n} changed)` : 'Back to the way we made it';
+}
+$('carryReset').addEventListener('click', () => { Profile.resetCarry(localStorage); drawCarry(); });
 
 $('gameSaveNow').addEventListener('click', async () => {
   const btn = $('gameSaveNow');

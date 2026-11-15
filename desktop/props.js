@@ -183,6 +183,15 @@ function list() {
   return ctx.cfg.spots.map(s => ({ id: s.id, type: s.type, label: TYPES[s.type].label, colors: s.colors || TYPES[s.type].colors,
     defaults: TYPES[s.type].colors, stay: ctx.cfg.stay === s.id }));
 }
+// a Jun profile's spots, all at once (main.js checked the types and put them on a screen)
+function replaceAll(spots, stay) {
+  for (const id of [...live.keys()]) destroy(id);
+  ctx.cfg.spots = spots;
+  ctx.cfg.stay = stay && spots.some(s => s.id === stay) ? stay : null;
+  ctx.saveCfg();
+  if (shown) show();
+  ctx.menusChanged();
+}
 function types() { return Object.entries(TYPES).map(([k, t]) => ({ type: k, label: t.label })); }
 
 // dragging a spot (or the ball) around, same cursor polling as her
@@ -466,7 +475,7 @@ function offerBall(how) {
 }
 
 module.exports = {
-  TYPES, init, show, hide, protect, rebuild, zOrder, add, remove, setColor, list, types, dragStart, dragEnd,
+  TYPES, init, show, hide, protect, rebuild, replaceAll, zOrder, add, remove, setColor, list, types, dragStart, dragEnd,
   goTo, leave, stay, afterLanding, onSpot, wantsSpot, restY, spawnBall, removeBall, offerBall, hasBall: () => !!ball,
   spotByContents, ballContents: () => (ball && !ball.win.isDestroyed() ? ball.win.webContents : null),
 };

@@ -68,6 +68,12 @@ contextBridge.exposeInMainWorld('junDesktop', {
   // 'pickDir' | 'resetDir' | 'keep' (n) | 'openDir' | 'update'
   saves: (action, a) => ipcRenderer.invoke('jun:saves', String(action), a == null ? null : String(a)),
   onSavesChanged: on('jun:saves-changed'),
+  // Jun profiles (#18): the desktop part of a profile ('get' | 'set' | 'spots' | 'setSpots'), and the profiles
+  // folder ('list' | 'read' (file) | 'write' (name, base64) | 'import' (name, base64: a file dropped onto her) |
+  // 'delete' | 'rename' (file, name) | 'openDir' | 'show')
+  profile: (action, data) => ipcRenderer.invoke('jun:profile', String(action), data == null ? null : JSON.parse(JSON.stringify(data))),
+  profiles: (action, a, b) => ipcRenderer.invoke('jun:profiles', String(action), a == null ? null : String(a), b == null ? null : String(b)),
+  onProfilesChanged: on('jun:profiles-changed'),
   // her main window: open a tab of the settings window
   openSettings: (tab) => ipcRenderer.send('jun:open-settings', String(tab || '')),
 });

@@ -56,7 +56,7 @@ test('a load without the box asks for no save point and sends the page\'s parts'
   answer = () => ({ status: 200, body: { result: { ok: true, client: { delve: { seed: 42 } }, epoch: 5, bond: null }, view: { live: { epoch: 5 } } } });
   const r = await G.loadSave(12);
   assert.equal(pointAsked, false);
-  assert.deepEqual(calls[0].body, { action: 'load', id: 12, useBond: false, client: { delve: { seed: 3 } } });
+  assert.deepEqual(calls[0].body, { action: 'load', id: 12, useBond: false, keep: [], client: { delve: { seed: 3 } } });
   assert.equal(r.ok, true);
   assert.deepEqual(JSON.parse(mem.get('jun.delve')).run, { seed: 42 }, 'the save\'s delve is back');
   assert.equal(G.currentEpoch(), 5);

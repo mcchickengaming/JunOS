@@ -21,7 +21,7 @@ import { tune as getTune } from './delve-tune.js?v=2';
 import { lastDelve } from './last.js?v=1';
 import * as Difficulty from '../difficulty.js?v=2';
 import * as Story from '../story/story-state.js?v=3';
-import * as GameSave from '../gamesave.js?v=3';
+import * as GameSave from '../gamesave.js?v=4';
 
 export const KEY = 'jun.delve';
 export const ACTIVITY = 'delve';

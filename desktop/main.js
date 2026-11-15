@@ -1279,6 +1279,94 @@ ipcMain.handle('jun:desk', (e, action, key, value) => {
   return deskInfo();
 });
 
+// ---------------------------------------------------------------
+// Jun profiles (#18, webapp/js/core/profile.js does the file): the desktop part of a profile, and the profiles folder
+// (runtime\profiles: drop a .jun file in, or onto her, and it shows up in Settings > Saves & updates > Jun profiles)
+
+const PROFILES_DIR = () => path.join(JUN_HOME, 'runtime', 'profiles');
+const PROFILE_MAX = 20 * 1024 * 1024;
+const profileFile = (f) => (typeof f === 'string' && /^[^\\/:*?"<>|]{1,80}\.jun$/i.test(f) && f === path.basename(f) ? path.join(PROFILES_DIR(), f) : null);
+function deskSetAll(d) {
+  for (const [key, value] of Object.entries((d && d.desk) || {})) {
+    const t = DESK_KEYS[key];
+    if (!t) continue;
+    if (t === 'bool') cfg.desk[key] = !!value;
+    else if (PCT_KEYS.includes(key)) cfg.desk[key] = pctOf(value, cfg.desk[key]);
+    else { const hit = t.find(([v]) => String(v) === String(value)); if (hit) cfg.desk[key] = hit[0]; }
+  }
+  if (d && d.size != null) setSize(d.size, true);
+  saveCfg(); sendSettings(); rebuildMenus(); registerHotkeys(); applyShareHide(); autoCheck();
+}
+function spotsSetAll(d) {
+  const types = new Set(Props.types().map(t => t.type));
+  const displays = screen.getAllDisplays();
+  const wa = screen.getPrimaryDisplay().workArea;
+  const spots = ((d && d.spots) || []).filter(s => types.has(s.type)).slice(0, 40).map((s, i) => {
+    const on = displays.some(x => s.x >= x.workArea.x && s.x < x.workArea.x + x.workArea.width && s.y >= x.workArea.y && s.y < x.workArea.y + x.workArea.height);
+    return { ...s, x: on ? s.x : wa.x + 80 + i * 60, y: on ? s.y : wa.y + wa.height - 200 };
+  });
+  Props.replaceAll(spots, d && d.stay);
+}
+let profWatch = null, profTimer = null;
+function watchProfiles() {
+  if (profWatch) return;
+  try {
+    fs.mkdirSync(PROFILES_DIR(), { recursive: true });
+    profWatch = fs.watch(PROFILES_DIR(), () => {
+      clearTimeout(profTimer);
+      profTimer = setTimeout(() => { if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('jun:profiles-changed'); }, 400);
+    });
+  } catch (e) { log('profiles folder: ' + e.message); }
+}
+function uniqueProfile(name) {
+  const base = String(name || 'My Jun').replace(/\.jun$/i, '').replace(/[^\w \-()'.]+/g, '').trim().slice(0, 50) || 'My Jun';
+  let f = base + '.jun', n = 2;
+  while (fs.existsSync(path.join(PROFILES_DIR(), f))) f = `${base} (${n++}).jun`;
+  return f;
+}
+ipcMain.handle('jun:profile', (e, action, data) => {
+  if (!fromSettings(e)) return null;
+  if (action === 'get') return { desk: { ...cfg.desk }, size: cfg.size };
+  if (action === 'set') { deskSetAll(data); return { ok: true }; }
+  if (action === 'spots') return { spots: (cfg.spots || []).map(s => ({ id: s.id, type: s.type, x: s.x, y: s.y, colors: s.colors })), stay: cfg.stay || null };
+  if (action === 'setSpots') { spotsSetAll(data); return { ok: true }; }
+  return null;
+});
+ipcMain.handle('jun:profiles', async (e, action, a, b) => {
+  const fromHer = fromWin(e);
+  if (!fromSettings(e) && !fromHer) return null;
+  watchProfiles();
+  const dir = PROFILES_DIR();
+  try { fs.mkdirSync(dir, { recursive: true }); } catch (err) {}
+  // a file dropped onto her or the settings window: into the folder, then Settings shows it
+  if (action === 'import' || action === 'write') {
+    const buf = Buffer.from(String(b || ''), 'base64');
+    if (!buf.length || buf.length > PROFILE_MAX) return { error: 'too_big' };
+    const f = uniqueProfile(a);
+    fs.writeFileSync(path.join(dir, f), buf);
+    if (action === 'import') { openSettings('saves'); setTimeout(() => settingsWin && !settingsWin.isDestroyed() && settingsWin.webContents.send('jun:profiles-changed', f), 900); }
+    return { ok: true, file: f };
+  }
+  if (fromHer) return null;
+  if (action === 'list') {
+    return { dir, files: fs.readdirSync(dir).filter(f => /\.jun$/i.test(f)).map(f => {
+      const st = fs.statSync(path.join(dir, f));
+      return { file: f, bytes: st.size, mtime: st.mtimeMs };
+    }).filter(x => x.bytes <= PROFILE_MAX).sort((x, y) => y.mtime - x.mtime) };
+  }
+  const file = profileFile(a);
+  if (action === 'read') return file && fs.existsSync(file) ? { b64: fs.readFileSync(file).toString('base64') } : { error: 'gone' };
+  if (action === 'delete') { if (file && fs.existsSync(file)) await shell.trashItem(file).catch(() => fs.unlinkSync(file)); return { ok: true }; }
+  if (action === 'rename') {
+    const to = uniqueProfile(b);
+    if (file && fs.existsSync(file)) fs.renameSync(file, path.join(dir, to));
+    return { ok: true, file: to };
+  }
+  if (action === 'openDir') { shell.openPath(dir); return { ok: true }; }
+  if (action === 'show') { if (file) shell.showItemInFolder(file); return { ok: true }; }
+  return null;
+});
+
 // her size, from the settings window's "Her size" tab
 ipcMain.handle('jun:size', (e, action, value) => {
   if (!fromSettings(e)) return null;

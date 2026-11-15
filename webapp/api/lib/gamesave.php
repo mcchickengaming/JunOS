@@ -173,7 +173,14 @@ function gamesave_progress_part(array $progress): array {
 // put a save's player side into the progression blob. Her skills, his desktop skills (Focus), today's caps,
 // her away clock and the opt-ins stay as they are. A session running in the game (a delve) is dropped: the
 // game it belonged to is gone. A desktop-only session (a focus timer) keeps running.
-function gamesave_progress_apply(array $progress, array $part, array $d): array {
+// keepMine: his parts that STAY as they are now instead of coming from the save (the player's "what goes where" picks,
+// js/core/profile.js gameKeep): 'skills' (his skill levels), 'things' (credits, the other currencies, items, keepsakes)
+const GAMESAVE_KEEPABLE = ['skills' => ['skills'], 'things' => ['credits', 'wallet', 'items', 'keepsakes']];
+function gamesave_keep_clean($keep): array {
+    return array_values(array_intersect(array_keys(GAMESAVE_KEEPABLE), array_filter((array)$keep, 'is_string')));
+}
+function gamesave_progress_apply(array $progress, array $part, array $d, array $keepMine = []): array {
+    $before = $progress;
     $keep = [];
     foreach ((array)($progress['skills']['player'] ?? []) as $id => $k) {
         if (in_array($id, GAMESAVE_DESKTOP_SKILLS, true)) $keep[$id] = $k;
@@ -189,6 +196,8 @@ function gamesave_progress_apply(array $progress, array $part, array $d): array 
         $v = $part[$k] ?? $blank[$k];
         $progress[$k] = gettype($v) === gettype($blank[$k]) ? $v : $blank[$k];
     }
+    if (in_array('skills', $keepMine, true)) $progress['skills']['player'] = $before['skills']['player'] ?? [];
+    if (in_array('things', $keepMine, true)) foreach (GAMESAVE_KEEPABLE['things'] as $k) $progress[$k] = $before[$k] ?? progress_blank()[$k];
     $progress['credits'] = max(0, (int)$progress['credits']);
     if (is_array($progress['session'] ?? null)) {
         $act = $d['activities'][$progress['session']['activity'] ?? ''] ?? null;
@@ -376,7 +385,7 @@ function gamesave_save(int $userId, string $kind, string $name, array $client, i
 }
 
 // put a payload live. Returns the client parts for the page to put back. The bond only if $useBond.
-function gamesave_apply(int $userId, array $payload, bool $useBond, int $now): array {
+function gamesave_apply(int $userId, array $payload, bool $useBond, int $now, array $keepMine = []): array {
     $live = gamesave_live($userId);
     $live['sections'] = (array)$payload['game']['sections'];
     $live['played'] = (int)$payload['game']['played'];
@@ -385,7 +394,7 @@ function gamesave_apply(int $userId, array $payload, bool $useBond, int $now): a
     $live['epoch']++;
     $live['rev']++;
     gamesave_live_write($userId, $live, $now);
-    $prog = gamesave_progress_apply(progress_load($userId), (array)$payload['progress'], progress_data());
+    $prog = gamesave_progress_apply(progress_load($userId), (array)$payload['progress'], progress_data(), $keepMine);
     progress_save($userId, $prog);
     $bond = null;
     if ($useBond) $bond = bond_set($userId, (int)$payload['bond']['xp'], 'save', $now);
@@ -394,7 +403,8 @@ function gamesave_apply(int $userId, array $payload, bool $useBond, int $now): a
 
 // load a slot: first a "before load" save of what's live now (with the bond as it is now and the page's parts),
 // then the slot goes live. `lastLoad` remembers both, so "Undo last load" can put everything back.
-function gamesave_load(int $userId, int $id, bool $useBond, array $client, int $now, ?string $beforeName = null): array {
+function gamesave_load(int $userId, int $id, bool $useBond, array $client, int $now, ?string $beforeName = null, array $keepMine = []): array {
+    $keepMine = gamesave_keep_clean($keepMine);
     $row = gamesave_get($userId, $id);
     if (!$row) return ['error' => 'gone'];
     if (!$row['payload']) return ['error' => 'damaged'];
@@ -406,9 +416,9 @@ function gamesave_load(int $userId, int $id, bool $useBond, array $client, int $
         $before = gamesave_store($userId, 'before_load', $beforeName ?? ('Before loading "' . $row['name'] . '"'), gamesave_snapshot($userId, (array)$c['client'], $now), $now,
             GAMESAVE_TUNE, ['usedBond' => $useBond]);
         if (isset($before['error'])) { $db->rollBack(); return $before; }
-        $r = gamesave_apply($userId, $row['payload'], $useBond, $now);
+        $r = gamesave_apply($userId, $row['payload'], $useBond, $now, $keepMine);
         $live = gamesave_live($userId);
-        $live['lastLoad'] = ['before' => $before['id'], 'loaded' => $id, 'name' => $row['name'], 'usedBond' => $useBond, 'at' => $now];
+        $live['lastLoad'] = ['before' => $before['id'], 'loaded' => $id, 'name' => $row['name'], 'usedBond' => $useBond, 'kept' => $keepMine, 'at' => $now];
         gamesave_live_write($userId, $live, $now);
         $db->commit();
         return $r + ['ok' => true, 'loaded' => $id, 'before' => $before['id']];

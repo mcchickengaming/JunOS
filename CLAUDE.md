@@ -659,6 +659,27 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   `hide_key`, `auto_hide`, `share_hide`, `house_cube`. NOT built: auto-hide for apps he picks or set hours (needs senses #3),
   "may peek", clicking where she left. NOT seen on Windows yet: the watcher, content protection, the window growing out of the door.
 
+- **Jun profiles + "what goes where"** (#18, Nov 15, Opus): `webapp/data/profile-parts.json` = every PIECE of your Jun
+  (colors, touch_feel, touch_spots, desktop, her_spots, features, her_ways, voice, outfit, names, comfort, bond, game_story,
+  his_skills, his_things, her_skills, memories) with its `store` and, per container (`profile` / `gamesave` / `savepoint`),
+  `always` / `on` / `off` / `never` (+ `why` where it lives instead). The way we made it = the data; his own picks in
+  localStorage `jun.carry` (only on/off pieces move). `js/core/profile.js` (pure, an `io` does all storage; tested by
+  `.github/scripts/js/profile.test.mjs`): `isIn / setIn / resetCarry / changedCarry`, `gameKeep(carry)` → the game-save load
+  options, `collect(io, { pick })` → the manifest, `clean()` (format/version, only each piece's own keys, size caps, spots
+  checked, **18+ never from a file**: `COMFORT_KEYS` only, bond stage clamped, unknown pieces named in `dropped`), `toFile` /
+  `fromFile` (a `.jun` = a zip, `jun-profile.json` inside; a bare json works too), `summary`, `swatches`, `defaultPick` (names,
+  comfort, bond start unticked), `apply(manifest, pick, io)` (a piece's keys missing from the file go back to how she comes;
+  her window's pieces → `Prefs.pushToServer` + her window reloads). Zips: `js/core/jun-zip.js` (writes stored, reads stored +
+  deflated). The app: `runtime\profiles` (main.js "Jun profiles": `jun:profile` get/set/spots/setSpots via `deskSetAll` (only
+  `DESK_KEYS`) and `spotsSetAll` (known types, put back on a screen; props.js `replaceAll`); `jun:profiles` list/read/write/
+  import/delete (to the bin)/rename/openDir/show, watched with fs.watch → `jun:profiles-changed`). Dropping a .jun onto her
+  (desktop.js) or onto the list imports it. Settings > Saves & updates > **Jun profiles** (make one with a parts checklist +
+  a note; each profile: swatches, its pieces, **Apply…** with a parts checklist, a save point first, Rename / Show the file /
+  Delete) and **What goes where** (the table; "Back to the way we made it (N changed)"). **Game saves follow it**: the load
+  panel's boxes start from `gameKeep` (bond off; "Bring this save's skills / things" on), `GameSave.loadSave(id, { useBond,
+  keep })` → `gamesave_load(…, $keepMine)` (`GAMESAVE_KEEPABLE`: 'skills', 'things'; `lastLoad.kept`). Registry `profiles`,
+  `carry`. NOT built: profiles for makers' entries and packs (they plug in as more pieces), switching profiles by time of day.
+
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`
   `features_registry()`): every feature once: `id`, `name`, `line`, `section` (+ `anchor`, or `where` for

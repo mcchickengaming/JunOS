@@ -175,13 +175,14 @@ function afterLoad(r, type) {
 }
 
 // load a slot. useBond = "Use this save's bond" (off by default)
-export async function loadSave(id, { useBond = false } = {}) {
+// keep: his parts that stay as they are now ('skills', 'things'), from the "what goes where" picks (profile.js gameKeep)
+export async function loadSave(id, { useBond = false, keep = [] } = {}) {
   let point = null;
   if (useBond) {
     point = await savePointFirst("Before a game save's bond");
     if (point.error) return { error: 'savepoint', why: point.error };
   }
-  return { ...afterLoad(await post({ action: 'load', id, useBond: !!useBond, client: collect() }), 'loaded'), savePoint: point };
+  return { ...afterLoad(await post({ action: 'load', id, useBond: !!useBond, keep: (keep || []).filter(k => ['skills', 'things'].includes(k)), client: collect() }), 'loaded'), savePoint: point };
 }
 export const undo = async () => afterLoad(await post({ action: 'undo', client: collect() }), 'loaded');
 export const newGame = async () => afterLoad(await post({ action: 'new', client: collect() }), 'loaded');
