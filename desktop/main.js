@@ -18,6 +18,7 @@ const { spawn } = require('child_process');
 const Props = require('./props');
 const Saves = require('./saves');
 const Presence = require('./presence');
+const Wake = require('./wake');
 
 const switchValue = (name) => app.commandLine.getSwitchValue(name) || '';
 const JUN_URL = (switchValue('jun-url') || process.env.JUN_URL || 'https://127.0.0.1:8080').replace(/\/+$/, '');
@@ -253,21 +254,7 @@ async function boot() {
     showSplash(note && note.kind === 'restore' ? `Waking Jun up, back at “${note.name}”…`
       : note && note.kind === 'update' ? 'Waking Jun up with her update…' : 'Waking Jun up…');
     wakeServer();
-    const t0 = Date.now();
-    while (!await serverUp()) {
-      if (Date.now() - t0 > 4 * 60 * 1000) {
-        if (note && note.kind === 'update' && note.from && await offerUndoUpdate(note)) return;
-        closeSplash();
-        const tail = wakeTail();
-        log("she didn't wake up" + (tail ? ':\n' + tail : ' (start.ps1 printed nothing)'));
-        await ask({ type: 'warning', message: "Jun didn't wake up.",
-          detail: (tail ? 'The last thing her start said:\n\n' + tail + '\n\n' : '') +
-            'Open PowerShell in her folder and run .\\start.ps1 to start her by hand. Her full start log is runtime\\logs\\desktop-wake.log.' });
-        app.exit(0);
-        return;
-      }
-      await sleep(2000);
-    }
+    if (!await waitForHer(note)) return;
   }
   openMode(cfg.mode, '');
   closeSplash();
@@ -278,6 +265,52 @@ async function boot() {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// wait for her server while her start is still working (desktop/wake.js has the rules and the why).
+// true = she's up; false = the app has given up (and exits) or went back to the version before an update
+async function waitForHer(note) {
+  const t0 = Date.now();
+  let seen = null, changedAt = t0, readyAt = 0, line = '', offeredAt = t0;
+  for (;;) {
+    if (await serverUp()) return true;
+    const out = readText(WAKE_LOG()), err = readText(WAKE_ERR());
+    if (out + err !== seen) { seen = out + err; changedAt = Date.now(); }
+    const step = Wake.stepOf(out);
+    if (step === 'ready' && !readyAt) readyAt = Date.now();
+    const now = Date.now();
+    const v = Wake.verdict({ elapsedMs: now - t0, out, err, quietMs: now - changedAt, readyForMs: readyAt ? now - readyAt : 0 });
+    const say = Wake.words(v.step, now - t0, note);
+    if (say !== line) { line = say; showSplash(say); }
+    // after an update that's taking long: offer the version before now and then, without giving up
+    if (!v.give && note && note.kind === 'update' && note.from && now - offeredAt > Wake.WAIT.askEveryMs) {
+      offeredAt = now;
+      if (await offerUndoUpdate(note, true)) return false;
+      if (await serverUp()) return true;
+      line = '';
+      continue;
+    }
+    if (v.give) {
+      log(`waiting for her gave up (${v.why}, step ${v.step}, ${Math.round((now - t0) / 1000)} s)`);
+      if (note && note.kind === 'update' && note.from && await offerUndoUpdate(note)) return false;
+      // a dialog can stay open a long time: she may have woken meanwhile
+      if (await serverUp()) return true;
+      closeSplash();
+      const tail = wakeTail();
+      log("she didn't wake up" + (tail ? ':\n' + tail : ' (start.ps1 printed nothing)'));
+      const { response } = await ask({ type: 'warning', buttons: ['Keep waiting', 'Close'], defaultId: 0, cancelId: 1,
+        message: "Jun didn't wake up yet.",
+        detail: (tail ? 'The last thing her start said:\n\n' + tail + '\n\n' : '') +
+          'Keep waiting, or close and run .\\start.ps1 in PowerShell in her folder to start her by hand. Her full start log is runtime\\logs\\desktop-wake.log.' });
+      if (await serverUp()) return true;
+      if (response !== 0) { app.exit(0); return false; }
+      // keep waiting: a fresh round
+      return waitForHer(note);
+    }
+    await sleep(2000);
+  }
+}
+function readText(f) { try { return fs.readFileSync(f, 'utf8'); } catch (e) { return ''; } }
+
 
 function serverUp() {
   return new Promise((resolve) => {
@@ -1856,11 +1889,11 @@ async function updateFlow() {
 }
 
 // the update went in but she doesn't wake up: offer the version before
-async function offerUndoUpdate(note) {
+async function offerUndoUpdate(note, slow) {
   closeSplash();
   const { response } = await ask({
-    type: 'warning', buttons: ['Go back to the version before', 'Keep waiting'], defaultId: 0, cancelId: 1,
-    message: "Jun didn't wake up after the update.",
+    type: 'warning', buttons: ['Go back to the version before', 'Keep waiting'], defaultId: slow ? 1 : 0, cancelId: 1,
+    message: slow ? 'Jun is taking a long time to wake up after the update.' : "Jun didn't wake up after the update.",
     detail: 'Go back to the version she had before the update? Her memories and everything else stay as they are.',
   });
   if (response !== 0) return false;

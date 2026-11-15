@@ -258,14 +258,18 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   again, whose normal boot wakes her server. A note (`runtime\jun-restart-note.json`, 30 min) tells the new start
   what happened (dialog). Update: branch must be `jun-dev` with an upstream, `git fetch`, refuses with local commits
   or hand-edited tracked files, lists up to 10 commit subjects, before-update save, `git merge --ff-only @{u}` (fails
-  → nothing stopped), clear the http cache, stop, relaunch. If she doesn't wake within 4 min after an update the app
-  offers `git reset --keep <old head>` and restarts. git runs with `GIT_TERMINAL_PROMPT=0`. Waking her server (main.js
+  → nothing stopped), clear the http cache, stop, relaunch. While she wakes after an update the app
+  offers `git reset --keep <old head>` every 10 min (and when waiting gives up) and restarts. git runs with `GIT_TERMINAL_PROMPT=0`. Waking her server (main.js
   `wakeServer`, used by every start that finds her down, incl. after a restore/update) is NOT a detached spawn:
   detached = no console and start.ps1 silently did nothing (owner's first restore, Nov 8). A short powershell
   (`-EncodedCommand`) does `Start-Process powershell -File start.ps1 -NoBrowser -WindowStyle Hidden` with output in
   `runtime\logs\desktop-wake.log` / `.err.log` (relies on libuv's job allowing silent breakaway, so her server outlives
-  the app), with start.ps1's own env vars, every `.env` key and PSModulePath removed (`freshEnv`). If she isn't up in
-  4 min the dialog shows the log's last lines (`wakeTail`) and the app closes. Logs:
+  the app), with start.ps1's own env vars, every `.env` key and PSModulePath removed (`freshEnv`). **Waiting for her** (`waitForHer`, rules in `desktop/wake.js`, tested
+  by `.github/scripts/js/wake.test.mjs`; Nov 15 fix: start.ps1 may wait 30 min for the model, the app used to give up after 4
+  and its "Keep waiting" quit anyway): the app waits while her start is still working (up to 35 min), the splash says her
+  step in words ("Loading her mind…"), and it gives up early only on an error then quiet, "ready" but no answer for 2 min,
+  or no new output for 6 min outside the model load. The server is asked again after every dialog; giving up shows the
+  log's last lines (`wakeTail`) with **Keep waiting** (a new round) or Close. Logs:
   `runtime\logs\desktop-saves.log`, `desktop-relaunch.log`. Tests: `.github/scripts/js/saves.test.mjs` (needs php).
 
 - **Settings home** (tidy part A, in progress; map in the claude.ai project doc `claude/next-tidy-settings-and-habits.md`):
