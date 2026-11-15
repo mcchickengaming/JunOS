@@ -690,6 +690,8 @@ function sendPresence(back) {
 }
 function hideNow(why = 'menu') {
   clearTimeout(politeTimer);
+  // a walk still going (walking off the edge to hide) stops: no walking sound looping behind a hidden her
+  if (walk) { stopWalk(); send('jun:walk-state', { state: 'stopped' }); }
   const changed = presence.hide(why, winMode);
   hideJun();
   if (changed) { sendPresence(null); rebuildMenus(); }
@@ -821,9 +823,13 @@ function openHouseWin(plan, dir, timeline, hp) {
     houseWin = new BrowserWindow({
       ...o, frame: false, transparent: true, resizable: false, hasShadow: false, skipTaskbar: true, focusable: false,
       alwaysOnTop: true, show: false, backgroundColor: '#00000000',
-      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
+      // never throttled: a hidden-at-first, click-through window can count as covered on Windows, and then its
+      // animation frames never run and nothing is drawn (owner, Nov 15: she tossed the cube but no cube or house)
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true,
+        backgroundThrottling: false, paintWhenInitiallyHidden: true },
     });
     houseWin.setIgnoreMouseEvents(true);
+    log(`house ${dir}: overlay ${o.x},${o.y} ${o.width}x${o.height}`);
     applyShareHide(houseWin);
     houseWin.loadURL(`${JUN_URL}/house-cube.html`);
     houseWin.webContents.once('did-finish-load', () => {
@@ -835,7 +841,7 @@ function openHouseWin(plan, dir, timeline, hp) {
         plan: { side: plan.side, house: local(plan.house), door: local(plan.door), hand: local(plan.hand) } });
       resolve(true);
     });
-    houseWin.webContents.once('did-fail-load', () => { closeHouse(); resolve(false); });
+    houseWin.webContents.once('did-fail-load', (_e, code, why) => { log(`house page didn't load: ${code} ${why}`); closeHouse(); resolve(false); });
     // never left hanging
     setTimeout(closeHouse, timeline.total + 20000);
   });
@@ -1031,6 +1037,7 @@ function landed(x, speed = 0, edge = 0) {
   Props.zOrder();
 }
 
+const STUCK_MS = 900, TURN_STUCK_GRACE = 400;   // the turn before her first step doesn't count
 function startWander(opts = {}) {
   if (!win || win.isDestroyed() || winMode !== 'stepout' || drag || fall) return;
   if (held) { send('jun:walk-state', { state: 'stopped' }); return; }
@@ -1073,6 +1080,7 @@ function startWander(opts = {}) {
   let baseY = floorY(display, b.height);
   const from = b.x, dist = Math.abs(to - b.x);
   let t = 0, last = Date.now();
+  let seenX = b.x, movedAt = Date.now() + TURN_STUCK_GRACE;
   // she turns first (the page does that), then sets off. speeds up
   // over her first steps and slows into the last ones, a little hop
   // in each step
@@ -1089,7 +1097,18 @@ function startWander(opts = {}) {
     const gone = Math.abs(win.getBounds().x - from);
     const left = dist - gone;
     const speed = walkPx * pace * Math.max(0.25, Math.min(1, gone / EASE_PX + 0.25, left / EASE_PX + 0.15));
-    let x = win.getBounds().x + dir * Math.max(1, speed * dt);
+    // Windows may refuse to move her further (past the screen's edge): stuck for a moment = she's there
+    const nowX = win.getBounds().x;
+    if (nowX !== seenX) { seenX = nowX; movedAt = now; }
+    else if (now - movedAt > STUCK_MS) {
+      stopWalk();
+      cfg.stepX = nowX;
+      saveCfg();
+      send('jun:walk-state', { state: 'stopped' });
+      if (opts.done) opts.done();
+      return;
+    }
+    let x = nowX + dir * Math.max(1, speed * dt);
     const done = dir > 0 ? x >= to : x <= to;
     if (done) x = to;
     // the hop in each step, one per footfall (two per stride)

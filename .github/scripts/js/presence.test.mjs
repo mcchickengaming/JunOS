@@ -180,3 +180,17 @@ test('welcome back: never upset, bigger the longer he was gone, quiet after a fu
   for (const k of new Set(Object.values(W.PLAY).flatMap(p => p.moves).concat(['toss', 'catch'])))
     assert.ok(body.includes(`${k}:`) || body.includes(`'${k}'`), 'Body.play knows ' + k);
 });
+
+// Nov 15 (owner): "Wave goodbye: she walks, then the walking sound loops and nothing closes", and "the cube and house
+// don't show". main.js: a walk that can't move further ends by itself, hiding stops any walk, and the house window is
+// never throttled (its frames would never run) with a timer fallback in the page.
+test('a walk off the edge always ends, and the house window always draws', () => {
+  const main = read('desktop/main.js');
+  assert.match(main, /const STUCK_MS = \d+/);
+  const hide = main.slice(main.indexOf('function hideNow'), main.indexOf('function bringBack'));
+  assert.match(hide, /stopWalk\(\)/);
+  assert.match(hide, /state: 'stopped'/);
+  const house = main.slice(main.indexOf('function openHouseWin'), main.indexOf("ipcMain.on('jun:house-done'"));
+  assert.match(house, /backgroundThrottling: false/);
+  assert.match(read('webapp/house-cube.html'), /setTimeout\(go, \d+\)/);
+});

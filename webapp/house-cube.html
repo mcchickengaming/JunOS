@@ -22,7 +22,9 @@
   // ?demo=in|out plays it with a made-up plan (for a quick look in a browser)
   const demo = new URLSearchParams(location.search).get('demo');
   let player = null;
-  const run = (msg) => { player = House.play(c, msg, { loadLook: House.lookLoader() }); player.done.then(() => D?.houseDone?.()); };
+  // a frame on time even if the window's animation frames are held back (a click-through window on Windows)
+  const raf = (f) => { let ran = false; const go = () => { if (!ran) { ran = true; f(); } }; requestAnimationFrame(go); setTimeout(go, 40); };
+  const run = (msg) => { player = House.play(c, msg, { loadLook: House.lookLoader(), raf }); player.done.then(() => D?.houseDone?.()); };
   if (D?.onHouse) D.onHouse((m) => { if (m?.type === 'resume') player?.resume(); else if (m?.type === 'play') run(m); });
   else if (demo) {
     const herPx = 440, floor = innerHeight - 10;
