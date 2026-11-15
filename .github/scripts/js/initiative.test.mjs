@@ -304,7 +304,7 @@ test('live: the state rides in jun.feel, a headpat she hoped for reaches the pag
   Feel.setStage(5);
   I.setWant('headpat', 0.95);
   let got = null;
-  for (let i = 0; i < 400 && !got; i++) { t += 4000; const d = I.tick({ idleSec: 0, cursorAt: t - 2000 * (i % 3), stage: 5 }); if (d.length) got = d[0]; I.setWant('headpat', 0.95); }
+  for (let i = 0; i < 400 && !got; i++) { t += 4000; const d = I.tick({ idleSec: 0, cursorAt: t - 2000 * (i % 3), stage: 5, rand: () => 0 }); if (d.length) got = d[0]; I.setWant('headpat', 0.95); }
   assert.ok(got && got.do === 'act', 'she started something');
   Store.flush();
   assert.ok(JSON.parse(mem.get('jun.feel')).init.ep, 'saved with her state (save points pick it up)');
