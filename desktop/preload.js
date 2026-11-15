@@ -34,6 +34,13 @@ contextBridge.exposeInMainWorld('junDesktop', {
   openWindow: () => ipcRenderer.send('jun:mode', 'window'),
   compact: () => ipcRenderer.send('jun:mode', 'compact'),
   hide: () => ipcRenderer.send('jun:mode', 'hide'),
+  // hide / unhide (#29): { type: 'hidden' | 'shown' | 'back' (awayMs, why, by) | 'polite' (wave, then leave) |
+  // 'house' (step: toss | enter | catch, side) }. leave() = her goodbye wave is done, walk her off
+  onPresence: on('jun:presence'),
+  leave: () => ipcRenderer.send('jun:presence', 'leave'),
+  // her house cube's see-through window (house-cube.html): the plan to play, and "done"
+  onHouse: on('jun:house'),
+  houseDone: () => ipcRenderer.send('jun:house-done'),
   menu: () => ipcRenderer.send('jun:menu'),
   // the window grabs keyboard focus only while he's typing to her
   wantFocus: (on) => ipcRenderer.send('jun:focus', !!on),

@@ -412,6 +412,16 @@
   <p class="hint" id="noSpots">No spots yet.</p>
   <h3 class="sub">Where she stays</h3>
   <div class="row"><div class="what"><b>Free to roam</b><span>She walks around the taskbar on her own.</span></div><button type="button" class="btn" id="roam">Let her roam</button></div>
+  <h2 id="at-hide">Hiding her</h2>
+  <p class="hint">For meetings, games, or when someone walks in. She never minds being hidden, and keeps living while she's away.</p>
+  <div id="hideRows"></div>
+  <h2 id="at-house">Going in and out</h2>
+  <p class="hint">Her house travels with her, packed into a little glowing cube.</p>
+  <div id="houseRows"></div>
+  <div id="houseFxRows"></div>
+  <div class="row"><div class="what"><b>See it</b><span>A small preview of her house unpacking and packing up, in your colors.</span></div>
+    <div style="display:flex;gap:6px"><button type="button" class="btn" id="housePlayIn">Going in</button><button type="button" class="btn" id="housePlayOut">Coming out</button></div></div>
+  <canvas id="housePv" width="520" height="260" style="width:100%;max-width:520px;height:auto;display:block;margin:4px 0 10px;border-radius:10px;background:#1b1830"></canvas>
   <h2 id="at-window">Her window</h2>
   <div id="windowRows"></div>
   <p><button type="button" class="btn danger" data-reset="desktop">Reset this section</button></p>
@@ -586,6 +596,8 @@
   <h2>The game</h2>
   <div class="row"><div class="gesture">🎚️</div><div class="what"><b>Difficulty</b><span>Settings &gt; The game &gt; Difficulty, any time. <b>Easy</b>: if you go down she takes care of you and nothing is lost. <b>Medium</b> and up: real game overs (load a save), unless she reaches you in time; a closer bond and her Support skill make that likelier.</span></div></div>
   <div class="row"><div class="gesture">🎒</div><div class="what"><b>Everything you own</b><span>Settings &gt; The game &gt; Everything you own: money of every kind (Credits, Materials, Salvage Sigils, Whispers, Citizen Pass points), your things by kind, and your keepsakes, which are memories you keep: never sold or spent.</span></div></div>
+  <div class="row"><div class="gesture">🙈</div><div class="what"><b>Hide her in a blink</b><span>Press <b>Ctrl + Alt + J</b> (or the key you picked in On the desktop &gt; Hiding her). She's gone at once; press it again to bring her back. Add <b>Shift</b> and she waves goodbye and walks off the screen first. She hides by herself while a game or video is fullscreen, and never shows up on a screen share. She never minds being hidden.</span></div></div>
+  <div class="row"><div class="gesture">🏠</div><div class="what"><b>Her house cube</b><span>When she goes back inside from the desktop, she tosses her house (packed into a little cube) beside her, it unpacks, and she walks in through the door. Stepping out, she comes out of it. Switch it off in On the desktop &gt; Going in and out.</span></div></div>
   <div class="row"><div class="gesture">💾</div><div class="what"><b>Save and load the game</b><span>Settings &gt; The game &gt; Game saves. Name a save, or let the game autosave as you play. Load any save; the game you had is saved first, so <b>Undo last load</b> always brings it back.</span></div></div>
   <div class="row"><div class="gesture">🫶</div><div class="what"><b>She isn't in a save</b><span>Her memories, her feelings and how she is with you stay hers whichever game you load. A save remembers the bond it was made with; tick <b>Use this save's bond</b> when loading only if you want that one.</span></div></div>
   <div class="row"><div class="gesture">📤</div><div class="what"><b>Share a save</b><span>⋯ &gt; Download makes a .jungame file. Upload a save… (or drop the file on the list) adds it as a new save; it's never loaded until you load it.</span></div></div>
@@ -600,6 +612,6 @@
 </main>
 </div>
 
-<script type="module" src="js/desktop-settings.js?v=64"></script>
+<script type="module" src="js/desktop-settings.js?v=65"></script>
 </body>
 </html>

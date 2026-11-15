@@ -631,6 +631,34 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   empties Credits, the wallet, items and keepsakes. A new item in data/items.json is spawnable at once. Registry
   `debug_menu`. Tests: the spawn part of `.github/scripts/inventory.test.php`, `.github/scripts/js/debug-menu.test.mjs`.
 
+- **Hide / Unhide + her house cube** (#29, Nov 15, Opus): rules in `desktop/presence.js` (no electron, tested by
+  `.github/scripts/js/presence.test.mjs`), wiring in main.js "hide / unhide" + "her house cube" sections. **Instant hide**:
+  the hotkey (desk `hideKey`, default Ctrl+Alt+J, `HIDE_KEYS`, `globalShortcut`; taken keys are reported in `deskInfo().hotkey`)
+  toggles; every menu's Hide goes through `hideNow(why)`, every Show through `bringBack(by)`, so the page always knows
+  (`jun:presence` → preload `onPresence`: hidden / shown / back {awayMs, why, by} / polite / house). **Polite hide**: the key +
+  Shift (`politeKey`) or "Wave goodbye": the page waves, calls `junDesktop.leave()`, main.js walks her off the nearest edge
+  (`startWander({ off: true })`), then hides; on return she walks back in. **Auto-hide** (desk `autoHide`, default on): a
+  PowerShell loop (`WATCH_PS`, Windows only) prints `SHQueryUserNotificationState` + "does the front window cover its monitor"
+  + its pid, never titles or pixels; `readWatchLine` skips her own pids; `presence.autoDecide` hides stepout/compact only,
+  brings her back when it ends, never against his own hide, and his unhide during a fullscreen app holds until it ends.
+  **Screen shares** (desk `shareHide`, default on): `setContentProtection` on her desktop windows, the house overlay and her
+  spots/ball (props.js `protect`); her window (the game) is never protected. While hidden the page's `initTick` stops; she
+  keeps living by the clock. **Welcome back** `webapp/js/desktop/welcome-back.js` (`welcome(awayMs, why, {bond, talk})` →
+  none / glance / wave / happy / missed (comes over, Friend+), a line by chance (never after fullscreen); never upset; NOTES.back).
+  **Her house cube** (desk `insideWay` / `outsideWay` 'house' | 'plain', `houseSpeed`): going in from stepout, `houseIn()`:
+  `housePlan` puts the house beside her (door ~0.45 her heights away, the side with room; no room = the plain way), a
+  see-through click-through window (`webapp/house-cube.html` + `js/desktop/house-cube.js`, canvas, all placeholder art) plays
+  toss → bounce → light → holo → build (scan line, bottom up) → open → walk → enter (holds until main.js sends `resume`) →
+  grow → fade (`houseTimeline`, one source for both sides); her page plays `Body.play('toss')`, `#stage.door-in`; her window
+  opens out of the door (`openMode(…, { fromRect, growMs, onShown })`, `tweenBounds`, `remember` ignores tweening windows).
+  Coming out (`houseOut()`, via `goOut()` from every menu and jun:mode 'stepout'): the window shrinks into the door, she
+  loads with reason `house` (`#stage.door-out`), the house packs back into the cube, she catches it (`Body.play('catch')`).
+  The picture of THE house: localStorage `jun.house.look` `{ img: data url }` (nothing writes it yet; the game's house #11 will).
+  Colors (Visuals > Her house cube: `--house-cube/-glow/-holo/-wall/-roof/-light`), desktop.fx `hAlpha`, `hLabel` (the
+  "unpacking home.zip" label, auto = with robot faces), a preview in Settings > On the desktop > Going in and out. Registry:
+  `hide_key`, `auto_hide`, `share_hide`, `house_cube`. NOT built: auto-hide for apps he picks or set hours (needs senses #3),
+  "may peek", clicking where she left. NOT seen on Windows yet: the watcher, content protection, the window growing out of the door.
+
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`
   `features_registry()`): every feature once: `id`, `name`, `line`, `section` (+ `anchor`, or `where` for

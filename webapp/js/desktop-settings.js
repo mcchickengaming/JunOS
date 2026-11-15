@@ -8,20 +8,21 @@
 // a row to GROUPS the same way.
 
 import { makeItemColorButton } from './wardrobe/color-picker.js?v=40';
-import * as Fx from './desktop/fx.js?v=12';
-import * as Moods from './desktop/moods.js?v=16';
+import * as Fx from './desktop/fx.js?v=13';
+import * as Moods from './desktop/moods.js?v=17';
 import * as Often from './desktop/often.js?v=2';
 import * as HerWin from './home/herwin.js?v=9';
 import * as F from './core/features.js?v=3';
 import * as Gate from './core/gate.js?v=5';
-import * as Controls from './home/controls.js?v=13';
-import * as Stores from './home/stores.js?v=9';
+import * as Controls from './home/controls.js?v=14';
+import * as Stores from './home/stores.js?v=10';
 import * as Feel from './core/feel/feel.js?v=4';
 import * as Progress from './core/progress.js?v=2';
 import * as GameSave from './core/gamesave.js?v=3';
 import * as Difficulty from './core/difficulty.js?v=2';
 import * as Story from './core/story/story-state.js?v=3';
 import * as Inventory from './core/inventory.js?v=3';
+import * as HouseCube from './desktop/house-cube.js?v=1';
 
 // the feature registry (data/features.json): search words, layers, notes, resets, what's new
 await F.load();
@@ -37,6 +38,7 @@ const GROUPS = [
   ['Thought bubbles', 'The ♪ ? ! ♥ over her head, and her thinking cloud.', [['Bubble', '--bubble', '#191233'], ['Outline', '--bubble-edge', '#ec0054']]],
   ['Touch glow', 'The soft glow where your mouse is on her.', [['Glow', '--glow', '#ec0054']]],
   ['Touch spot outlines', 'The outlines from Touch & feelings > Show touch spots.', [['Outline', '--spot-outline', '#ff78be']]],
+  ['Her house cube', 'The cube her house packs into, its hologram, and the stand-in house.', [['Cube', '--house-cube', '#2a2347'], ['Glow', '--house-glow', '#7ef9ff'], ['Hologram', '--house-holo', '#5ad8ff'], ['Walls', '--house-wall', '#e9dcc9'], ['Roof and door', '--house-roof', '#6b3a5a'], ['Window light', '--house-light', '#ffd27a']]],
   ['Her question bubble', 'The little bubble she asks things in ("Headpat?").', [['Bubble', '--ask', '#191233'], ['Outline', '--ask-edge', '#ec0054'], ['Text', '--ask-ink', '#ffffff']]],
 ];
 
@@ -1451,12 +1453,31 @@ const DESK_ROWS = {
     ['watch', 'Looks at your mouse', 'How often she follows your cursor with her eyes.'],
     ['sounds', 'Little sounds', 'Steps, landing, squeaks.'],
   ],
+  hideRows: [
+    ['hideKey', 'Hide key', 'Press it to hide her in a blink, again to bring her back.'],
+    ['autoHide', 'Hide her when something is fullscreen', 'Games, videos, presentations. She comes back by herself when it ends.'],
+    ['shareHide', 'Keep her out of screen shares and recordings', 'She stays on your screen but never shows up on a call or a recording. Screenshots won\'t show her either; turn this off to take a picture of her.'],
+  ],
+  houseRows: [
+    ['insideWay', 'Going back inside', 'From the desktop into her window.'],
+    ['outsideWay', 'Stepping out', 'From her window onto the desktop.'],
+    ['houseSpeed', 'How fast', 'Her house unpacking and packing up.'],
+  ],
   windowRows: [
     ['onTop', 'Keep her window on top', 'Her window stays above your other windows.'],
     ['openAtStart', 'Open her window when Jun starts', 'Off: Jun starts in the tray by the clock.'],
     ['startWithWindows', 'Start Jun with Windows', 'Jun wakes up when you turn on your PC.'],
   ],
 };
+// the hide key's hint: the Shift version, and a key another app already took
+function hideKeyHint(base) {
+  const hk = deskState?.hotkey;
+  if (!hk || !deskState.desk.hideKey || deskState.desk.hideKey === 'off') return base;
+  let t = base;
+  if (hk.politeName) t += ` With Shift (${hk.politeName}) she waves goodbye and walks off first.`;
+  if (hk.taken?.length) t += ` Another app is already using ${hk.taken.map(k => k.replace(/\+/g, ' + ')).join(' and ')}: pick another key.`;
+  return t;
+}
 async function deskCall(action, key, value) {
   if (!D?.desk) return;
   deskState = await D.desk(action, key, value);
@@ -1499,7 +1520,8 @@ function drawDesk() {
     const el = document.getElementById(host);
     if (!el) continue;
     el.innerHTML = '';
-    for (const [key, title, hint] of rows) {
+    for (const [key, title, hint0] of rows) {
+      const hint = key === 'hideKey' ? hideKeyHint(hint0) : key === 'autoHide' && deskState && !deskState.canWatch ? hint0 + ' (Windows only.)' : hint0;
       const r = row(title, hint, deskControl(key));
       r.dataset.key = key;
       if (!deskState) r.classList.add('off');
@@ -1512,6 +1534,32 @@ function drawDesk() {
   soon();
   if (searchBox.value.trim()) runSearch();
 }
+// her house cube: the see-through and label rows (desktop.fx) and a small preview, drawn with the same code as the
+// real thing (webapp/js/desktop/house-cube.js)
+function buildHouseFx() {
+  const host = document.getElementById('houseFxRows');
+  if (!host) return;
+  host.innerHTML = '';
+  host.append(
+    row('See-through', 'How solid her house and the cube look.', rangeOf('hAlpha', 0.2, 1, 0.05, 'house', (v) => Math.round(v * 100) + '%')),
+    row('The "unpacking" label', 'A little "unpacking home.zip 42%" over the cube. Auto: when robot faces are on.', selectOf([['auto', 'Auto'], ['on', 'Always'], ['off', 'Never']], 'hLabel', 'house')),
+  );
+  const cv = document.getElementById('housePv');
+  const play = (dir) => {
+    const herPx = 200, floor = cv.height - 6;
+    const house = { x: 250, y: floor - herPx, width: herPx * 1.15, height: herPx };
+    const plan = { side: 1, house, door: { x: house.x + house.width * 0.4, y: floor - herPx * 0.42, width: house.width * 0.2, height: herPx * 0.42 }, hand: { x: 150, y: floor - herPx * 0.55 } };
+    const ids = dir === 'out' ? ['shrink', 'build', 'open', 'out', 'close', 'pack', 'catch'] : ['toss', 'bounce', 'light', 'holo', 'build', 'open', 'enter', 'grow', 'fade'];
+    const ms = { toss: 650, bounce: 700, light: 450, holo: 900, build: 1100, open: 450, enter: 500, grow: 520, fade: 450, shrink: 520, out: 500, close: 450, pack: 880, catch: 650 };
+    const k = Number(deskState?.desk?.houseSpeed) || 1;
+    let t = 0;
+    const timeline = { beats: ids.map(id => { const b = { id, at: t, ms: Math.round(ms[id] / k) }; t += b.ms; return b; }) };
+    HouseCube.play(cv, { dir, plan, timeline, herPx });
+  };
+  document.getElementById('housePlayIn').onclick = () => play('in');
+  document.getElementById('housePlayOut').onclick = () => play('out');
+}
+buildHouseFx();
 async function loadDesk() {
   deskState = D?.desk ? await D.desk('get').catch(() => null) : null;
   Stores.setDesk(deskState);

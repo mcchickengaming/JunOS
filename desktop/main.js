@@ -9,7 +9,7 @@
 // "Jun" Start menu shortcut this file writes:
 //   electron.exe <this folder> --jun-url=https://127.0.0.1:8080 --jun-home=<install>
 
-const { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, powerMonitor, screen, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, powerMonitor, screen, shell, session } = require('electron');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
@@ -17,6 +17,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const Props = require('./props');
 const Saves = require('./saves');
+const Presence = require('./presence');
 
 const switchValue = (name) => app.commandLine.getSwitchValue(name) || '';
 const JUN_URL = (switchValue('jun-url') || process.env.JUN_URL || 'https://127.0.0.1:8080').replace(/\/+$/, '');
@@ -58,7 +59,9 @@ const DEFAULTS = {
   mode: 'window', inside: 'window', onTop: false, size: 0.425,
   window: null, compact: null, stepX: null, displayId: null, tipShown: false,
   // "On the desktop" settings, the page reads them (jun:settings)
-  desk: { walk: 50, doze: 5, watch: 50, quiet: false, sounds: false, hints: 'glow', talk: 50, showSpots: false, patFollow: 50, growFx: true },
+  desk: { walk: 50, doze: 5, watch: 50, quiet: false, sounds: false, hints: 'glow', talk: 50, showSpots: false, patFollow: 50, growFx: true,
+    // hide / unhide (#29) and her house cube: desktop/presence.js
+    hideKey: 'Ctrl+Alt+J', autoHide: true, shareHide: true, insideWay: 'house', outsideWay: 'house', houseSpeed: 1 },
 };
 // "how often" / "how much" are 0..100 (the same steps as webapp/js/desktop/often.js; the settings
 // page also has a slider for any percent). old installs saved words, loadCfg turns them into these
@@ -240,6 +243,9 @@ async function boot() {
   // every few seconds: she dozes off by it, and the initiative engine reads the room from it
   setInterval(pollIdle, 4000);
   setInterval(pollCursor, 90);
+  // hide / unhide: the hotkey and the fullscreen watcher
+  registerHotkeys();
+  startFsWatch();
 
   // left by a restore or an update just before this start
   const note = Saves.takeNote(JUN_HOME);
@@ -475,8 +481,10 @@ function displayAtX(strip, x, width) {
 }
 function floorAt(strip, x, width, height) { return floorY(displayAtX(strip, x, width), height); }
 
-function openMode(mode, reason) {
+function openMode(mode, reason, opts = {}) {
   if (mode === 'inside') mode = cfg.inside;
+  // picking a mode brings her back if she was hidden (no welcome: he asked for her)
+  if (presence.isHidden()) { presence.unhide('mode'); setTimeout(() => sendPresence(null), 1500); }
   stopWalk();
   stopDrag();
   clearTimeout(insideTimer);
@@ -530,9 +538,17 @@ function openMode(mode, reason) {
       alwaysOnTop: true, backgroundColor: '#00000000' });
     w.loadURL(`${JUN_URL}/desktop.html?mode=stepout&reason=${encodeURIComponent(reason)}`);
   }
+  if (mode !== 'window') applyShareHide(w);
 
   w.once('ready-to-show', () => {
-    if (mode === 'stepout') w.showInactive(); else w.show();
+    // out of her house's door (her house cube): the window grows from the door to its own size
+    if (opts.fromRect && mode !== 'stepout') {
+      const to = cfg.windowMax && mode === 'window' ? displayFor(opts.fromRect).workArea : w.getBounds();
+      if (cfg.windowMax && mode === 'window') w.unmaximize();
+      tweenBounds(w, opts.fromRect, to, opts.growMs || 500, () => { if (mode === 'window' && cfg.windowMax) w.maximize(); });
+      w.show();
+    } else if (mode === 'stepout') w.showInactive(); else w.show();
+    if (opts.onShown) setTimeout(opts.onShown, 30);
     if (old && !old.isDestroyed()) old.destroy();
     closeSplash();
     if (mode === 'stepout') {
@@ -558,7 +574,7 @@ function openMode(mode, reason) {
   w.webContents.on('did-start-loading', () => { if (w === win) held = false; });
 
   const remember = () => {
-    if (w.isDestroyed() || w !== win) return;
+    if (w.isDestroyed() || w !== win || tweening.has(w)) return;
     const b = w.getBounds();
     if (mode === 'window') {
       cfg.windowMax = w.isMaximized();
@@ -576,7 +592,9 @@ function openMode(mode, reason) {
     // the X hides her to the tray. closing the app is in the Jun menu and the tray menu
     if (quitting || w !== win) return;
     e.preventDefault();
+    presence.hide('close', winMode);
     w.hide();
+    sendPresence(null);
     if (!cfg.tipShown && tray && process.platform === 'win32') {
       cfg.tipShown = true;
       saveCfg();
@@ -621,6 +639,224 @@ function hideJun() {
   stopWalk();
   Props.hide();
   if (win && !win.isDestroyed()) win.hide();
+}
+
+// ---------------------------------------------------------------
+// hide / unhide (#29): desktop/presence.js has the rules and the words. every menu's "Hide" goes through hideNow,
+// every "Show" through bringBack, so the page always knows whether she's hidden (she starts nothing while hidden)
+// and how to welcome him back (webapp/js/desktop/welcome-back.js; never upset)
+
+const presence = Presence.create();
+let politeTimer = null;
+let fsNow = false;
+let fsWatcher = null;
+let hotkeys = { key: null, polite: null, taken: [] };
+
+function sendPresence(back) {
+  send('jun:presence', back ? { type: 'back', hidden: false, ...back } : { type: presence.isHidden() ? 'hidden' : 'shown', hidden: presence.isHidden(), why: presence.hidden?.why || null });
+}
+function hideNow(why = 'menu') {
+  clearTimeout(politeTimer);
+  const changed = presence.hide(why, winMode);
+  hideJun();
+  if (changed) { sendPresence(null); rebuildMenus(); }
+}
+function bringBack(by = 'tray', { inactive = false } = {}) {
+  clearTimeout(politeTimer);
+  const back = presence.unhide(by, { fullscreen: fsNow });
+  if (!win || win.isDestroyed()) { openMode(cfg.mode, ''); return; }
+  if (win.isMinimized()) win.restore();
+  if (winMode === 'stepout') {
+    win.showInactive();
+    Props.show();
+    // she walked off the edge to hide: she walks back in
+    if (back && back.why === 'polite') setTimeout(() => startWander({ back: true, speed: 1.2 }), 500);
+  } else if (inactive) win.showInactive();
+  else { win.show(); win.focus(); }
+  if (back) { sendPresence(back); rebuildMenus(); }
+}
+// the hotkey: hidden → back, shown → gone in a frame
+function toggleHide() {
+  if (presence.isHidden() || !win || win.isDestroyed() || !win.isVisible()) bringBack('hotkey');
+  else hideNow('hotkey');
+}
+// the polite one: she waves (the page), then walks off the nearest edge (stepout) and hides. her window just hides
+function politeHide() {
+  if (presence.isHidden()) { bringBack('hotkey'); return; }
+  if (!win || win.isDestroyed() || !win.isVisible() || winMode === 'window') { hideNow('polite'); return; }
+  send('jun:presence', { type: 'polite' });
+  clearTimeout(politeTimer);
+  politeTimer = setTimeout(() => hideNow('polite'), 9000);   // a page that never answers
+}
+function walkOff(done) {
+  if (!win || win.isDestroyed() || winMode !== 'stepout') { done(); return; }
+  const b = win.getBounds();
+  const { lo, hi } = stripRange(displayFor(b), b.width);
+  const toLeft = b.x - lo < hi - b.x;
+  startWander({ to: toLeft ? lo - b.width - 20 : hi + b.width + 20, off: true, speed: 1.5, done });
+}
+ipcMain.on('jun:presence', (e, what) => {
+  if (!fromWin(e)) return;
+  if (what === 'leave') walkOff(() => hideNow('polite'));     // her goodbye wave is done
+  else if (what === 'hide') hideNow('menu');
+});
+
+function registerHotkeys() {
+  for (const k of [hotkeys.key, hotkeys.polite]) if (k) { try { globalShortcut.unregister(k); } catch (e) {} }
+  hotkeys = { key: null, polite: null, taken: [] };
+  const key = cfg.desk.hideKey;
+  if (!key || key === 'off') return;
+  const reg = (k, fn) => { try { if (globalShortcut.register(k, fn)) return k; } catch (e) {} hotkeys.taken.push(k); log('hotkey taken by another app: ' + k); return null; };
+  hotkeys.key = reg(key, toggleHide);
+  const pol = Presence.politeKey(key);
+  if (pol) hotkeys.polite = reg(pol, politeHide);
+}
+function hotkeyInfo() {
+  const name = (k) => (Presence.HIDE_KEYS.find(([v]) => v === k)?.[1]) || (k ? k.replace(/\+/g, ' + ') : null);
+  return { key: hotkeys.key, polite: hotkeys.polite, keyName: name(cfg.desk.hideKey), politeName: hotkeys.polite ? (/ \+ /.test(name(cfg.desk.hideKey)) ? name(cfg.desk.hideKey).replace(/ \+ ([^+]+)$/, ' + Shift + $1') : 'Shift + ' + name(cfg.desk.hideKey)) : null, taken: hotkeys.taken };
+}
+
+// fullscreen apps (Windows): presence.js startWatcher asks Windows every 1.5 s; never titles, never the screen
+function startFsWatch() {
+  if (fsWatcher) return;
+  fsWatcher = Presence.startWatcher({ spawn, parentPid: process.pid, log, onLine: (line) => {
+    let pids = [];
+    try { pids = app.getAppMetrics().map(m => m.pid); } catch (e) {}
+    const r = Presence.readWatchLine(line, pids);
+    if (!r) return;
+    fsNow = r.fullscreen;
+    autoCheck();
+  } });
+}
+function autoCheck() {
+  const act = presence.autoDecide({ fullscreen: fsNow, mode: winMode, autoOn: cfg.desk.autoHide !== false });
+  if (act === 'hide') hideNow('fullscreen');
+  else if (act === 'show') bringBack('fullscreen', { inactive: true });
+}
+// screen shares and recordings: her desktop windows are left out of the capture (she stays on HIS screen).
+// her own window (the game) is never left out: he may want to stream it
+function applyShareHide(w) {
+  const on = cfg.desk.shareHide !== false;
+  const set = (bw, v) => { try { if (bw && !bw.isDestroyed()) bw.setContentProtection(v); } catch (e) {} };
+  if (w) { set(w, on); return; }
+  if (win && winMode !== 'window') set(win, on);
+  set(houseWin, on);
+  Props.protect(on);
+}
+app.on('will-quit', () => {
+  try { globalShortcut.unregisterAll(); } catch (e) {}
+  try { if (fsWatcher) fsWatcher.kill(); } catch (e) {}
+});
+
+// ---------------------------------------------------------------
+// her house cube: going inside from the desktop she unpacks her house beside her and walks in; coming out she steps
+// out of it and packs it back up. presence.js plans it (where, how long), webapp/house-cube.html draws the cube and
+// the house in a see-through window over her, her page (desktop.js) plays her part, this does the windows.
+
+let houseWin = null;
+let houseBusy = false;
+const tweening = new WeakSet();
+function tweenBounds(w, from, to, ms, done) {
+  tweening.add(w);
+  try { w.setMinimumSize(1, 1); } catch (e) {}
+  const t0 = Date.now();
+  try { w.setBounds(Presence.growBounds(from, to, 0)); } catch (e) {}
+  const iv = setInterval(() => {
+    if (w.isDestroyed()) { clearInterval(iv); return; }
+    const f = Math.min(1, (Date.now() - t0) / Math.max(1, ms));
+    try { w.setBounds(Presence.growBounds(from, to, f)); } catch (e) {}
+    if (f >= 1) {
+      clearInterval(iv);
+      tweening.delete(w);
+      if (w === win && winMode === 'window') { try { w.setMinimumSize(420, 480); } catch (e) {} }
+      if (done) done();
+    }
+  }, 16);
+}
+function houseSend(msg) { if (houseWin && !houseWin.isDestroyed()) houseWin.webContents.send('jun:house', msg); }
+function closeHouse() {
+  houseBusy = false;
+  if (houseWin && !houseWin.isDestroyed()) houseWin.destroy();
+  houseWin = null;
+}
+function openHouseWin(plan, dir, timeline, hp) {
+  return new Promise((resolve) => {
+    closeHouse();
+    houseBusy = true;
+    const o = plan.overlay;
+    const local = (r) => ({ ...r, x: r.x - o.x, y: r.y - o.y });
+    houseWin = new BrowserWindow({
+      ...o, frame: false, transparent: true, resizable: false, hasShadow: false, skipTaskbar: true, focusable: false,
+      alwaysOnTop: true, show: false, backgroundColor: '#00000000',
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
+    });
+    houseWin.setIgnoreMouseEvents(true);
+    applyShareHide(houseWin);
+    houseWin.loadURL(`${JUN_URL}/house-cube.html`);
+    houseWin.webContents.once('did-finish-load', () => {
+      if (!houseWin) return;
+      houseWin.showInactive();
+      // her window stays in front of her house
+      if (win && !win.isDestroyed()) win.moveTop();
+      houseSend({ type: 'play', dir, timeline, herPx: hp,
+        plan: { side: plan.side, house: local(plan.house), door: local(plan.door), hand: local(plan.hand) } });
+      resolve(true);
+    });
+    houseWin.webContents.once('did-fail-load', () => { closeHouse(); resolve(false); });
+    // never left hanging
+    setTimeout(closeHouse, timeline.total + 20000);
+  });
+}
+ipcMain.on('jun:house-done', (e) => { if (houseWin && e.sender === houseWin.webContents) closeHouse(); });
+const walkMsFor = (dist, pace) => Math.round(350 + dist / (WALK_PX_PER_S * Math.pow(sizeK(), 0.6) * pace) * 1000 * 1.3);
+
+// stepout → her window (or compact), through her house
+async function houseIn() {
+  if (houseBusy || !win || win.isDestroyed() || winMode !== 'stepout') { openMode(cfg.inside, ''); return; }
+  const b = win.getBounds(), display = displayFor(b), hp = herPx(display);
+  const plan = Presence.housePlan({ her: b, herPx: hp, wa: display.workArea });
+  if (!plan) { openMode(cfg.inside, ''); return; }
+  const pace = 1.4;
+  const tl = Presence.houseTimeline('in', cfg.desk.houseSpeed, walkMsFor(Math.abs(plan.standX - b.x), pace));
+  const at = (id) => tl.beats.find(x => x.id === id);
+  stopWalk();
+  if (!await openHouseWin(plan, 'in', tl, hp)) { openMode(cfg.inside, ''); return; }
+  send('jun:presence', { type: 'house', step: 'toss', side: plan.side });
+  setTimeout(() => startWander({ to: plan.standX, speed: pace }), at('walk').at);
+  setTimeout(() => send('jun:presence', { type: 'house', step: 'enter', side: plan.side }), at('enter').at);
+  setTimeout(() => {
+    openMode(cfg.inside, '', { fromRect: plan.door, growMs: at('grow').ms, onShown: () => houseSend({ type: 'resume' }) });
+  }, at('enter').at + at('enter').ms);
+}
+// stepping out from any menu
+function goOut() {
+  if (winMode !== 'stepout' && cfg.desk.outsideWay !== 'plain') houseOut(); else openMode('stepout', 'stepout');
+}
+// her window (or compact) → stepout, out of her house
+async function houseOut() {
+  if (houseBusy) return;
+  const display = displayFor(win && !win.isDestroyed() ? win.getBounds() : null);
+  const size = stepoutSize(), wa = display.workArea, hp = herPx(display);
+  const x = clampX(display, cfg.stepX != null ? cfg.stepX : wa.x + wa.width - size.width - 60, size.width);
+  const her = { x: Math.round(x), y: floorY(display, size.height), ...size };
+  const plan = Presence.housePlan({ her, herPx: hp, wa });
+  if (!plan) { openMode('stepout', 'stepout'); return; }
+  const tl = Presence.houseTimeline('out', cfg.desk.houseSpeed);
+  const at = (id) => tl.beats.find(x => x.id === id);
+  if (!await openHouseWin(plan, 'out', tl, hp)) { openMode('stepout', 'stepout'); return; }
+  // her window shrinks into the door
+  const old = win;
+  if (old && !old.isDestroyed() && old.isVisible()) {
+    if (old.isMaximized()) { tweening.add(old); old.unmaximize(); }
+    tweenBounds(old, old.getBounds(), plan.door, at('shrink').ms, () => { if (!old.isDestroyed()) old.hide(); });
+  }
+  setTimeout(() => {
+    cfg.stepX = plan.standX;
+    openMode('stepout', 'house', { onShown: () => {
+      houseSend({ type: 'resume' });
+      setTimeout(() => send('jun:presence', { type: 'house', step: 'catch', side: -plan.side }), at('close').ms + at('pack').ms * 0.6);
+    } });
+  }, at('out').at);
 }
 
 // going back in from the desktop: let her say her line first, the
@@ -791,7 +1027,8 @@ function startWander(opts = {}) {
   if (opts.back) to = b.x < lo ? lo + 80 : b.x > hi ? hi - 80 : b.x;
   // a place to go (the ball)
   if (opts.to != null) to = Number(opts.to);
-  to = Math.max(Math.min(lo, b.x), Math.min(Math.max(hi, b.x), to));
+  // off: walking off the edge of the screen (a polite hide)
+  if (!opts.off) to = Math.max(Math.min(lo, b.x), Math.min(Math.max(hi, b.x), to));
   if (Math.abs(to - b.x) < 40) {
     send('jun:walk-state', { state: 'stopped' });
     if (opts.done) opts.done();
@@ -936,8 +1173,12 @@ ipcMain.on('jun:hold', (e, on) => {
 });
 ipcMain.on('jun:mode', (e, mode) => {
   if (!fromWin(e)) return;
-  if (mode === 'hide') hideJun();
-  else if (mode === 'inside') { clearTimeout(insideTimer); openMode(cfg.inside, ''); }
+  if (mode === 'hide') hideNow('menu');
+  else if (mode === 'inside') {
+    clearTimeout(insideTimer);
+    if (cfg.desk.insideWay !== 'plain' && winMode === 'stepout') houseIn(); else openMode(cfg.inside, '');
+  }
+  else if (mode === 'stepout' && winMode !== 'stepout' && cfg.desk.outsideWay !== 'plain') houseOut();
   else if (['window', 'compact', 'stepout'].includes(mode)) openMode(mode, mode === 'stepout' ? 'stepout' : '');
 });
 ipcMain.on('jun:menu', (e) => {
@@ -1002,13 +1243,18 @@ const DESK_KEYS = {
   quiet: 'bool', sounds: 'bool', showSpots: 'bool',
   walk: WALK_CHOICES, doze: DOZE_CHOICES, watch: WATCH_CHOICES, talk: TALK_CHOICES, patFollow: PATFOLLOW_CHOICES,
   hints: [['glow', 'Cursor icon and a soft glow'], ['cursor', 'Cursor icon only']],
+  autoHide: 'bool', shareHide: 'bool',
+  hideKey: Presence.HIDE_KEYS,
+  insideWay: [['house', 'She unpacks her house and walks in'], ['plain', 'She just goes in']],
+  outsideWay: [['house', 'She steps out of her house'], ['plain', 'She just steps out']],
+  houseSpeed: [[0.7, 'Slow and cozy'], [1, 'Normal'], [1.6, 'Quick']],
 };
 function deskInfo() {
   const choices = {};
   for (const [k, t] of Object.entries(DESK_KEYS)) if (Array.isArray(t)) choices[k] = t;
   return { desk: { ...cfg.desk }, choices, pct: PCT_KEYS, onTop: !!cfg.onTop, openAtStart: envDesktopOn(),
     startWithWindows: process.platform === 'win32' && fs.existsSync(startupLink()), canStartWithWindows: process.platform === 'win32',
-    outside: winMode === 'stepout' };
+    outside: winMode === 'stepout', hotkey: hotkeyInfo(), hidden: presence.words(), canWatch: process.platform === 'win32' };
 }
 ipcMain.handle('jun:desk', (e, action, key, value) => {
   if (!fromSettings(e)) return null;
@@ -1018,6 +1264,9 @@ ipcMain.handle('jun:desk', (e, action, key, value) => {
     else if (PCT_KEYS.includes(key)) cfg.desk[key] = pctOf(value, cfg.desk[key]);
     else { const hit = t.find(([v]) => String(v) === String(value)); if (hit) cfg.desk[key] = hit[0]; }
     saveCfg(); sendSettings(); rebuildMenus();
+    if (key === 'hideKey') registerHotkeys();
+    if (key === 'shareHide') applyShareHide();
+    if (key === 'autoHide') autoCheck();
   } else if (action === 'onTop') setOnTop(!!value);
   else if (action === 'openAtStart') setEnvDesktop(!!value);
   else if (action === 'startWithWindows' && process.platform === 'win32') {
@@ -1076,12 +1325,13 @@ function windowMenu() {
     { label: 'Jun', submenu: [
       { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => openSettings('her') },
       { type: 'separator' },
-      { label: 'Step out onto the desktop', accelerator: 'CmdOrCtrl+Shift+S', click: () => openMode('stepout', 'stepout') },
+      { label: 'Step out onto the desktop', accelerator: 'CmdOrCtrl+Shift+S', click: goOut },
       { label: 'Compact', accelerator: 'CmdOrCtrl+Shift+C', click: () => openMode('compact', '') },
       { type: 'separator' },
       ...quickItems(),
       { type: 'separator' },
-      { label: 'Hide (she stays by the clock)', accelerator: 'CmdOrCtrl+H', click: hideJun },
+      { label: 'Hide (she stays by the clock)', accelerator: 'CmdOrCtrl+H', click: () => hideNow('menu') },
+      { label: 'Wave goodbye (hide)', click: politeHide },
       { label: 'Close the desktop app', click: () => { quitting = true; app.quit(); } },
     ] },
     { label: 'View', submenu: [
@@ -1208,7 +1458,7 @@ function trayIcon() {
 function makeTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip('Jun');
-  tray.on('click', showJun);
+  tray.on('click', () => bringBack('tray'));
   rebuildTrayMenu();
 }
 
@@ -1221,11 +1471,11 @@ function modeItems(fromHer) {
     { label: 'Compact', type: fromHer ? 'normal' : 'radio', checked: winMode === 'compact', click: () => openMode('compact', '') },
   );
   if (out) items.push({ label: 'Go back inside', click: requestInside });
-  else items.push({ label: 'Step out onto the desktop', click: () => openMode('stepout', 'stepout') });
+  else items.push({ label: 'Step out onto the desktop', click: goOut });
   if (fromHer) {
     items.push({ type: 'separator' });
     if (out) items.push(spotsMenu());
-    items.push({ label: 'Settings…', click: () => openSettings('her') }, { label: 'How to play with her', click: () => openSettings('help') }, { label: 'Hide her', click: hideJun });
+    items.push({ label: 'Settings…', click: () => openSettings('her') }, { label: 'How to play with her', click: () => openSettings('help') }, { label: 'Hide her', click: () => hideNow('menu') }, { label: 'Wave goodbye', click: politeHide });
   }
   return items;
 }
@@ -1233,8 +1483,10 @@ function modeItems(fromHer) {
 function rebuildTrayMenu() {
   if (!tray) return;
   const menu = Menu.buildFromTemplate([
-    { label: 'Show Jun', click: showJun },
-    { label: 'Hide Jun', click: hideJun },
+    presence.isHidden() ? { label: 'Bring her back' + (hotkeys.key ? '  (' + hotkeyInfo().keyName + ')' : ''), click: () => bringBack('tray') }
+      : { label: 'Show Jun', click: () => bringBack('tray') },
+    { label: 'Hide Jun' + (hotkeys.key ? '  (' + hotkeyInfo().keyName + ')' : ''), enabled: !presence.isHidden(), click: () => hideNow('tray') },
+    { label: 'Wave goodbye', enabled: !presence.isHidden() && winMode !== 'window', click: politeHide },
     { label: 'Settings…', click: () => openSettings('her') },
     { type: 'separator' },
     ...modeItems(false),

@@ -16,6 +16,8 @@ export const FX_DEFAULTS = {
   rShape: 'circle', rMotion: 'expand', rSize: 1, rSpeed: 1, rRings: 1, rWidth: 2, rHerPick: true,
   lBox: 'rounded', lFont: 'arial', lSize: 12, lAnim: 'pop', lBorder: 1, lAlpha: 1,
   eAscii: 50, eAnim: 'mix',
+  // her house cube (house-cube.js): see-through 0.2..1, the "unpacking home.zip" label auto (with robot faces) / on / off
+  hAlpha: 1, hLabel: 'auto',
   // how she feels about a touch (desktop/moods.js): how much, 0..100 (often.js; old 'off'/'some'/'lots' read
   // as 0/50/85), and the glow around her
   mAmount: 50, mGlow: true, mTsun: true, mComfort: true,

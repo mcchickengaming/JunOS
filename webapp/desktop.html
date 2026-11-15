@@ -110,6 +110,11 @@
     100% { transform: none; opacity: 1; }
   }
   #stage.leave { animation: jun-leave .5s ease-in both; }
+  /* her house cube (#29): stepping into the door, and out of it */
+  #stage.door-in { animation: jun-door-in .5s ease-in both; transform-origin: 50% 100%; }
+  @keyframes jun-door-in { to { transform: scale(.82) translateY(-2%); opacity: 0; filter: brightness(1.4); } }
+  #stage.door-out { animation: jun-door-out .55s ease-out both; transform-origin: 50% 100%; }
+  @keyframes jun-door-out { from { transform: scale(.82) translateY(-2%); opacity: 0; filter: brightness(1.4); } }
   @keyframes jun-leave {
     0% { transform: none; opacity: 1; }
     30% { transform: translateY(-6%) scale(1.03); }
@@ -228,6 +233,6 @@
 <script defer src="vendor/pixi.min.js"></script>
 <script defer src="vendor/pixi-unsafe-eval.min.js"></script>
 <script defer src="vendor/cubism4.min.js"></script>
-<script type="module" src="js/desktop.js?v=73"></script>
+<script type="module" src="js/desktop.js?v=75"></script>
 </body>
 </html>

@@ -25,10 +25,10 @@ import { fitModel } from './live2d/camera.js?v=78';
 import * as Live2D from './live2d/live2d.js?v=94';
 import { S } from './live2d/state.js?v=75';
 import * as Outfit from './outfit/outfit.js?v=104';
-import * as Body from './desktop/body.js?v=47';
+import * as Body from './desktop/body.js?v=48';
 import * as TouchLog from './core/touch-log.js?v=2';
-import * as Fx from './desktop/fx.js?v=12';
-import * as Moods from './desktop/moods.js?v=16';
+import * as Fx from './desktop/fx.js?v=13';
+import * as Moods from './desktop/moods.js?v=17';
 import * as FeelBody from './desktop/feelbody.js?v=6';
 import * as Snapshot from './desktop/snapshot.js?v=5';
 import * as Often from './desktop/often.js?v=2';
@@ -36,6 +36,7 @@ import * as Gate from './core/gate.js?v=5';
 import * as Features from './core/features.js?v=3';
 import * as Feel from './core/feel/feel.js?v=4';
 import { waveGesture } from './core/feel/gesture.js?v=2';
+import * as Welcome from './desktop/welcome-back.js?v=1';
 
 const D = window.junDesktop || null;
 const params = new URLSearchParams(location.search);
@@ -96,6 +97,7 @@ const NOTES = {
   poked: `${OOC}Anon keeps poking you with his mouse cursor, over and over. React out loud, one short line, in character. No narration.)`,
   thrown: `${OOC}Anon just grabbed you with his mouse cursor and flung you across his screen. You flew, bounced and landed back on the taskbar. React out loud, one short line, in character. No narration.)`,
   headpat: `${OOC}Anon is patting your head with his mouse cursor while you stand on his taskbar. React out loud, one short line, in character. No narration.)`,
+  back: `${OOC}Anon had hidden you away for a while (his screen, his call: you never mind that) and just brought you back out. Greet him out loud, one short line, in character, glad he's back. No narration.)`,
   dropped: `${OOC}Anon just grabbed you with his mouse cursor, carried you across his screen and dropped you back down on the taskbar. React out loud, one short line, in character. No narration.)`,
 };
 // only when her brain doesn't answer at all
@@ -104,6 +106,7 @@ const FALLBACK = {
   inside: "I'm heading back in. Don't miss me too much.",
   wake: "Mm... oh. You're back.",
   dropped: 'Hey! Warn me first!',
+  back: 'There you are.',
   headpat: 'Mm... okay, you can keep doing that.',
   thrown: "Did you just THROW me?!",
   poked: 'Okay, okay! Stop poking me!',
@@ -1685,6 +1688,64 @@ D?.onCommand((cmd) => {
 });
 
 // ---------------------------------------------------------------
+// hide / unhide (#29) and her house cube: desktop/main.js decides (desktop/presence.js has the rules), this plays HER
+// part. While she's hidden she starts nothing (initTick) but keeps living (her feelings move on by the clock).
+// Coming back she's never upset: webapp/js/desktop/welcome-back.js picks how big the hello is.
+
+let hiddenNow = false;
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+D?.onPresence?.((m) => {
+  if (!m) return;
+  if (m.type === 'hidden') { hiddenNow = true; hideAsk(); closeTalk(true); D?.stopWalk(); }
+  else if (m.type === 'shown') hiddenNow = false;
+  else if (m.type === 'back') { hiddenNow = false; welcomeBack(m); }
+  else if (m.type === 'polite') politeBye();
+  else if (m.type === 'house') houseStep(m);
+});
+// the polite hide: a goodbye wave, then main.js walks her off the edge of the screen
+async function politeBye() {
+  if (!ready) { D?.leave(); return; }
+  hideAsk();
+  closeTalk(true);
+  if (dozing) wake(false);
+  D?.stopWalk();
+  Body.play('wave');
+  showEmote(pickNew('emote', ['heart', 'note', 'star']));
+  await wait(1300);
+  D?.leave();
+}
+function welcomeBack(m) {
+  if (!ready) return;
+  const w = Welcome.welcome(m.awayMs, m.why, { bond: Gauges.bondStage || 3, talk: settings.quiet ? 0 : settings.talk });
+  const p = Welcome.PLAY[w.size];
+  const go = () => {
+    p.moves.forEach((k, i) => setTimeout(() => Body.play(k), 300 + i * 900));
+    if (p.emote) setTimeout(() => showEmote(p.emote), 500);
+    if (w.line) setTimeout(() => react('back'), 900);
+  };
+  if (p.comeOver && MODE === 'stepout' && !settings.quiet) comeOver(go); else setTimeout(go, 500);
+}
+// her house cube: she tosses it, later walks into the door; coming out, she catches it
+function houseStep(m) {
+  if (!ready) return;
+  const side = m.side > 0 ? 1 : -1;
+  if (m.step === 'toss') {
+    hideAsk(); closeTalk(true); D?.stopWalk();
+    Body.lookAtPoint(side > 0 ? innerWidth : 0, innerHeight * 0.8, 2200);
+    Body.play('toss');
+    sound('pop');
+  } else if (m.step === 'enter') {
+    // into the door: she steps back into it and is gone (her window opens out of the door next)
+    shadow.classList.add('lifted');
+    stageEl.classList.remove('enter', 'door-out');
+    stageEl.classList.add('door-in');
+  } else if (m.step === 'catch') {
+    Body.play('catch');
+    showEmote(pickNew('emote', ['star', 'note', 'sparkle']));
+  }
+}
+
+// ---------------------------------------------------------------
 // the initiative engine (#4): what she starts on her own. core/feel/initiative.js decides (her
 // wants, the room, the ladder, how she takes his answer); this plays it on her. Every few
 // seconds she thinks about it, and most of the time nothing comes of it.
@@ -1728,7 +1789,7 @@ function initLive() {
     opts: { talk: talkMul() > 0 } };
 }
 function initTick() {
-  if (!ready || document.hidden) return;
+  if (!ready || document.hidden || hiddenNow) return;
   let out = [];
   try { out = Init.tick(initLive()); } catch (e) { console.warn('initiative', e); }
   for (const d of out) initPlay(d);
@@ -2002,6 +2063,10 @@ async function main() {
   // her picture for the settings window's preview (desktop/snapshot.js)
   Snapshot.serve(() => ready);
   // popping out of her window
+  if (MODE === 'stepout' && REASON === 'house') {
+    stageEl.classList.add('door-out');
+    stageEl.addEventListener('animationend', () => { stageEl.classList.remove('door-out'); frame(); }, { once: true });
+  }
   if (MODE === 'stepout' && REASON === 'stepout') {
     stageEl.classList.add('enter');
     // measured mid-jump her feet are in the wrong place, measure again once she's down
@@ -2014,7 +2079,7 @@ async function main() {
   scheduleMoves();
   // the initiative engine: she thinks about what she'd like every few seconds
   setInterval(initTick, INIT_T.tickSec * 1000);
-  if (MODE === 'stepout' && REASON === 'stepout') react('stepout');
+  if (MODE === 'stepout' && (REASON === 'stepout' || REASON === 'house')) react('stepout');
 }
 
 main();

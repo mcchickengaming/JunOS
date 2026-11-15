@@ -3,7 +3,7 @@
 // the diegetic version (her console, #19) comes later and can show the same snapshot().
 
 import * as Feel from './core/feel/feel.js?v=4';
-import * as Moods from './desktop/moods.js?v=16';
+import * as Moods from './desktop/moods.js?v=17';
 
 const { Needs, Tired, Repeat, Session, Tune, Kinds, Store, Initiative: Init, Room } = Feel;
 const $ = (id) => document.getElementById(id);

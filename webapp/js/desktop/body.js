@@ -1260,6 +1260,18 @@ export function wavedBack() {
 // the things she does while standing around
 
 const MOVES = {
+  // her house cube (#29): an underhand toss, and catching it as it comes back
+  toss: [
+    { dt_ms: 0, params: { ParamArmRUp: 0.2, ParamBodyZ: 0.15, ParamHeadZ: 0.1, ParamEyeSmileL: 0.3, ParamEyeSmileR: 0.3 } },
+    { dt_ms: 260, params: { ParamArmRUp: 0.9, ParamBodyZ: -0.1 } },
+    { dt_ms: 300, params: { ParamArmRUp: 0.35, ParamHeadZ: 0 } },
+    { dt_ms: 500, params: { ParamArmRUp: 0, ParamBodyZ: 0, ParamEyeSmileL: 0, ParamEyeSmileR: 0 } },
+  ],
+  catch: [
+    { dt_ms: 0, params: { ParamArmRUp: 0.7, ParamArmLUp: 0.5, ParamHeadX: 0.2, ParamEyeOpenL: 1.15, ParamEyeOpenR: 1.15 } },
+    { dt_ms: 420, params: { ParamArmRUp: 0.35, ParamArmLUp: 0.25, ParamEyeSmileL: 0.6, ParamEyeSmileR: 0.6 } },
+    { dt_ms: 600, params: { ParamArmRUp: 0, ParamArmLUp: 0, ParamHeadX: 0, ParamEyeOpenL: 1, ParamEyeOpenR: 1, ParamEyeSmileL: 0, ParamEyeSmileR: 0 } },
+  ],
   lookAround: [
     { dt_ms: 0, params: { ParamHeadX: -0.6, ParamEyeballLX: -0.9, ParamEyeballRX: -0.9, ParamBodyX: -0.2 } },
     { dt_ms: 1100, params: { ParamHeadX: 0.6, ParamEyeballLX: 0.9, ParamEyeballRX: 0.9, ParamBodyX: 0.2 } },
@@ -1313,7 +1325,7 @@ const MOVES = {
   ],
 };
 const MOVE_MS = { lookAround: 2600, stretch: 2400, yawn: 2300, rest: 7500, sway: 2000, tail: 2000, wave: 1200, ears: 900, lookAway: 2900,
-  sigh: 1900, shrug: 1500, pout: 2600, hop: 900, smallWave: 1100 };
+  sigh: 1900, shrug: 1500, pout: 2600, hop: 900, smallWave: 1100, toss: 1100, catch: 1100 };
 // the thought icon that goes with a move, if any
 const MOVE_EMOTE = { lookAround: 'question', yawn: 'dots', rest: 'dots', sway: 'note', wave: 'heart', lookAway: 'dots' };
 

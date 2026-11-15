@@ -54,6 +54,8 @@ function makeWindow(box, file, q, clickable) {
     webPreferences: { preload: path.join(__dirname, 'prop-preload.js'), contextIsolation: true, sandbox: true },
   });
   w.setIgnoreMouseEvents(true, clickable ? { forward: true } : undefined);
+  // left out of screen shares and recordings, like her (main.js applyShareHide)
+  try { w.setContentProtection(protecting); } catch (e) {}
   w.loadURL(pageUrl(file, q));
   w.once('ready-to-show', () => { if (shown) w.showInactive(); zOrder(); });
   return w;
@@ -105,6 +107,14 @@ function rebuild() {
   if (shown) show();
   const s = onSpotId && spotById(onSpotId);
   if (s) setTimeout(() => seat(s), 300);
+}
+
+// screen shares: her spots and the ball are left out of the capture too (desktop.json desk.shareHide)
+let protecting = true;
+function protect(on) {
+  protecting = !!on;
+  const all = [...[...live.values()].flatMap(l => [l.back, l.front]), ball && ball.win];
+  for (const w of all) if (w && !w.isDestroyed()) { try { w.setContentProtection(protecting); } catch (e) {} }
 }
 
 function hide() {
@@ -456,7 +466,7 @@ function offerBall(how) {
 }
 
 module.exports = {
-  TYPES, init, show, hide, rebuild, zOrder, add, remove, setColor, list, types, dragStart, dragEnd,
+  TYPES, init, show, hide, protect, rebuild, zOrder, add, remove, setColor, list, types, dragStart, dragEnd,
   goTo, leave, stay, afterLanding, onSpot, wantsSpot, restY, spawnBall, removeBall, offerBall, hasBall: () => !!ball,
   spotByContents, ballContents: () => (ball && !ball.win.isDestroyed() ? ball.win.webContents : null),
 };

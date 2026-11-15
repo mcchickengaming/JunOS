@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jun's house</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+</style>
+</head>
+<body>
+<!-- her house cube: a see-through, click-through window desktop/main.js opens over her and the house while she goes
+     in or comes out. It only draws; main.js sends the plan (jun:house) and closes it when it's done. -->
+<canvas id="c"></canvas>
+<script type="module">
+  import * as House from './js/desktop/house-cube.js?v=1';
+  const c = document.getElementById('c');
+  const fit = () => { c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; c.getContext('2d').setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); };
+  fit();
+  addEventListener('resize', fit);
+  const D = window.junDesktop;
+  // ?demo=in|out plays it with a made-up plan (for a quick look in a browser)
+  const demo = new URLSearchParams(location.search).get('demo');
+  let player = null;
+  const run = (msg) => { player = House.play(c, msg, { loadLook: House.lookLoader() }); player.done.then(() => D?.houseDone?.()); };
+  if (D?.onHouse) D.onHouse((m) => { if (m?.type === 'resume') player?.resume(); else if (m?.type === 'play') run(m); });
+  else if (demo) {
+    const herPx = 440, floor = innerHeight - 10;
+    const house = { x: 360, y: floor - herPx, width: herPx * 1.15, height: herPx };
+    const plan = { house, door: { x: house.x + house.width / 2 - house.width * 0.1, y: floor - herPx * 0.42, width: house.width * 0.2, height: herPx * 0.42 }, hand: { x: 220, y: floor - herPx * 0.55 }, side: 1 };
+    const beats = demo === 'out' ? ['shrink', 'build', 'open', 'out', 'close', 'pack', 'catch'] : ['toss', 'bounce', 'light', 'holo', 'build', 'open', 'enter', 'grow', 'fade'];
+    const ms = { toss: 650, bounce: 700, light: 450, holo: 900, build: 1100, open: 450, enter: 500, grow: 520, fade: 450, shrink: 520, out: 500, close: 450, pack: 880, catch: 650 };
+    let t = 0; const timeline = { beats: beats.map(id => { const b = { id, at: t, ms: ms[id] }; t += ms[id]; return b; }) };   // no waits in the demo
+    timeline.total = t;
+    run({ dir: demo, plan, timeline, herPx });
+  }
+</script>
+</body>
+</html>
