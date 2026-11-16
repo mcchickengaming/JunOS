@@ -63,6 +63,7 @@ const LABS = [
   ['progress-lab.html', 'Progress lab', 'Skills, xp, the reward roller, "is it fair?"'],
   ['delve-lab.html', 'Delve lab', 'A whole delve, fights at any pace, difficulty, a hundred delves in a moment.'],
   ['story-lab.html', 'Story lab', 'The story-event engine in a sandbox: play events, see why and why not, the story\'s memory, a hundred playthroughs in a moment.'],
+  ['scene-lab.html', 'Scene lab + scene maker', 'Full scenes in a sandbox: the slots as the gate sees them, the wheel, her meter, the album, a hundred scenes in a moment. And the maker for your own scenes.'],
   ['rig-lab.html', 'Rig lab', 'The Inochi2D renderer and its checks.'],
 ];
 function buildLabs(host) {

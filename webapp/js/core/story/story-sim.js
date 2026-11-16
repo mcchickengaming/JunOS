@@ -8,7 +8,7 @@
 // "no" turns down whatever can be turned down (a player who only wants the main story). A game over is
 // what it is for a player: back to the last autosave (kept here in memory), and try again.
 
-import * as En from './story-engine.js?v=1';
+import * as En from './story-engine.js?v=3';
 import { tune as getTune } from './story-tune.js?v=1';
 import { dice, mix } from '../delve/rng.js?v=1';
 import * as Places from '../world/places.js?v=1';
@@ -38,7 +38,7 @@ export function playthrough(data, o = {}, tune) {
   let salt = 0;
   const ctx = () => ({ ...(o.ctx || {}), now: g.x.day, salt });
   const stats = { fired: {}, order: [], cls: { spine: 0, thread: 0, pool: 0, queue: 0 }, quiet: 0, asked: 0, errors: [], gameovers: 0, saved: 0, cared: 0, tells: {}, cards: 0, grants: [],
-    inARow: 1, threads: {}, perDayReturns: 0, finishedDay: null, hooks: {}, autosaves: 0, placesOpened: 0 };
+    inARow: 1, threads: {}, perDayReturns: 0, finishedDay: null, hooks: {}, scenes: {}, autosaves: 0, placesOpened: 0 };
   let last = null, row = 1, saved = JSON.stringify(g), tries = 0;
 
   const take = (events) => {
@@ -78,6 +78,15 @@ export function playthrough(data, o = {}, tune) {
         const res = hookResult(data, kind, rnd, tries >= 3);
         stats.hooks[kind + ':' + res] = (stats.hooks[kind + ':' + res] || 0) + 1;
         take(En.step(data, g, { result: res }, ctx(), t));
+      } else if (g.x.play.wait === 'scene') {
+        // a full scene (#22): a stand-in plays it with the real rules, on the story's own memory
+        const node = data.events[g.x.play.ev].nodes[g.x.play.node];
+        const k = En.pending(data, g, ctx(), t).find(e => e.type === 'scene' && e.play);
+        if (!k) continue;   // the scene was gone: pending() already moved the event on
+        const r = En.Sc.playOnce(k.play, data.lib, En.sceneCtx(data, g, ctx(), t), { seed: mix(seed, g.x.day, g.x.slot, node.scene) });
+        for (const er of r.stats.errors) stats.errors.push(`scene ${k.play.id}: ${er}`);
+        stats.scenes[k.play.id + ':' + r.stats.end] = (stats.scenes[k.play.id + ':' + r.stats.end] || 0) + 1;
+        take(En.step(data, g, { scene: { end: r.stats.end } }, ctx(), t));
       } else take(En.step(data, g, {}, ctx(), t));
     }
     tries = 0;

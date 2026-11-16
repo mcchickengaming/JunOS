@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene lab · the scene engine and the scene maker</title>
+<link rel="icon" href="favicon.png">
+<style>
+  :root { --bg: #17131f; --panel: #221c2d; --ink: #e9e3f2; --dim: #a79cb8; --edge: #3a3149; --accent: #b83a66; --ok: #5fd39a; --bad: #ff6b81;
+    --sv-box: #1c1726; --sv-edge: #3a3149; --sv-dim: #a79cb8; --sv-accent: #ff7aa2; --sv-her: #7ac8ff; --sv-ink: #e9e3f2; --sv-btn: #2f2640; --sv-card: #ffd76a; --sv-cardbg: #2a2416; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 14px 18px 4px; }
+  h1 { font-size: 17px; margin: 0; }
+  header p { margin: 2px 0 0; color: var(--dim); font-size: 12px; max-width: 900px; }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; padding: 12px 18px 40px; }
+  section { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  section.wide { grid-column: 1 / -1; }
+  h2 { font-size: 12px; margin: 0 0 8px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  h3 { font-size: 13px; margin: 10px 0 4px; }
+  .note { margin: 4px 0 8px; color: var(--dim); font-size: 12px; }
+  .warn { color: #ffd76a; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--edge); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.yes { color: var(--ok); } td.no { color: var(--dim); }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; align-items: center; }
+  button, select, input { background: #2f2640; color: var(--ink); border: 1px solid var(--edge); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 13px; }
+  input[type=number] { width: 84px; }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .setup { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 12px; margin-bottom: 8px; }
+  .setup label { display: grid; gap: 2px; font-size: 12px; color: var(--dim); }
+  .play { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .play { grid-template-columns: 1fr; } }
+  #scene { max-height: 520px; overflow: auto; padding-right: 4px; }
+  .chip { display: inline-block; padding: 1px 7px; border: 1px solid var(--edge); border-radius: 10px; margin: 2px 4px 2px 0; font-size: 12px; }
+  .chip.on { border-color: var(--ok); }
+  .tune { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 14px; }
+  .tune label { display: grid; grid-template-columns: 1fr 84px; gap: 6px; align-items: center; font-size: 12px; color: var(--dim); }
+  pre { white-space: pre-wrap; font-size: 12px; color: var(--dim); margin: 6px 0 0; }
+  [hidden] { display: none !important; }
+
+  .setup select, .setup input { width: 100%; min-width: 0; }
+  .maker { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2.2fr); gap: 14px; }
+  @media (max-width: 900px) { .maker { grid-template-columns: 1fr; } }
+  .entry { border: 1px solid var(--edge); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+  .entry.cur { border-color: var(--accent); }
+  .entry b { display: block; }
+  .card { border: 1px solid var(--edge); border-radius: 8px; padding: 8px 10px; margin: 6px 0; background: #1c1726; }
+  .card > .head { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .card > .head input { flex: 1; }
+  .f { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 12px; margin: 6px 0; }
+  .f label, label.blk { display: grid; gap: 2px; font-size: 12px; color: var(--dim); }
+  label.blk { margin: 6px 0; }
+  label.chk { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--ink); margin-right: 10px; }
+  .f input[type=text], label.blk input[type=text], .lines input[type=text] { width: 100%; }
+  .lines { display: grid; gap: 4px; margin: 4px 0; }
+  .lines .ln { display: flex; gap: 4px; }
+  .lines .ln select { width: 104px; flex: none; }
+  .lines .ln input[type=text] { flex: 1; min-width: 0; }
+  .lines .ln.mv select { width: auto; flex: 1; }
+  .tierb { font-size: 11px; border: 1px solid var(--edge); border-radius: 8px; padding: 0 6px; margin-left: 6px; color: var(--dim); }
+  .tierb.flirty { border-color: #ff7aa2; color: #ff7aa2; } .tierb.adult { border-color: #ffd76a; color: #ffd76a; }
+  .probs { color: #ffd76a; font-size: 12px; white-space: pre-wrap; margin: 6px 0; }
+  .good { color: var(--ok); font-size: 12px; }
+  #player { max-height: 640px; overflow: auto; padding-right: 4px; }
+  h4 { font-size: 12px; margin: 12px 0 2px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Scene lab · the scene engine and the scene maker</h1>
+  <p>Full scenes (#22): a setting, a pose, layers and phases you stay in for a while, with a wheel of things to do. Everything here plays in a
+    <b>sandbox</b>: a pretend game kept only on this page. Nothing touches your real game, its memory or its saves. The scenes that ship are
+    stand-ins, Everyday and Flirty only, with stand-in art. <b>Your own scenes</b> (the maker, below) are kept on this PC and do reach the real game, through the same gate as everything else.</p>
+</header>
+<main>
+  <section class="wide">
+    <h2>Play a scene</h2>
+    <div class="setup">
+      <label>What to play <select id="what"></select></label>
+      <label>Where (for a slot) <select id="where"><option value="home">at home</option><option value="camp">at a camp</option><option value="alone">she stayed home</option></select></label>
+      <label>Your bond with her <select id="bond"></select></label>
+      <label>Flirty moments <select id="flirty"><option value="">as you've set it</option><option value="on">what if: on</option><option value="off">what if: off</option></select></label>
+      <label>Whose say is it <select id="whose"><option value="game">Game Jun (her say is a meter)</option><option value="desktop">Desktop Jun (her live say; the door for later)</option></select></label>
+      <label>Seed (the same number, the same luck) <input type="number" id="seed" value="1" min="0"></label>
+    </div>
+    <div class="btns"><button id="playBtn">Play it</button><button id="stopBtn" hidden>She says stop</button><button id="forget">Forget the sandbox's memory</button><span class="note" id="picked"></span></div>
+    <div class="play">
+      <div><div id="player" aria-live="polite"></div></div>
+      <div>
+        <h3>What the sandbox remembers</h3>
+        <p class="note">Game Jun keeps this in story state, so game saves carry it: how often each scene was played, firsts, marks that stay for a day, album parts.</p>
+        <div id="mem"></div>
+        <h3>The album</h3>
+        <div id="album" class="note"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wide">
+    <h2>Your own scenes (the scene maker)</h2>
+    <p class="note">Make a scene, test it here, save it: it then plays in the real game wherever its slot comes up, if the one gate lets it show (its rating has to be switched on in Settings, and <span class="herName">she</span> has to be fine with it). Nothing with a problem can be saved. Scenes from a file arrive checked, and anything rated in them arrives switched off.</p>
+    <div class="maker">
+      <div>
+        <div class="btns"><label class="chk"><input type="checkbox" id="mineOn"> Use my scenes</label></div>
+        <div id="mineList"></div>
+        <div class="btns"><button id="newSimple">New: a few lines</button><button id="newFull">New: a full scene</button></div>
+        <div class="btns"><select id="copyFrom"></select><button id="copyBtn">Start from this one</button></div>
+        <div class="btns"><button id="download">Download my scenes</button><button id="upload">Upload scenes…</button><input type="file" id="uploadFile" accept=".junscenes,.json" hidden></div>
+        <p class="note" id="mineNote" role="status"></p>
+      </div>
+      <div id="editor"><p class="note">Pick one of your scenes, or start a new one.</p></div>
+    </div>
+  </section>
+
+  <section class="wide">
+    <h2>Scene slots, as the gate sees them now</h2>
+    <p class="note">One moment, a version per rating: the highest one that's switched on and that <span class="herName">she</span>'s fine with plays, and there is always an Everyday one. Uses the bond and switches picked above.</p>
+    <table id="slots"></table>
+  </section>
+
+  <section>
+    <h2>Check the data</h2>
+    <p class="note">The rulebook: every scene can be left, the ordinary things are always there, nothing rated is shipped, your own scenes keep the same rules.</p>
+    <div class="btns"><button id="check">Check it</button></div>
+    <pre id="checkOut"></pre>
+  </section>
+  <section>
+    <h2>A hundred scenes in a moment</h2>
+    <p class="note">A stand-in plays the scene picked above with the real rules. Does it always end? Is every phase and ending reached?</p>
+    <div class="btns"><label>plays <input type="number" id="simN" value="100" min="5" max="1000" style="width:70px"></label><button id="simRun">Play them</button></div>
+    <div id="simOut" class="note"></div>
+  </section>
+
+  <section class="wide">
+    <h2>Every number</h2>
+    <p class="note">Change a number and the next thing you do uses it. <b>Nothing here is saved</b>: it's for trying.
+      Found numbers you like? Tell Claude which ones, and they become the real ones.</p>
+    <div id="tune"></div>
+    <div class="btns"><button id="tuneReset">Back to the real numbers</button></div>
+  </section>
+</main>
+<script type="module" src="js/scene-lab.js?v=4"></script>
+</body>
+</html>

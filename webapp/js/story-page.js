@@ -3,8 +3,9 @@
 // the engine's (js/core/story/story-engine.js); keeping it is the door's (js/core/story/story.js); drawing it is
 // story-view.js. Leaving is the game world's own "Back to the map".
 
-import * as Door from './core/story/story.js?v=1';
-import { createView } from './story-view.js?v=2';
+import * as Door from './core/story/story.js?v=4';
+import { createView } from './story-view.js?v=4';
+import { createScenePlayer } from './scene-view.js?v=4';
 
 const { En, GameSave } = Door;
 const $ = (id) => document.getElementById(id);
@@ -42,6 +43,14 @@ async function act(events) {
 }
 const answer = (input) => act(En.step(data.story, game.g, input, ctx));
 
+// a full scene (#22): played right here by the scene engine, remembering through the story's own state; it is
+// kept (with the rest of the story) when it ends and the event goes on
+function playScene(e, box) {
+  $('here').hidden = true;
+  createScenePlayer(box, { scene: e.play, lib: data.story.lib, ctx: En.sceneCtx(data.story, game.g, { ...ctx, now: Date.now() }), seed: Date.now() % 1000000,
+    names: ctx.names, npcs: data.story.npcs, onEnd: (end) => answer({ scene: { end } }) });
+}
+
 async function gameOver(box) {
   const r = await Door.loadLastSave();
   // a load reloads this page (GameSave.onChange below) with the story that save put back
@@ -58,7 +67,7 @@ async function init() {
   if (game.off) { $('note').textContent = GameSave.say('off'); return; }
   if (game.error) { $('note').textContent = GameSave.say(game.error); return; }
   ctx = await Door.context(data, game.g);
-  view = createView($('scene'), { onAnswer: answer, onGameOver: gameOver, names: ctx.names, npcs: data.story.npcs });
+  view = createView($('scene'), { onAnswer: answer, onGameOver: gameOver, onScene: playScene, names: ctx.names, npcs: data.story.npcs });
   GameSave.startClock();
   GameSave.onChange((e) => { if (e?.type === 'loaded') location.reload(); });
   // something was left half-way (the window closed mid-event, or a save from before a fight): carry on

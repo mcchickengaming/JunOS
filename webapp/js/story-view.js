@@ -3,10 +3,11 @@
 // buttons, cards. It only draws what the engine's events say and reports the player's answer; no rules here.
 //
 //   const view = createView(host, { onAnswer: (input) => …, onGameOver: () => …, debug: false });
-//   view.show(events, wait)     // wait = g.x.play?.wait: 'next' | 'choice' | 'hook' | undefined
+//   view.show(events, wait)     // wait = g.x.play?.wait: 'next' | 'choice' | 'hook' | 'scene' | undefined
+//   onScene(event, box)         // a full scene (#22) to play in `box`; answer onAnswer({ scene: { end } }) when it's over
 //   view.clear()
 
-const FACES = { neutral: '·_·', uneasy: '·~·', scared: 'O_O', focused: '>_·', proud: '^_^', grin: '^v^', worried: '·_·;', relieved: '-u-', yawn: '-o-', curious: '·o·', pout: '·3·' };
+export const FACES = { neutral: '·_·', uneasy: '·~·', scared: 'O_O', focused: '>_·', proud: '^_^', grin: '^v^', worried: '·_·;', relieved: '-u-', yawn: '-o-', curious: '·o·', pout: '·3·' };
 const WHO = { narrator: '', you: 'You' };
 const TIER = { everyday: 'Everyday', flirty: 'Flirty', adult: '18+' };
 
@@ -31,7 +32,7 @@ export const CSS = `
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 
-export function createView(host, { onAnswer, onGameOver, debug = false, names = {}, npcs = {} } = {}) {
+export function createView(host, { onAnswer, onGameOver, onScene, debug = false, names = {}, npcs = {} } = {}) {
   if (!document.getElementById('sv-css')) { const st = el('style'); st.id = 'sv-css'; st.textContent = CSS; document.head.append(st); }
   host.classList.add('sv');
   let acts = null;
@@ -71,6 +72,12 @@ export function createView(host, { onAnswer, onGameOver, debug = false, names = 
         add(c);
       }
       else if (e.type === 'card') add(el('div', 'sv-nod', '(' + e.title + ')'));
+      else if (e.type === 'scene' && e.play && onScene) {
+        // a full scene (#22): the page plays it in this box (js/scene-view.js) and answers with how it ended
+        asked = true; dropActs();
+        if (debug) add(el('div', 'sv-note dbg', `scene slot "${e.slot}": the ${TIER[e.tier]} version "${e.id}" (a full scene)` + (e.tried.length ? ' · passed over: ' + e.tried.map(k => `${k.id || k.tier} (${k.why})`).join(', ') : '')));
+        onScene(e, add(el('div')));
+      }
       else if (e.type === 'scene') { for (const b of e.beats) beat('jun', b.face, b.t); if (debug) add(el('div', 'sv-note dbg', `scene slot "${e.slot}": the ${TIER[e.tier]} version "${e.id}"` + (e.tried.length ? ' · passed over: ' + e.tried.map(k => `${k.id || k.tier} (${k.why})`).join(', ') : ''))); }
       else if (e.type === 'codex_page') add(el('div', 'sv-note', `Your notebook's "${e.name}" page is complete.`));
       else if (e.type === 'defeat') add(el('div', 'sv-note', e.how === 'saved' ? 'She reached you in time.' : e.how === 'care' ? 'You went down. She took care of you; nothing was lost.' : ''));

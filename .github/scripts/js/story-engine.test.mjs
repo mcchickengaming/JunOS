@@ -20,7 +20,8 @@ const D = await import(new URL('js/core/difficulty.js', root));
 const Gate = await import(new URL('js/core/gate.js', root));
 const { tune, DEFAULTS } = await import(new URL('js/core/story/story-tune.js', root));
 
-const data = J('data/story.json'), places = J('data/places.json'), dd = J('data/difficulty.json'), prog = J('data/progress.json'), items = J('data/items.json'), delve = J('data/delve.json');
+// the scene library (#22) is laid under the story's own scene slots, exactly as the story's door does it
+const data = En.Sc.attach(J('data/story.json'), J('data/scenes.json')), places = J('data/places.json'), dd = J('data/difficulty.json'), prog = J('data/progress.json'), items = J('data/items.json'), delve = J('data/delve.json');
 const known = { places, grants: Object.keys(prog.story), areas: Object.keys(delve.areas) };
 const gate = (over = {}) => ({ gateCheck: Gate.check, gate: { comfort: { ...Gate.DEFAULTS, ...over }, mode: 'windowed' } });
 const clone = (v) => JSON.parse(JSON.stringify(v));

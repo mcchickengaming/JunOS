@@ -13,15 +13,16 @@
 // over: the answer is 'reloaded' and the page reloads. Things are only ever given by the progression
 // service's story grants (by id, once). Autosaves happen at the beats the engine names.
 
-import * as En from './story-engine.js?v=1';
+import * as En from './story-engine.js?v=3';
 import * as Story from './story-state.js?v=3';
 import * as GameSave from '../gamesave.js?v=5';
 import * as Progress from '../progress.js?v=2';
 import * as Gate from '../gate.js?v=6';
 import * as Difficulty from '../difficulty.js?v=2';
 import { api } from '../api.js?v=1';
+import * as SceneDoor from '../scene/scene-door.js?v=3';
 
-export { En, Story, GameSave, Difficulty };
+export { En, Story, GameSave, Difficulty, SceneDoor };
 export const HEARD_KEY = 'jun.story.heard';   // the kinds of things that happened lately, for the two-Juns link (#36). Desktop Jun's side: never in a game save.
 export const HEARD_MAX = 30;
 
@@ -29,7 +30,12 @@ let cache = null;
 export async function loadData() {
   if (!cache) {
     const j = (u) => fetch(u, { cache: 'no-cache' }).then(r => r.json());
-    cache = Promise.all([j('data/story.json'), j('data/places.json'), Difficulty.loadData()]).then(([story, places, diff]) => ({ story, places, diff }));
+    // the scene library (#22) is laid under the story's own scene slots, and the owner's own scenes are let in
+    cache = Promise.all([j('data/story.json'), j('data/places.json'), Difficulty.loadData(), SceneDoor.loadLib()]).then(([story, places, diff, lib]) => {
+      story = En.Sc.attach(story, lib, 'story');
+      SceneDoor.install(lib, { npcs: story.npcs });
+      return { story, places, diff };
+    });
   }
   return cache;
 }

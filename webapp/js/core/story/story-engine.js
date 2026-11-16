@@ -21,7 +21,9 @@
 //
 // An event = nodes. A node can say something (text, who, face), show a card, run effects ("do"), then:
 // offer choices, hand over to another system (a "hook") and branch on how that went, play a scene slot,
-// or just go on ("next").
+// or just go on ("next"). A scene slot may pick a FULL scene (#22, ../scene/scene-engine.js): then the event
+// waits ('scene') while the page plays it, and goes on with how it ended: step(…, { scene: { end } }) → the
+// node's "on": { <ending id> | else: node } if it has one, else its choices / "next" as usual.
 //
 // WHICH event happens (pick): the world asks with a trigger ("enter" when you arrive from the map,
 // "stroll", "talk:al", "home", "voyage", "sleep"…). In order: something queued for now → the main story's
@@ -42,10 +44,11 @@ import { mix, next } from '../delve/rng.js?v=1';
 import { tune as getTune } from './story-tune.js?v=1';
 import * as Cond from './cond.js?v=1';
 import * as Story from './story-state.js?v=3';
-import * as Scenes from '../delve/scenes.js?v=1';
+import * as Scenes from '../delve/scenes.js?v=3';
+import * as Sc from '../scene/scene-engine.js?v=3';
 import { saveChance } from '../difficulty.js?v=2';
 
-export { Cond, Story };
+export { Cond, Story, Sc };
 export const SECTION = 'events';
 export const SLOTS = Cond.SLOTS;
 export const TIERS = ['everyday', 'flirty', 'adult'];
@@ -85,6 +88,7 @@ export function cleanX(raw, data, seed = 1) {
   x.day = Math.max(1, raw.day | 0); x.slot = Math.max(0, Math.min(3, raw.slot | 0));
   x.today = { ...b.today, ...obj(raw.today) };
   if (x.play && !(data.events[x.play.ev] && data.events[x.play.ev].nodes[x.play.node])) x.play = null;
+  if (x.play && x.play.wait === 'scene' && !data.events[x.play.ev].nodes[x.play.node].scene) x.play = null;
   if (x.at && !data.spots[x.at]) x.at = b.at;
   return x;
 }
@@ -133,12 +137,30 @@ export function allowed(item, g, ctx, t) {
   const yes = r.show && (r.her === 'yes' || (r.her === 'ask' && t.gate.askCounts));
   return { ok: !!yes, why: yes ? '' : (r.words || r.why || 'Not now.') };
 }
-const gateFor = (ctx, t) => (item, gctx) => {
-  const r = ctx.gateCheck(item, gctx);
-  return r.her === 'ask' && t.gate.askCounts ? { ...r, her: 'yes' } : r;
-};
 function slot(data, g, id, where, ctx, t) {
-  return Scenes.pick({ scenes: data.scenes }, id, { where, gateCheck: ctx.gateCheck ? gateFor(ctx, t) : null, gateCtx: gateCtx(g, ctx, ctx.stage ?? 1), rnd: () => rnd(g) });
+  // variants are read the same way as everything else rated here (allowed(): themes, a person's own closeness, agreements)
+  return Scenes.pick({ scenes: data.scenes }, id, { where, allow: ctx.gateCheck ? (item) => allowed(item, g, ctx, t) : null, rnd: () => rnd(g) });
+}
+// what the page gets for a scene slot. A full scene comes as `play` (the scene itself, for scene-engine.js) with its
+// first lines as `beats` for anything that can only show lines; a simple one is just its beats, as before.
+function sceneEvent(data, g, ctx, k, slotId, extra = {}) {
+  const play = Scenes.isFull(k.variant) ? Sc.resolve(k.variant, data.lib) : null;
+  const beats = (play ? Sc.flat(play, data.lib) : k.variant.beats || []).map(b => ({ ...b, t: fill(data, g, ctx, b.t) }));
+  return { type: 'scene', slot: slotId, tier: k.tier, id: k.variant.id, beats, tried: k.tried || [], ...(play ? { play } : {}), ...extra };
+}
+// everything a full scene needs from the game (scene-engine.js ctx): the gate as the story reads it, the story's
+// conditions and words, and its MEMORY = story state (seen counts + flags), so every game save carries it.
+// replay: looking at an album part again changes nothing.
+export function sceneCtx(data, g, ctx = {}, tune, { replay = false } = {}) {
+  const t = tune || getTune(), c = full(data, g, ctx), at = now(ctx);
+  const mem = {
+    day: g.x.day,
+    seen: (id) => Story.seenCount(g.s, id),
+    get: (id) => Story.flag(g.s, id, null),
+    mark: (id) => { if (!replay) Story.markSeen(g.s, id, at); },
+    set: (id, v) => { if (replay) return; if (v === null || v === false || v === undefined) Story.clearFlag(g.s, id, at); else Story.setFlag(g.s, id, v, at); },
+  };
+  return { ask: (item) => allowed(item, g, c, t), test: (cond) => Cond.test(cond, g, c), fill: (str) => fill(data, g, c, str), npcs: data.npcs, names: ctx.names, mem };
 }
 
 // ---------------------------------------------------------------
@@ -375,6 +397,29 @@ export function choicesFor(data, g, ctx, tune) {
 }
 const hookEvent = (data, node) => ({ type: 'hook', kind: node.hook.kind, name: data.hooks[node.hook.kind].name, args: { ...node.hook }, outcomes: data.hooks[node.hook.kind].outcomes });
 
+// a node's question, if it has one: choices or a hook. → true = the event now waits for the answer
+function asks(data, g, ctx, t, out) {
+  const p = g.x.play, ev = E(data, p.ev), node = ev.nodes[p.node];
+  if (node.choices) { p.wait = 'choice'; out.push({ type: 'choices', list: choicesFor(data, g, ctx, t) }); return true; }
+  if (node.hook) {
+    p.wait = 'hook';
+    // a beat that must be kept: the moment before anything dangerous (where a game over loads back to)
+    if (data.hooks[node.hook.kind].danger) out.push({ type: 'autosave', reason: 'Before: ' + ev.name });
+    out.push(hookEvent(data, node));
+    return true;
+  }
+  return false;
+}
+// after a full scene: its ending may branch ("on"), else the node goes on as any other
+function afterScene(data, g, ctx, t, out, end) {
+  const p = g.x.play, node = E(data, p.ev).nodes[p.node];
+  p.scene = null; p.wait = null;
+  const to = node.on?.[end] ?? node.on?.else;
+  if (to) { goTo(data, g, to, ctx, t, out); return; }
+  if (asks(data, g, ctx, t, out)) return;
+  goTo(data, g, node.end ? 'end' : route(node.next, g, ctx), ctx, t, out);
+}
+
 function enter(data, g, ctx, t, out) {
   const p = g.x.play;
   for (let guard = 0; guard < 60; guard++) {
@@ -384,16 +429,14 @@ function enter(data, g, ctx, t, out) {
     if (node.text !== undefined) out.push({ type: 'beat', who: node.who || 'narrator', face: node.face || null, text: say(data, g, node.text, ctx, p.ev + '/' + p.node) });
     if (node.scene) {
       const k = slot(data, g, node.scene, node.where || 'home', ctx, t);
-      if (k) out.push({ type: 'scene', slot: node.scene, tier: k.tier, id: k.variant.id, beats: k.variant.beats.map(b => ({ ...b, t: fill(data, g, ctx, b.t) })), tried: k.tried });
+      if (k) {
+        const se = sceneEvent(data, g, ctx, k, node.scene);
+        out.push(se);
+        // a full scene: the page plays it (scene-engine.js) and answers with how it ended
+        if (se.play) { p.wait = 'scene'; p.scene = { slot: node.scene, id: k.variant.id }; return; }
+      }
     }
-    if (node.choices) { p.wait = 'choice'; out.push({ type: 'choices', list: choicesFor(data, g, ctx, t) }); return; }
-    if (node.hook) {
-      p.wait = 'hook';
-      // a beat that must be kept: the moment before anything dangerous (where a game over loads back to)
-      if (data.hooks[node.hook.kind].danger) out.push({ type: 'autosave', reason: 'Before: ' + ev.name });
-      out.push(hookEvent(data, node));
-      return;
-    }
+    if (asks(data, g, ctx, t, out)) return;
     const to = route(node.next, g, ctx);
     if (node.end || !to || to === 'end') { finish(data, g, ctx, t, out); return; }
     // a node with nothing to show is only plumbing: go straight on
@@ -477,10 +520,17 @@ export function step(data, g, input = {}, ctx = {}, tune) {
       out.push({ type: 'defeat', how: end, chance: defeatChance(g, c) });
       if (end === 'gameover') { x.over = { ev: x.play.ev, day: x.day }; if (data.tells?.game_over) out.push({ type: 'tell', kind: 'game_over' }); out.push({ type: 'gameover', event: x.play.ev, name: ev.name }); return out; }
       const k = slot(data, g, 'care', c.with.includes('jun') ? 'home' : 'alone', c, t);
-      if (k) out.push({ type: 'scene', slot: 'care', tier: k.tier, id: k.variant.id, beats: k.variant.beats, tried: k.tried, saved: end === 'saved' });
+      if (k) { const se = sceneEvent(data, g, c, k, 'care', { saved: end === 'saved' }); delete se.play; out.push(se); }   // a care moment is always just read
       to = node.on?.[end] ?? node.on?.care ?? to;
     }
     goTo(data, g, to ?? node.on?.else, c, t, out);
+    return out;
+  }
+  if (x.play.wait === 'scene') {
+    const end = input.scene && input.scene.end;
+    if (typeof end !== 'string' || !end) return [{ type: 'error', why: 'a scene is playing: say how it ended' }];
+    out.push({ type: 'scened', slot: x.play.scene?.slot, id: x.play.scene?.id, end });
+    afterScene(data, g, c, t, out, end);
     return out;
   }
   if (x.play.wait === 'next') { goTo(data, g, route(node.next, g, c), c, t, out); return out; }
@@ -496,6 +546,15 @@ export function pending(data, g, ctx = {}, tune) {
   const out = [{ type: 'resumed', event: p.ev, name: ev.name }];
   if (p.wait === 'choice') out.push({ type: 'choices', list: choicesFor(data, g, ctx, tune) });
   else if (p.wait === 'hook') out.push(hookEvent(data, node));
+  else if (p.wait === 'scene') {
+    // the same scene again, from its start (nothing of a half-played scene was kept). If it's gone (one of the
+    // owner's, switched off meanwhile), whatever the slot gives now
+    const c = full(data, g, ctx), t = tune || getTune();
+    const k = (p.scene && Scenes.find({ scenes: data.scenes }, p.scene.slot, p.scene.id)) || slot(data, g, node.scene, node.where || 'home', c, t);
+    const se = k ? sceneEvent(data, g, c, k, node.scene) : null;
+    if (se) out.push(se);
+    if (!se || !se.play) afterScene(data, g, c, t, out, 'leave');
+  }
   return out;
 }
 
@@ -607,6 +666,14 @@ export function validate(data, known = {}, { shipped = true } = {}) {
     if (p.grant && known.grants && !known.grants.includes(p.grant)) e.push(`codex page ${pid}: the progression service has no story grant "${p.grant}"`);
   }
   e.push(...Scenes.checkSlots({ scenes: data.scenes || {} }).map(k => 'scene ' + k));
+  // full scenes: the library keeps its own rulebook, and a slot may only name a scene that exists, in the right list
+  if (data.lib) e.push(...Sc.checkLibrary(data.lib, { shipped, npcs: data.npcs }));
+  for (const [sid, sl] of Object.entries(data.scenes || {})) for (const tier of TIERS) for (const v of sl.variants?.[tier] || []) {
+    if (typeof v.scene !== 'string') continue;
+    const sc = data.lib?.scenes?.[v.scene];
+    if (!sc) e.push(`scene ${sid}/${v.id}: unknown full scene "${v.scene}" (data/scenes.json)`);
+    else if ((sc.tier || 'everyday') !== tier) e.push(`scene ${sid}/${v.id}: "${v.scene}" is tagged ${sc.tier || 'everyday'} but sits in the ${tier} list`);
+  }
   if (!has(data.scenes, 'care')) e.push('scenes: the "care" slot is missing (what a lost fight becomes when she takes care of you)');
 
   for (const [eid, ev] of Object.entries(data.events || {})) {

@@ -2,11 +2,12 @@
 // it shows lives in js/core/story/ (story-engine.js, cond.js, story-sim.js) and this file only draws and listens. The sandbox game is
 // an object on this page: nothing is written to the real game, nothing is granted, no save is made.
 
-import * as Door from './core/story/story.js?v=1';
-import * as Sim from './core/story/story-sim.js?v=1';
+import * as Door from './core/story/story.js?v=4';
+import * as Sim from './core/story/story-sim.js?v=3';
 import * as Places from './core/world/places.js?v=1';
 import { DEFAULTS, setOverrides, tune as getTune } from './core/story/story-tune.js?v=1';
-import { createView } from './story-view.js?v=2';
+import { createView } from './story-view.js?v=4';
+import { createScenePlayer } from './scene-view.js?v=4';
 
 const { En, Story, Difficulty } = Door;
 const $ = (id) => document.getElementById(id);
@@ -111,6 +112,8 @@ async function init() {
   } catch (e) { known = { places: data.places }; }
 
   view = createView($('scene'), { debug: true, names: base.names, npcs: S().npcs,
+    onScene: (e, box) => createScenePlayer(box, { scene: e.play, lib: S().lib, ctx: En.sceneCtx(S(), g, ctx(), getTune()), seed: salt + g.x.day, names: base.names, npcs: S().npcs, debug: true,
+      onEnd: (end) => act(En.step(S(), g, { scene: { end } }, ctx(), getTune())) }),
     onAnswer: (input) => act(En.step(S(), g, input, ctx(), getTune())),
     onGameOver: () => { g = JSON.parse(kept); salt += 1; view.note('Back to the sandbox\'s last autosave.'); act(En.pending(S(), g, ctx())); } });
   drawTune();

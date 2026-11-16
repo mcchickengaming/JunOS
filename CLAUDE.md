@@ -489,7 +489,7 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   or flavor; run.js never calls her lines; nothing to play asks for a bond or flavor. `scenes.js`: **scene slots** (#22's first
   piece): `pick(data, slot, { where, gateCheck, gateCtx })` = the highest tier that's on AND she's fine with, always an
   Everyday fallback; `checkSlots` (every slot has an Everyday variant; shipped `adult` lists stay empty: 18+ variants are the
-  owner's, through `setCustom()` once the scene maker exists). First slot: `knocked_out` (Everyday home / camp / alone, Flirty
+  owner's, through `setCustom()`: see "The scene engine + the scene maker"). First slot: `knocked_out` (Everyday home / camp / alone, Flirty
   home at Close+). `sim.js`: a stand-in player walks whole delves (`delve`, `many`). `delve-tune.js`: EVERY number. `delve.js`:
   the page's door (`loadData`, settings `jun.delve.talk / courage / role / pace / notimer`, the run in localStorage `jun.delve`
   so save points include it, `begin` → `Progress.begin('delve')` (her server keeps the clock; api/progress.php `begin` now
@@ -762,6 +762,61 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   by the local model, her real portrait and voice, the two books (her journal chapters, your notebook's codex pages), an
   event / scene maker for the owner, desktop Jun hearing about it (#36), weather and who's-along as real game state (the
   page passes them), places' art. NOT seen in the desktop app (cloud test: Playwright + Chrome with `**/api/**` stubbed).
+
+- **The scene engine + the scene maker** (#22, Nov 16, on Fable; STAND-IN ART and stand-in scenes, Everyday + Flirty only): a
+  scene is a moment you stay in for a while. It stands ON the scene slots (`js/core/delve/scenes.js`), the gate, story state
+  and the story engine's `scene` nodes; nothing is copied. Pure modules in `webapp/js/core/scene/`: **`scene-engine.js`** (rules
+  and the data shape in its header), `scene-mine.js` (the owner's own scenes), `scene-tune.js` (EVERY number); the page door
+  `scene-door.js`; content in **`webapp/data/scenes.json`** (`slots` shared by the story and the delve, `scenes` = the library,
+  `ordinary`, `leave`, `layers`, `outfits`, `tempos`, names for settings / poses / shots). **A slot's variant is now one of two
+  things**: a few lines (`beats`, as before) or a FULL scene (`scene: '<id in the library>'`, or a whole scene object with
+  `phases`: the owner's); `Scenes.isFull`, `Scenes.find`, and `Scenes.pick(…, { allow })` (the caller's own reading of the gate;
+  variants now pass `themes`, `who`, `consent`, `agreement` through). `Sc.attach(data, lib, 'story' | 'delve')` lays the shared
+  slots under a system's own (a slot's `for` says which systems; its own win) and hangs the library on `data.lib`.
+  **A scene** = setting + pose + layers + phases: `opening` (something ordinary), `phases` (a `loop` she stays in, `shots`,
+  `tempos`, lines on entering, which `actions` are on the wheel, `react` lines by how she feels, `next`: by your `pick` / `her`
+  say / the `meter`, a `fade`), `actions` (the wheel: `warm`, `say` as a pool or by band, `first` = the first time ever,
+  `once`, `layer` changes, `to`, `wish` = her words when she asks for it), `endings` (`kind` story / morning / afterglow /
+  interrupt, `when`), `album.parts` (each with a line from her). **The meter** (how she feels, 0..100, shown as a word: low /
+  mid / high / peak): the same thing again right away moves her less; `ctx.likes(action)` is the door for desktop Jun's
+  favorites. **Her say**: only what she's fine with is offered; she asks for things herself (a wish: only something on the wheel;
+  doing it moves her more, ignoring it costs nothing) and moves the moment on herself. **Layers**: clothing / props / marks
+  with states; a state can carry a tier (not allowed = its `fallback`); a MARK persists `persist` days (she says so next time).
+  **Two wheels**: things to do (the `ordinary` ones are ALWAYS there: talk, tea, hold her hand, just stay like this; a scene may
+  name which fit, never none) and outfits. `Sc.start` / `options` / `act` → EVENTS (open, beat, phase, layer, meter, fade, wish,
+  first, album, end); the run is plain data with its own dice. **The gate**: the engine never reads it; the caller passes
+  `ctx.ask(item) → { ok, why }`. Game Jun = the story engine's `allowed` (**`En.sceneCtx(data, g, ctx, tune, { replay })`** builds
+  the whole ctx); desktop Jun later = her live say, and `ctx.stop` ends any scene kindly (**that pair, `ask` + `mem`, is the door
+  for desktop Jun**). **Memory** `ctx.mem` { day, seen, mark, get, set }: game Jun = STORY STATE (so game saves carry it):
+  seen `scene.<id>` (firsts, growth), `scene.<id>:<action>`; flags `scene.<id>.end` (callbacks), `album.<id>.<part>`,
+  `mark.<layer>`. **Rules, tested** (`checkScene` / `checkLibrary`, `.github/scripts/js/scene.test.mjs`): every scene can be
+  left ("That's enough for now"), nobody is ever stuck, leaving or the quiet thing is never punished; a rated phase the moment
+  walks into by itself needs a `fade` (one line of narration, then on); `npcs[who].rated === false` (e.g. the android kids)
+  can only ever be in Everyday scenes, in code; shipped data has no 18+ and no "agreed beforehand"; every shipped scene ends
+  for every bond with Flirty on or off. **The story engine**: a `scene` node whose slot gives a full scene emits
+  `{ type: 'scene', …, play }` and WAITS (`wait: 'scene'`); the page plays it (`js/scene-view.js` `createScenePlayer`, one
+  player for the story page, the album and the lab) and answers `En.step(…, { scene: { end } })` → the node's
+  `on: { <ending> | else }`, else its choices / `next`; `pending()` replays it from its start; story-sim.js plays it with
+  `Sc.playOnce`. Sample events in story.json: `evening_together` (slot `evening_together`: Tea night; Close+ with Flirty on:
+  Closer than the couch requires; "asleep" / "stay" → the next morning) and `cooking_together` (One pot: a flour mark, an
+  apron, a Flirty phase with a fade). Shared safe-spot slots: `after_danger`, `camp_night` (lines; nothing triggers them
+  yet). **The album**: `scene.html` + `js/scene-page.js`, the game world's **Moments** button: scenes with a part reached, her
+  line per part, "Play it again" = a replay that writes nothing; what's switched off isn't listed. **The owner's scenes**
+  (`scene-mine.js`): localStorage `jun.scenes.mine` `{ on, list: [{ on, slot, scene }] }`; `SceneDoor.install(lib)` (called by
+  the story's and the delve's doors) sets `Scenes.setCustom`, so they play wherever their slot is played, through the same
+  gate (an 18+ one needs 18+ on and confirmed); `.junscenes` files are checked scene by scene, never replace one of his, and
+  everything rated arrives switched off. The delve shows a full scene as its first lines (`Delve.beatsOf`). **Scene lab**
+  `webapp/scene-lab.html` + `js/scene-lab.js` (**F12 > Labs**; main.js allows the url): play any slot or scene in a SANDBOX
+  (the story engine's own pretend game, so memory works as in the real one; bond, Flirty what-if, Game Jun vs desktop Jun
+  with a "She says stop" button), the slots as the gate sees them, the sandbox's memory + album, **the scene maker** (a few
+  lines or a full scene, or start from one of ours; point and click; Check / Test / Save; nothing with a problem can be saved;
+  one switch for all + one each; download / upload), check the data, "a hundred scenes in a moment" (`Sc.many`), every number.
+  Registry: `scenes`, `scene_maker`. NOT built: real art (settings, rigs, loops, shots are words), Touch v2 as the touch layer,
+  speed by hand, marks on her body between scenes outside a scene, modifiers (items), scenes for NPCs' own voices (the engine
+  takes `who`; no NPC scenes ship), desktop Jun's scenes (the door is there: an `ask` with her live say + a `mem`), her
+  scrapbook page, makers' entries as a Jun profile piece (#18), the interaction maker (#2), an event maker (which story event
+  opens which slot is still an entry in story.json). NOT seen in the desktop app (cloud test: Playwright + Chrome, `**/api/**`
+  stubbed; use `page.wait_for_timeout`, not `time.sleep`, or the stubs never answer).
 
 ## Foundations (#31, Nov 12): registry, settings framework, the one gate
 - **Feature registry** `webapp/data/features.json` (read by `js/core/features.js` and `api/lib/gate.php`

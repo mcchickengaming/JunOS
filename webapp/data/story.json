@@ -1998,6 +1998,80 @@
         }
       }
     },
+    "evening_together": {
+      "name": "A long evening in",
+      "on": [
+        "home"
+      ],
+      "at": "home",
+      "w": 2,
+      "cooldown": 2,
+      "when": {
+        "flag": "gift_given"
+      },
+      "start": "in",
+      "nodes": {
+        "in": {
+          "text": [
+            "Nothing needs doing tonight. That's rare enough that you both notice.",
+            "The roof isn't leaking. The street is quiet. The evening is, suspiciously, free."
+          ],
+          "scene": "evening_together",
+          "where": "home",
+          "on": {
+            "asleep": "morning",
+            "stay": "morning",
+            "else": "after"
+          }
+        },
+        "morning": {
+          "do": [
+            {
+              "time": "morning"
+            }
+          ],
+          "text": "Morning comes in sideways through the gap in the shutters. Neither of you made it to bed, and neither of you minds.",
+          "end": true
+        },
+        "after": {
+          "who": "jun",
+          "face": "relieved",
+          "text": [
+            "\"That counted as doing something. I'm logging it as doing something.\"",
+            "\"Same time tomorrow. Or whenever. I'm flexible. I'm not, but say I am.\""
+          ],
+          "end": true
+        }
+      }
+    },
+    "cooking_together": {
+      "name": "One pot",
+      "on": [
+        "home"
+      ],
+      "at": "home",
+      "w": 1,
+      "cooldown": 3,
+      "when": {
+        "flag": "gift_given"
+      },
+      "start": "pot",
+      "nodes": {
+        "pot": {
+          "text": "She has found a recipe. She is holding it like a summons.",
+          "scene": "cooking_together",
+          "where": "home",
+          "next": "done"
+        },
+        "done": {
+          "text": [
+            "The pot is empty. The one pot. It did its best.",
+            "Dishes: one pot, two spoons. She washes; you dry; nobody drops anything."
+          ],
+          "end": true
+        }
+      }
+    },
     "al_tinkering": {
       "name": "Shop talk",
       "on": [

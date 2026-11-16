@@ -23,6 +23,8 @@ const openPlace = (url, title) => {
 };
 const toHub = () => { if (play) play.remove(); play = null; $('title').textContent = 'The game world'; $('hubBtn').hidden = true; };
 $('hubBtn').addEventListener('click', () => { toHub(); drawMap(); });
+// "Moments together" (#22): the album of the scenes you've been in (scene.html + js/scene-page.js)
+$('momentsBtn').addEventListener('click', () => openPlace('scene.html', 'Moments together'));
 
 // the map
 let placesData = null;

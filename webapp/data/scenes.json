@@ -1,0 +1,1512 @@
+{
+  "about": "The scene engine's content (#22; engine: webapp/js/core/scene/scene-engine.js, the rulebook is its checkScene / checkLibrary and the tests run it). EVERYTHING HERE IS A STAND-IN, Everyday and Flirty only. 'slots' are shared scene slots (one moment, a variant per tier; picked by js/core/delve/scenes.js through the one gate) laid under the story's and the delve's own slots. 'scenes' are full scenes a variant can name. 'ordinary' is what's ALWAYS on the wheel, 'leave' is the way out of every scene. 18+ entries and 'agreed beforehand' entries never ship here: they are the owner's, made in the scene maker (F12 > Labs > Scene lab) and kept on his PC.",
+  "version": 1,
+  "sample": true,
+  "meterName": "How she feels",
+  "meterWords": {
+    "low": "settling in",
+    "mid": "warming up",
+    "high": "glowing",
+    "peak": "couldn't be happier"
+  },
+  "tempos": {
+    "slow": {
+      "name": "Slow",
+      "k": 0.85
+    },
+    "steady": {
+      "name": "Steady",
+      "k": 1
+    },
+    "lively": {
+      "name": "Lively",
+      "k": 1.15
+    }
+  },
+  "settings": {
+    "home_evening": {
+      "name": "Home, in the evening",
+      "light": "lamp"
+    },
+    "home_kitchen": {
+      "name": "Home, the kitchen corner",
+      "light": "warm"
+    },
+    "camp": {
+      "name": "A camp, somewhere safe",
+      "light": "fire"
+    }
+  },
+  "poses": {
+    "table": {
+      "name": "Sitting at the table"
+    },
+    "couch": {
+      "name": "On the couch"
+    },
+    "counter": {
+      "name": "At the counter"
+    }
+  },
+  "shots": {
+    "wide": {
+      "name": "The whole room"
+    },
+    "close": {
+      "name": "Close on her face"
+    },
+    "hands": {
+      "name": "Her hands"
+    }
+  },
+  "layers": {
+    "blanket": {
+      "name": "The blanket",
+      "kind": "prop",
+      "states": [
+        "off",
+        "shared"
+      ],
+      "words": {
+        "off": "folded on the armrest",
+        "shared": "over both of you"
+      }
+    },
+    "apron": {
+      "name": "Her apron",
+      "kind": "clothing",
+      "states": [
+        "off",
+        "on"
+      ],
+      "words": {
+        "off": "on its hook",
+        "on": "tied, with a bow she'll deny"
+      }
+    },
+    "flour": {
+      "name": "Flour on her cheek",
+      "kind": "mark",
+      "states": [
+        "off",
+        "on"
+      ],
+      "persist": 1,
+      "words": {
+        "off": "gone",
+        "on": "a white streak"
+      },
+      "still": {
+        "face": "pout",
+        "t": "...There's still flour in my hair from last time. I'm calling it a look."
+      }
+    }
+  },
+  "outfits": {
+    "day": {
+      "name": "Day clothes",
+      "say": [
+        {
+          "face": "neutral",
+          "t": "Back to standard configuration."
+        }
+      ]
+    },
+    "pyjamas": {
+      "name": "Pyjamas",
+      "say": [
+        {
+          "face": "pout",
+          "t": "They have little bolts on them. I didn't pick them. ...I picked them."
+        },
+        {
+          "face": "relieved",
+          "t": "Soft mode. Don't tell anyone I have a soft mode."
+        }
+      ]
+    },
+    "hoodie": {
+      "name": "Your hoodie, borrowed",
+      "say": [
+        {
+          "face": "pout",
+          "t": "It was on the chair. Chairs are public property."
+        },
+        {
+          "face": "curious",
+          "t": "The sleeves are too long. I've decided that's a feature."
+        }
+      ]
+    },
+    "shirt": {
+      "name": "Your shirt, borrowed",
+      "tier": "flirty",
+      "minStage": 4,
+      "say": [
+        {
+          "face": "pout",
+          "t": "It's a shirt. It covers the required area. Stop looking so pleased."
+        },
+        {
+          "face": "grin",
+          "t": "You're staring. Good. That was the experiment."
+        }
+      ]
+    }
+  },
+  "ordinary": {
+    "talk": {
+      "name": "Talk",
+      "icon": "💬",
+      "warm": 6,
+      "plain": "You talk for a while, about nothing that needs solving.",
+      "wish": "Say something. Anything. Your voice does a thing to the room.",
+      "say": {
+        "low": [
+          {
+            "face": "neutral",
+            "t": "Small talk. I've read about it. Go on, I'll catch up."
+          },
+          {
+            "face": "curious",
+            "t": "Tell me one thing from today that didn't matter. I collect those."
+          }
+        ],
+        "mid": [
+          {
+            "face": "grin",
+            "t": "That's not how it happened and you know it. Keep going."
+          },
+          {
+            "face": "curious",
+            "t": "And then what did you say? ...No. You didn't."
+          }
+        ],
+        "high": [
+          {
+            "face": "relieved",
+            "t": "Keep talking. I'm not listening to the words any more. Just keep talking."
+          }
+        ]
+      }
+    },
+    "tea": {
+      "name": "Pour her some tea",
+      "icon": "🍵",
+      "warm": 6,
+      "plain": "You pour. The cup is warm in both hands.",
+      "wish": "My cup is empty. That's a report, not a request. ...It's a request.",
+      "say": {
+        "low": [
+          {
+            "face": "neutral",
+            "t": "Thank you. I can't taste it. I like holding it."
+          },
+          {
+            "face": "curious",
+            "t": "You filled it exactly to the line. Were you trying to impress me?"
+          }
+        ],
+        "mid": [
+          {
+            "face": "relieved",
+            "t": "Warm. That part I can tell."
+          }
+        ]
+      }
+    },
+    "hand": {
+      "name": "Hold her hand",
+      "icon": "🤝",
+      "warm": 8,
+      "plain": "You hold hands. Nobody says anything about it.",
+      "wish": "Your hand is right there. Mine is right here. I'm only pointing out the logistics.",
+      "say": {
+        "low": [
+          {
+            "face": "uneasy",
+            "t": "...Oh. We're doing that. Okay. I'm fine. This is fine."
+          },
+          {
+            "face": "pout",
+            "t": "My fingers aren't cold. Your fingers are just loud."
+          }
+        ],
+        "mid": [
+          {
+            "face": "relieved",
+            "t": "Don't let go yet. I'm calibrating."
+          },
+          {
+            "face": "pout",
+            "t": "You can keep it. For now. I'll want it back at some point."
+          }
+        ],
+        "high": [
+          {
+            "face": "relieved",
+            "t": "...You fit. I checked twice."
+          }
+        ]
+      }
+    },
+    "stay": {
+      "name": "Just stay like this",
+      "icon": "…",
+      "warm": 5,
+      "plain": "Neither of you moves. It's the right call.",
+      "wish": "Don't do anything for a minute. Just be here. I want to see what that's like.",
+      "say": {
+        "low": [
+          {
+            "face": "neutral",
+            "t": "Quiet is allowed. I looked it up."
+          }
+        ],
+        "mid": [
+          {
+            "face": "relieved",
+            "t": "...This is nice. Don't tell me I said nice."
+          }
+        ],
+        "high": [
+          {
+            "face": "relieved",
+            "t": "Mm."
+          }
+        ]
+      }
+    }
+  },
+  "wishThanks": [
+    {
+      "face": "relieved",
+      "t": "...You heard that. Good."
+    },
+    {
+      "face": "pout",
+      "t": "I wasn't going to ask twice. I'm glad I didn't have to."
+    },
+    {
+      "face": "grin",
+      "t": "Correct answer."
+    }
+  ],
+  "leave": {
+    "name": "That's enough for now",
+    "plain": "You leave it there, on a good note.",
+    "beats": [
+      {
+        "face": "neutral",
+        "t": "Okay. That was a good one. I'm keeping it."
+      }
+    ]
+  },
+  "scenes": {
+    "evening_tea": {
+      "id": "evening_tea",
+      "name": "Tea night",
+      "line": "An evening in: tea at the table, then the couch, and the lamp getting lower.",
+      "tier": "everyday",
+      "setting": "home_evening",
+      "pose": "table",
+      "outfit": "day",
+      "outfits": [
+        "day",
+        "pyjamas",
+        "hoodie"
+      ],
+      "meter": {
+        "name": "Cozy",
+        "start": 15
+      },
+      "layers": {
+        "blanket": "off"
+      },
+      "opening": [
+        {
+          "who": "narrator",
+          "t": "The lamp is on. The kettle clicks off by itself, which it has never done before."
+        },
+        {
+          "face": "neutral",
+          "t": "Sit. I made the hot leaf water. It's supposed to be an evening thing.",
+          "when": {
+            "first": true
+          }
+        },
+        {
+          "face": "neutral",
+          "t": "Sit. It's tea night. I've decided that's a thing we have.",
+          "when": {
+            "first": false
+          }
+        },
+        {
+          "face": "curious",
+          "t": "Last time you stayed until I fell asleep. I have no record of the end. Suspicious.",
+          "when": {
+            "last": "asleep"
+          }
+        }
+      ],
+      "start": "table",
+      "phases": {
+        "table": {
+          "name": "At the table",
+          "loop": "She turns her cup a quarter turn, every few seconds",
+          "shots": [
+            "wide",
+            "close"
+          ],
+          "part": "tea",
+          "actions": [
+            "ask_day",
+            "good_tea"
+          ],
+          "react": {
+            "low": [
+              {
+                "face": "neutral",
+                "t": "Noted."
+              }
+            ],
+            "mid": [
+              {
+                "face": "relieved",
+                "t": "...Keep doing that."
+              }
+            ]
+          },
+          "next": [
+            {
+              "to": "couch",
+              "name": "Move to the couch"
+            },
+            {
+              "to": "couch",
+              "by": "her",
+              "at": 45
+            }
+          ]
+        },
+        "couch": {
+          "name": "On the couch",
+          "loop": "Feet tucked under her, shoulder almost touching yours",
+          "shots": [
+            "wide",
+            "close"
+          ],
+          "part": "couch",
+          "beats": [
+            {
+              "face": "pout",
+              "t": "The couch is closer to the lamp. That's the only reason."
+            }
+          ],
+          "actions": [
+            "blanket",
+            "lean",
+            "headpat"
+          ],
+          "next": [
+            {
+              "to": "quiet",
+              "at": 55,
+              "name": "Let the evening wind down"
+            },
+            {
+              "to": "quiet",
+              "by": "meter",
+              "at": 92
+            }
+          ]
+        },
+        "quiet": {
+          "name": "Winding down",
+          "loop": "Her head tips a little further every minute",
+          "shots": [
+            "wide",
+            "close"
+          ],
+          "part": "quiet",
+          "beats": [
+            {
+              "who": "narrator",
+              "t": "The street outside goes quiet one window at a time."
+            },
+            {
+              "face": "yawn",
+              "t": "I don't get tired. I get... low-priority. It's different."
+            }
+          ],
+          "actions": [
+            "blanket",
+            "headpat"
+          ]
+        }
+      },
+      "actions": {
+        "ask_day": {
+          "name": "Ask about her day",
+          "icon": "?",
+          "warm": 8,
+          "first": [
+            {
+              "face": "curious",
+              "t": "My day? Nobody asks the appliance about its day."
+            },
+            {
+              "face": "neutral",
+              "t": "...I counted the leaks. Four. I named them. Don't ask."
+            }
+          ],
+          "say": [
+            {
+              "face": "neutral",
+              "t": "I reorganized your pot. There's only one pot. It took a while."
+            },
+            {
+              "face": "grin",
+              "t": "A pigeon looked at me for eleven minutes. I won."
+            },
+            {
+              "face": "curious",
+              "t": "I practiced saying 'welcome home'. Forty times. It still sounds like a threat."
+            }
+          ]
+        },
+        "good_tea": {
+          "name": "Tell her the tea is good",
+          "icon": "★",
+          "warm": 10,
+          "once": true,
+          "say": [
+            {
+              "face": "proud",
+              "t": "Of course it is. I followed the instructions on the box with great violence."
+            }
+          ]
+        },
+        "blanket": {
+          "name": "Share the blanket",
+          "icon": "▦",
+          "warm": 12,
+          "once": true,
+          "layer": {
+            "blanket": "shared"
+          },
+          "wish": "...It's cold. I'm not cold. The couch is cold. There's a blanket right there.",
+          "say": [
+            {
+              "face": "pout",
+              "t": "I don't need it. ...Fine. It's efficient to share."
+            },
+            {
+              "face": "relieved",
+              "t": "The blanket has a you side and a me side. The border is not up for discussion."
+            }
+          ]
+        },
+        "lean": {
+          "name": "Let her lean on you",
+          "icon": "◐",
+          "minStage": 3,
+          "warm": 12,
+          "say": {
+            "low": [
+              {
+                "face": "uneasy",
+                "t": "I'm not leaning. I'm resting at an angle."
+              }
+            ],
+            "mid": [
+              {
+                "face": "relieved",
+                "t": "You're warmer than the wall. That's all this is."
+              },
+              {
+                "face": "pout",
+                "t": "Don't move. I just found the spot."
+              }
+            ],
+            "high": [
+              {
+                "face": "relieved",
+                "t": "...Five more minutes. Then five more."
+              }
+            ]
+          }
+        },
+        "headpat": {
+          "name": "Pat her head",
+          "icon": "✋",
+          "warm": 10,
+          "wish": "My head is available. I'm only saying.",
+          "say": {
+            "low": [
+              {
+                "face": "pout",
+                "t": "...That's allowed. Briefly."
+              }
+            ],
+            "mid": [
+              {
+                "face": "relieved",
+                "t": "Slower. ...Yes. That."
+              },
+              {
+                "face": "pout",
+                "t": "I'm not purring. That's a fan."
+              }
+            ],
+            "high": [
+              {
+                "face": "relieved",
+                "t": "Mm. Don't stop on my account."
+              }
+            ]
+          }
+        }
+      },
+      "endings": {
+        "goodnight": {
+          "name": "Say goodnight",
+          "kind": "story",
+          "beats": [
+            {
+              "face": "neutral",
+              "t": "Goodnight. I'll do the cups."
+            },
+            {
+              "face": "relieved",
+              "t": "...It was a good evening. Log it."
+            }
+          ]
+        },
+        "asleep": {
+          "name": "Stay until she drifts off",
+          "kind": "morning",
+          "when": {
+            "band": "high",
+            "phase": "quiet"
+          },
+          "part": "morning",
+          "beats": [
+            {
+              "face": "yawn",
+              "t": "I'm just closing my eyes to save power. Don't go anywhere."
+            },
+            {
+              "who": "narrator",
+              "t": "She is out before the lamp's timer. You stay put. In the morning there's a blanket over you that wasn't there before."
+            },
+            {
+              "face": "pout",
+              "t": "You drooled on the couch. I kept the data."
+            }
+          ]
+        }
+      },
+      "album": {
+        "name": "Tea night",
+        "parts": [
+          {
+            "id": "tea",
+            "name": "The hot leaf water",
+            "line": "I still can't tell if it's relaxing. Keep reporting."
+          },
+          {
+            "id": "couch",
+            "name": "Closer to the lamp",
+            "line": "It WAS closer to the lamp. I stand by it."
+          },
+          {
+            "id": "quiet",
+            "name": "One window at a time",
+            "line": "I like when the street goes quiet and you don't."
+          },
+          {
+            "id": "morning",
+            "name": "The morning after",
+            "line": "I don't remember falling asleep. You do. That's unfair, and I like it."
+          }
+        ]
+      }
+    },
+    "evening_close": {
+      "id": "evening_close",
+      "name": "Closer than the couch requires",
+      "line": "An evening in for two who are close: shoulder to shoulder, her head on your lap, a long kiss if you're that far along.",
+      "tier": "flirty",
+      "setting": "home_evening",
+      "pose": "couch",
+      "outfit": "day",
+      "outfits": [
+        "day",
+        "pyjamas",
+        "hoodie",
+        "shirt"
+      ],
+      "meter": {
+        "name": "Close",
+        "start": 30
+      },
+      "layers": {
+        "blanket": "off"
+      },
+      "opening": [
+        {
+          "who": "narrator",
+          "t": "The lamp is low. She sits down closer than the couch requires."
+        },
+        {
+          "face": "pout",
+          "t": "Don't read into the distance. I measured. It's efficient.",
+          "when": {
+            "first": true
+          }
+        },
+        {
+          "face": "grin",
+          "t": "Same spot as last time. I marked it. Not physically. ...Maybe physically.",
+          "when": {
+            "first": false
+          }
+        }
+      ],
+      "start": "close",
+      "phases": {
+        "close": {
+          "name": "Shoulder to shoulder",
+          "loop": "Her shoulder against yours, rising and falling",
+          "shots": [
+            "wide",
+            "close"
+          ],
+          "part": "close",
+          "actions": [
+            "tease",
+            "arm",
+            "hair",
+            "blanket"
+          ],
+          "react": {
+            "low": [
+              {
+                "face": "pout",
+                "t": "Hm."
+              }
+            ],
+            "mid": [
+              {
+                "face": "relieved",
+                "t": "...Again."
+              }
+            ]
+          },
+          "next": [
+            {
+              "to": "lap",
+              "name": "Offer your lap"
+            },
+            {
+              "to": "lap",
+              "by": "her",
+              "at": 60
+            }
+          ]
+        },
+        "lap": {
+          "name": "Her head on your lap",
+          "loop": "She looks up at you upside down, pretending not to",
+          "shots": [
+            "wide",
+            "close"
+          ],
+          "part": "lap",
+          "beats": [
+            {
+              "face": "pout",
+              "t": "This is a pillow. You're a pillow now. Pillows don't smirk."
+            }
+          ],
+          "actions": [
+            "hair",
+            "cheek",
+            "forehead"
+          ],
+          "next": [
+            {
+              "to": "kiss",
+              "at": 70,
+              "name": "Lean down"
+            }
+          ]
+        },
+        "kiss": {
+          "name": "A long kiss",
+          "tier": "flirty",
+          "minStage": 5,
+          "loop": "Close enough to share one breath",
+          "shots": [
+            "close"
+          ],
+          "part": "kiss",
+          "beats": [
+            {
+              "who": "narrator",
+              "t": "She meets you halfway, which she will later describe as a coincidence."
+            },
+            {
+              "face": "relieved",
+              "t": "...Okay. Don't say anything clever. You'll ruin it."
+            }
+          ],
+          "actions": [
+            "again",
+            "rest"
+          ]
+        }
+      },
+      "actions": {
+        "tease": {
+          "name": "Tease her about the measuring",
+          "icon": "~",
+          "warm": 8,
+          "say": [
+            {
+              "face": "pout",
+              "t": "It was a tape measure. For science. Stop grinning."
+            },
+            {
+              "face": "grin",
+              "t": "Fine. I like it here. Is that what you wanted? Write it down."
+            }
+          ]
+        },
+        "arm": {
+          "name": "Put your arm around her",
+          "icon": "◠",
+          "warm": 12,
+          "once": true,
+          "wish": "Your arm is doing nothing useful over there.",
+          "say": [
+            {
+              "face": "uneasy",
+              "t": "...That's new. Leave it. It's load-bearing now."
+            }
+          ]
+        },
+        "hair": {
+          "name": "Play with her hair",
+          "icon": "≈",
+          "warm": 10,
+          "wish": "My hair is right there. I'm told people like that. I'm... people-adjacent.",
+          "say": {
+            "low": [
+              {
+                "face": "pout",
+                "t": "You're going to tangle it."
+              }
+            ],
+            "mid": [
+              {
+                "face": "relieved",
+                "t": "...You're not tangling it. Carry on."
+              },
+              {
+                "face": "pout",
+                "t": "If I fall asleep it's your fault and your problem."
+              }
+            ],
+            "high": [
+              {
+                "face": "relieved",
+                "t": "Mm. Don't narrate. Just keep going."
+              }
+            ]
+          }
+        },
+        "blanket": {
+          "name": "Share the blanket",
+          "icon": "▦",
+          "warm": 10,
+          "once": true,
+          "layer": {
+            "blanket": "shared"
+          },
+          "say": [
+            {
+              "face": "grin",
+              "t": "One blanket. Two people. I see what you're doing. Proceed."
+            }
+          ]
+        },
+        "cheek": {
+          "name": "Brush her cheek",
+          "icon": "◦",
+          "warm": 10,
+          "say": {
+            "low": [
+              {
+                "face": "uneasy",
+                "t": "Your thumb is warm. That's all. That's the whole observation."
+              }
+            ],
+            "mid": [
+              {
+                "face": "relieved",
+                "t": "...Do the other side. For symmetry."
+              }
+            ],
+            "high": [
+              {
+                "face": "pout",
+                "t": "You keep looking at me like that and I'll have to do something about it."
+              }
+            ]
+          }
+        },
+        "forehead": {
+          "name": "Kiss her forehead",
+          "icon": "♡",
+          "warm": 14,
+          "first": [
+            {
+              "face": "scared",
+              "t": "...!"
+            },
+            {
+              "face": "pout",
+              "t": "Unauthorized. ...Log it under maintenance. Recurring maintenance."
+            }
+          ],
+          "say": [
+            {
+              "face": "relieved",
+              "t": "Maintenance accepted."
+            },
+            {
+              "face": "pout",
+              "t": "You missed. My mouth is lower. I'm only giving directions."
+            }
+          ]
+        },
+        "again": {
+          "name": "Kiss her again",
+          "icon": "♡",
+          "warm": 12,
+          "say": [
+            {
+              "face": "grin",
+              "t": "For accuracy."
+            },
+            {
+              "face": "relieved",
+              "t": "...I lost count. I never lose count."
+            }
+          ]
+        },
+        "rest": {
+          "name": "Rest your forehead on hers",
+          "icon": "◡",
+          "warm": 10,
+          "say": [
+            {
+              "face": "relieved",
+              "t": "Stay there. I can hear you thinking. It's nice. Stop thinking."
+            }
+          ]
+        }
+      },
+      "endings": {
+        "goodnight": {
+          "name": "Say goodnight",
+          "kind": "story",
+          "beats": [
+            {
+              "face": "pout",
+              "t": "Already? ...Fine. Goodnight."
+            },
+            {
+              "face": "relieved",
+              "t": "Same spot tomorrow. I'm not asking."
+            }
+          ]
+        },
+        "stay": {
+          "name": "Stay like this until morning",
+          "kind": "morning",
+          "when": {
+            "band": "high"
+          },
+          "part": "morning",
+          "beats": [
+            {
+              "face": "relieved",
+              "t": "Don't get up. If you get up it's over, and I'm not done."
+            },
+            {
+              "who": "narrator",
+              "t": "Neither of you gets up. The lamp gives out before either of you does."
+            }
+          ]
+        }
+      },
+      "album": {
+        "name": "Closer than the couch requires",
+        "parts": [
+          {
+            "id": "close",
+            "name": "Efficient seating",
+            "line": "I did measure. I just didn't say what for."
+          },
+          {
+            "id": "lap",
+            "name": "Not a pillow",
+            "line": "You were a very smug pillow."
+          },
+          {
+            "id": "kiss",
+            "name": "A coincidence",
+            "line": "We both leaned at the same time. That's the official record."
+          },
+          {
+            "id": "morning",
+            "name": "The lamp gave out first",
+            "line": "I'd have won, but I wasn't competing."
+          }
+        ]
+      }
+    },
+    "kitchen_flour": {
+      "id": "kitchen_flour",
+      "name": "One pot",
+      "line": "Cooking together: chopping, stirring, flour where flour shouldn't be, and two spoons at the end.",
+      "tier": "everyday",
+      "setting": "home_kitchen",
+      "pose": "counter",
+      "outfit": "day",
+      "outfits": [
+        "day",
+        "hoodie"
+      ],
+      "meter": {
+        "name": "Fun",
+        "start": 20
+      },
+      "layers": {
+        "apron": "off",
+        "flour": "off"
+      },
+      "opening": [
+        {
+          "who": "narrator",
+          "t": "One pot. Two people. A recipe she downloaded and does not trust."
+        },
+        {
+          "face": "focused",
+          "t": "It says 'a pinch'. A pinch is not a unit.",
+          "when": {
+            "first": true
+          }
+        },
+        {
+          "face": "focused",
+          "t": "Same pot. New recipe. This one says 'to taste'. Whose taste? Nobody knows.",
+          "when": {
+            "first": false
+          }
+        }
+      ],
+      "start": "prep",
+      "phases": {
+        "prep": {
+          "name": "Chopping",
+          "loop": "Her knife taps the board in perfect, slightly unsettling rhythm",
+          "shots": [
+            "wide",
+            "hands"
+          ],
+          "tempos": [
+            "slow",
+            "steady",
+            "lively"
+          ],
+          "part": "prep",
+          "actions": [
+            "apron",
+            "chop",
+            "flour_flick"
+          ],
+          "react": {
+            "low": [
+              {
+                "face": "focused",
+                "t": "Mm-hm."
+              }
+            ]
+          },
+          "next": [
+            {
+              "to": "stir",
+              "name": "Get it in the pot"
+            }
+          ]
+        },
+        "stir": {
+          "name": "Stirring",
+          "loop": "She stirs clockwise. Always clockwise.",
+          "shots": [
+            "wide",
+            "hands",
+            "close"
+          ],
+          "tempos": [
+            "slow",
+            "steady",
+            "lively"
+          ],
+          "beats": [
+            {
+              "face": "neutral",
+              "t": "Now it has to 'come together'. The recipe doesn't say how long that takes. Cowardly."
+            }
+          ],
+          "actions": [
+            "stir_with",
+            "steal_taste",
+            "flour_flick",
+            "wipe"
+          ],
+          "next": [
+            {
+              "to": "inspect",
+              "by": "meter",
+              "at": 75
+            },
+            {
+              "to": "taste",
+              "at": 50,
+              "name": "Call it done"
+            }
+          ]
+        },
+        "inspect": {
+          "name": "Flour, inspected",
+          "tier": "flirty",
+          "minStage": 4,
+          "loop": "She is very close, looking for flour that may not exist",
+          "shots": [
+            "close"
+          ],
+          "fade": {
+            "t": "She wipes a bit of flour off your nose with her thumb, businesslike, and turns back to the pot.",
+            "to": "taste"
+          },
+          "beats": [
+            {
+              "face": "focused",
+              "t": "Hold still. You have flour on your face."
+            },
+            {
+              "face": "grin",
+              "t": "...No, you don't. I wanted to check from here."
+            }
+          ],
+          "actions": [
+            "cheek_kiss",
+            "wipe"
+          ],
+          "next": [
+            {
+              "to": "taste",
+              "name": "Back to the pot"
+            }
+          ]
+        },
+        "taste": {
+          "name": "Tasting",
+          "loop": "Two spoons, one pot",
+          "shots": [
+            "wide",
+            "close"
+          ],
+          "part": "taste",
+          "beats": [
+            {
+              "face": "curious",
+              "t": "I can't taste it. So. You taste. I watch your face. That's my half."
+            }
+          ],
+          "actions": [
+            "praise",
+            "wipe"
+          ]
+        }
+      },
+      "actions": {
+        "apron": {
+          "name": "Tie her apron for her",
+          "icon": "🎀",
+          "warm": 8,
+          "once": true,
+          "layer": {
+            "apron": "on"
+          },
+          "say": [
+            {
+              "face": "pout",
+              "t": "I can reach my own back. I have a very wide range of motion. ...Not too tight."
+            }
+          ]
+        },
+        "chop": {
+          "name": "Chop alongside her",
+          "icon": "▮",
+          "warm": 8,
+          "say": [
+            {
+              "face": "focused",
+              "t": "Your pieces are different sizes. I'm not judging. I'm sorting them."
+            },
+            {
+              "face": "grin",
+              "t": "We're in rhythm. Don't think about it or you'll lose it."
+            },
+            {
+              "face": "proud",
+              "t": "Mine are identical. Yours have character. Together it's a salad."
+            }
+          ]
+        },
+        "flour_flick": {
+          "name": "Flick flour at her",
+          "icon": "✦",
+          "warm": 12,
+          "once": true,
+          "layer": {
+            "flour": "on"
+          },
+          "first": [
+            {
+              "face": "scared",
+              "t": "..."
+            },
+            {
+              "face": "pout",
+              "t": "That was an act of war. I'm told wars are bad. I'm going to win this one."
+            }
+          ],
+          "say": [
+            {
+              "face": "pout",
+              "t": "Again? I only just got the last of it out. Hostile. Noted."
+            }
+          ]
+        },
+        "wipe": {
+          "name": "Wipe the flour off her cheek",
+          "icon": "◦",
+          "warm": 10,
+          "when": {
+            "layer": {
+              "flour": "on"
+            }
+          },
+          "layer": {
+            "flour": "off"
+          },
+          "say": [
+            {
+              "face": "uneasy",
+              "t": "...You could have told me it was there."
+            },
+            {
+              "face": "relieved",
+              "t": "Thank you. You missed a spot. No, I'm not saying where."
+            }
+          ]
+        },
+        "stir_with": {
+          "name": "Stir with her",
+          "icon": "↻",
+          "warm": 8,
+          "wish": "Stir with me. The recipe says 'constantly' and I want a witness.",
+          "say": [
+            {
+              "face": "focused",
+              "t": "Clockwise. We don't discuss the other direction."
+            },
+            {
+              "face": "relieved",
+              "t": "Your hand's over mine. That's not in the recipe. Leave it."
+            }
+          ]
+        },
+        "steal_taste": {
+          "name": "Steal a taste",
+          "icon": "🥄",
+          "warm": 6,
+          "say": [
+            {
+              "face": "pout",
+              "t": "That's not ready. Put the spoon down. ...Well? How is it?"
+            },
+            {
+              "face": "grin",
+              "t": "Thief. Is it good? Tell me it's good."
+            }
+          ]
+        },
+        "praise": {
+          "name": "Tell her it's good",
+          "icon": "★",
+          "warm": 14,
+          "once": true,
+          "say": [
+            {
+              "face": "proud",
+              "t": "...Really. Say it again, slower, so I can keep it."
+            }
+          ]
+        },
+        "cheek_kiss": {
+          "name": "Kiss her floury cheek",
+          "icon": "♡",
+          "tier": "flirty",
+          "minStage": 4,
+          "warm": 14,
+          "once": true,
+          "say": [
+            {
+              "face": "scared",
+              "t": "...! Now you have flour on YOUR face. Justice."
+            }
+          ]
+        }
+      },
+      "endings": {
+        "eat": {
+          "name": "Sit down and eat",
+          "kind": "story",
+          "when": {
+            "phase": "taste"
+          },
+          "part": "dinner",
+          "beats": [
+            {
+              "face": "relieved",
+              "t": "Sit. You eat, I'll watch you eat. It's a strange hobby. It's mine."
+            }
+          ]
+        }
+      },
+      "album": {
+        "name": "One pot",
+        "parts": [
+          {
+            "id": "prep",
+            "name": "A pinch is not a unit",
+            "line": "I've since defined a pinch. 0.36 grams. You're welcome."
+          },
+          {
+            "id": "taste",
+            "name": "Two spoons",
+            "line": "I watched your face for the whole first bite. Worth the whole pot."
+          },
+          {
+            "id": "dinner",
+            "name": "Dinner, somehow",
+            "line": "We made food. From things. I'm still a little amazed."
+          }
+        ]
+      },
+      "ordinary": [
+        "talk",
+        "stay"
+      ]
+    }
+  },
+  "slots": {
+    "evening_together": {
+      "name": "An evening together",
+      "line": "A long, quiet evening in. A full scene: you stay in it for a while.",
+      "variants": {
+        "everyday": [
+          {
+            "id": "evening_tea",
+            "scene": "evening_tea",
+            "where": "home"
+          }
+        ],
+        "flirty": [
+          {
+            "id": "evening_close",
+            "scene": "evening_close",
+            "minStage": 4,
+            "where": "home"
+          }
+        ],
+        "adult": []
+      },
+      "for": [
+        "story"
+      ]
+    },
+    "cooking_together": {
+      "name": "Cooking together",
+      "line": "One pot, two people. A full scene.",
+      "variants": {
+        "everyday": [
+          {
+            "id": "kitchen_flour",
+            "scene": "kitchen_flour",
+            "where": "home"
+          }
+        ],
+        "flirty": [],
+        "adult": []
+      },
+      "for": [
+        "story"
+      ]
+    },
+    "after_danger": {
+      "name": "After a close call",
+      "line": "The first quiet minute after something went wrong and you both came through. One of the safe-spot moments.",
+      "variants": {
+        "everyday": [
+          {
+            "id": "after_camp_check",
+            "where": "camp",
+            "beats": [
+              {
+                "face": "worried",
+                "t": "Sit. Let me look at you. All of you. Turn around."
+              },
+              {
+                "face": "focused",
+                "t": "Nothing's missing. I counted twice."
+              },
+              {
+                "face": "pout",
+                "t": "Next time something that size runs at us, we discuss it BEFORE you step in front of me."
+              }
+            ]
+          },
+          {
+            "id": "after_home_door",
+            "where": "home",
+            "beats": [
+              {
+                "face": "uneasy",
+                "t": "Door's locked. I locked it. I checked it. I'm going to check it again."
+              },
+              {
+                "face": "relieved",
+                "t": "...Okay. We're home. Say something normal."
+              }
+            ]
+          },
+          {
+            "id": "after_alone_call",
+            "where": "alone",
+            "beats": [
+              {
+                "face": "worried",
+                "t": "You went quiet for four minutes. Do you know how long four minutes is for me?"
+              },
+              {
+                "face": "relieved",
+                "t": "Come home. I'm putting the kettle on. I don't know why. It's what people do."
+              }
+            ]
+          }
+        ],
+        "flirty": [
+          {
+            "id": "after_camp_hold",
+            "where": "camp",
+            "minStage": 4,
+            "beats": [
+              {
+                "face": "worried",
+                "t": "Come here. No, closer. I need to confirm something."
+              },
+              {
+                "face": "uneasy",
+                "t": "...Heartbeat's there. Fast, but there. I'm keeping my ear here a while longer."
+              },
+              {
+                "face": "pout",
+                "t": "Don't make a joke. I can feel you about to make a joke."
+              }
+            ]
+          }
+        ],
+        "adult": []
+      },
+      "for": [
+        "story",
+        "delve"
+      ]
+    },
+    "camp_night": {
+      "name": "A night at the camp",
+      "line": "The fire's low, the dark is outside the circle, and nobody's sleeping yet. One of the safe-spot moments.",
+      "variants": {
+        "everyday": [
+          {
+            "id": "camp_stars",
+            "beats": [
+              {
+                "face": "curious",
+                "t": "There are stars down here. Painted on the ceiling. Someone wanted a sky that badly."
+              },
+              {
+                "face": "neutral",
+                "t": "I'll take first watch. And second. I don't sleep; it's not generous, it's scheduling."
+              }
+            ]
+          },
+          {
+            "id": "camp_story",
+            "beats": [
+              {
+                "face": "grin",
+                "t": "Tell me a story. A bad one. I want to guess the ending and be smug about it."
+              },
+              {
+                "face": "relieved",
+                "t": "...I didn't guess it. Don't tell anyone."
+              }
+            ]
+          }
+        ],
+        "flirty": [
+          {
+            "id": "camp_shoulder",
+            "minStage": 4,
+            "beats": [
+              {
+                "face": "pout",
+                "t": "The ground is cold. Your shoulder isn't. This is a thermal decision."
+              },
+              {
+                "face": "relieved",
+                "t": "...If you move I'll know. I'm very light. You can afford it."
+              }
+            ]
+          }
+        ],
+        "adult": []
+      },
+      "for": [
+        "story",
+        "delve"
+      ]
+    }
+  }
+}

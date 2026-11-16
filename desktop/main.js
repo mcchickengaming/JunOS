@@ -166,7 +166,7 @@ function openDebugMenu(fromWc) {
   });
   debugWin.setMenu(null);
   // the labs open in their own window from here, like from Settings; nothing else does
-  debugWin.webContents.setWindowOpenHandler(({ url }) => (['/feel-lab.html', '/progress-lab.html', '/delve-lab.html', '/story-lab.html', '/rig-lab.html', '/desktop-settings.html'].some(p => url.startsWith(ORIGIN + p))
+  debugWin.webContents.setWindowOpenHandler(({ url }) => (['/feel-lab.html', '/progress-lab.html', '/delve-lab.html', '/story-lab.html', '/scene-lab.html', '/rig-lab.html', '/desktop-settings.html'].some(p => url.startsWith(ORIGIN + p))
     ? { action: 'allow', overrideBrowserWindowOptions: { width: 1100, height: 860, autoHideMenuBar: true } }
     : { action: 'deny' }));
   debugWin.loadURL(`${JUN_URL}/debug-menu.html`);

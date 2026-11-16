@@ -2,8 +2,8 @@
 // the progress lab; every rule it shows lives in js/core/delve/ (run.js, encounter.js, party.js,
 // scenes.js, sim.js) and this file only draws and listens.
 
-import * as Delve from './core/delve/delve.js?v=6';
-import * as Scenes from './core/delve/scenes.js?v=1';
+import * as Delve from './core/delve/delve.js?v=8';
+import * as Scenes from './core/delve/scenes.js?v=3';
 import * as Sim from './core/delve/sim.js?v=3';
 import { createView, drawMap } from './core/delve/view.js?v=1';
 import { DEFAULTS, setOverrides, tune as getTune } from './core/delve/delve-tune.js?v=2';
@@ -185,14 +185,16 @@ function safeSpot() {
 function playScene(pick, onDone, endLabel) {
   const host = $('scene');
   let i = 0;
+  const beats = Delve.beatsOf(data, pick.variant);   // one of the owner's full scenes (#22) shows its first lines here
+  if (!beats.length) { onDone(); return; }
   const show = () => {
-    const b = pick.variant.beats[i];
+    const b = beats[i];
     host.innerHTML = `<span class="tier">${esc({ everyday: 'Everyday', flirty: 'Flirty', adult: '18+' }[pick.tier])}</span>
       <div style="font:600 26px ui-monospace,monospace">${esc(FACES[b.face] || FACES.neutral)}</div>
       <div style="max-width:440px;font-size:15px">${esc(b.t)}</div>`;
     const btn = document.createElement('button');
-    btn.textContent = i < pick.variant.beats.length - 1 ? 'Next' : endLabel;
-    btn.onclick = () => { i++; if (i < pick.variant.beats.length) show(); else { host.hidden = true; onDone(); } };
+    btn.textContent = i < beats.length - 1 ? 'Next' : endLabel;
+    btn.onclick = () => { i++; if (i < beats.length) show(); else { host.hidden = true; onDone(); } };
     host.append(btn);
     btn.focus();
   };

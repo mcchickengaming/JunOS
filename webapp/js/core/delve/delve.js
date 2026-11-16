@@ -22,6 +22,7 @@ import { lastDelve } from './last.js?v=1';
 import * as Difficulty from '../difficulty.js?v=2';
 import * as Story from '../story/story-state.js?v=3';
 import * as GameSave from '../gamesave.js?v=5';
+import * as SceneDoor from '../scene/scene-door.js?v=3';
 
 export const KEY = 'jun.delve';
 export const ACTIVITY = 'delve';
@@ -63,9 +64,17 @@ export function paceFor(data, area) {
 
 let dataCache = null;
 export async function loadData(url = 'data/delve.json') {
-  if (!dataCache) dataCache = fetch(url, { cache: 'no-cache' }).then(r => r.json());
+  // the scene library (#22) is laid under the delve's own scene slots (the safe-spot family: after a close call, a
+  // night at the camp), and the owner's own scenes are let in. Without the library the delve plays as before.
+  if (!dataCache) dataCache = Promise.all([fetch(url, { cache: 'no-cache' }).then(r => r.json()), SceneDoor.loadLib().catch(() => null)]).then(([d, lib]) => {
+    if (!lib) return d;
+    SceneDoor.install(lib);
+    return SceneDoor.Sc.attach(d, lib, 'delve');
+  });
   return dataCache;
 }
+// a slot's variant as lines: a delve moment is always just read (a full scene gives its first lines)
+export const beatsOf = (data, variant) => (SceneDoor.Scenes.isFull(variant) ? SceneDoor.Sc.flat(SceneDoor.Sc.resolve(variant, data.lib) || { opening: [] }, data.lib) : variant.beats || []);
 
 function read() { try { return JSON.parse(storage?.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
 function write(v) { try { storage?.setItem(KEY, JSON.stringify(v)); } catch (e) { /* full or private: the delve still plays */ } }
