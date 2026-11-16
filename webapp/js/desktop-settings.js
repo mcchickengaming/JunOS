@@ -23,7 +23,8 @@ import * as Difficulty from './core/difficulty.js?v=2';
 import * as Story from './core/story/story-state.js?v=3';
 import * as Inventory from './core/inventory.js?v=3';
 import * as HouseCube from './desktop/house-cube.js?v=1';
-import * as Profile from './core/profile.js?v=1';
+import * as Profile from './core/profile.js?v=2';
+import * as SceneDoor from './core/scene/scene-door.js?v=4';
 import * as Prefs from './core/prefs.js?v=7';
 await Profile.loadParts().catch(() => null);
 
@@ -1326,6 +1327,17 @@ const profIO = {
   },
   desk: D?.profile ? { get: () => D.profile('get'), set: (d) => D.profile('set', d), spots: () => D.profile('spots'), setSpots: (d) => D.profile('setSpots', d) } : null,
   comfort: { get: () => Gate.loadComfort(), set: (p) => Gate.saveComfort(p) },
+  // the owner's scenes (#22): a profile ADDS them to his, checked by the scene engine's rulebook, all switched on
+  scenes: {
+    get: async () => { SceneDoor.install(await SceneDoor.loadLib()); return SceneDoor.mine(); },
+    add: async (list) => {
+      const lib = await SceneDoor.loadLib();
+      SceneDoor.install(lib);
+      const r = SceneDoor.Mine.merge(SceneDoor.mine(), list, lib);
+      const saved = SceneDoor.saveMine(r.mine);
+      return saved.error ? { error: saved.error } : r;
+    },
+  },
   bond: {
     get: async () => { try { const j = await (await fetch('api/relationship.php', { credentials: 'same-origin' })).json(); return { stage: j?.bond?.stage || 1 }; } catch (e) { return null; } },
     set: async (stage) => {
@@ -1422,7 +1434,7 @@ function profRow(pf, open) {
       panel.hidden = true;
       e.target.disabled = false;
       const names = (ids) => ids.map(id => Profile.part(id)?.name || id).join(', ');
-      profMsg(`Applied “${m.name}”: ${names(res.applied) || 'nothing'}.` + (res.skipped.length ? ' Not applied: ' + res.skipped.map(x => (Profile.part(x.id)?.name || x.id) + ' (' + x.why + ')').join(', ') + '.' : '') + ' Undo: Her saves, just above.', res.applied.length === 0);
+      profMsg(`Applied “${m.name}”: ${names(res.applied) || 'nothing'}.` + (res.notes?.length ? ' ' + res.notes.join('. ') + '.' : '') + (res.skipped.length ? ' Not applied: ' + res.skipped.map(x => (Profile.part(x.id)?.name || x.id) + ' (' + x.why + ')').join(', ') + '.' : '') + ' Undo: Her saves, just above.', res.applied.length === 0);
       loadSaves();
     }, { accent: true }));
     panel.append(go);

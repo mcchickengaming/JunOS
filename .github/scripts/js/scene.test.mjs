@@ -317,27 +317,70 @@ test('the slots pick full scenes like any variant, and the owner\'s own scenes a
   assert.equal(Scenes.find(data, 'evening_together', 'my_night'), null);
 });
 
-test('scenes from a file are checked, never replace yours, and anything rated arrives switched off', () => {
+test('someone else\'s scenes (in a Jun profile) are checked, added to yours, never replace one, and arrive switched on', () => {
   const flirty = { ...clone(pot), id: 'kitchen_two', name: 'Kitchen two' };
   const plain = { ...clone(tea), id: 'tea_two', name: 'Tea two' };
   delete plain.actions.lean.minStage;
-  const have = Mine.clean({ list: [{ slot: null, scene: { ...clone(plain), id: 'tea_two' } }] }, lib).mine;
-  const file = Mine.toFile({ list: [{ slot: 'cooking_together', scene: flirty }, { slot: null, scene: plain }, { slot: null, scene: { id: 'evening_tea', name: 'A clash with ours', tier: 'everyday', simple: true, opening: [{ t: 'Hi.' }], phases: {}, actions: {}, endings: {} } }, { scene: { id: 'bad', name: 'Bad', tier: 'everyday', start: 'nope', phases: {}, actions: {}, endings: {}, opening: [] } }] }, { made: 1 });
-  const r = Mine.fromFile(file, lib, have);
-  assert.equal(r.list.length, 3);
+  const have = Mine.clean({ list: [{ on: false, slot: null, scene: { ...clone(plain), id: 'tea_two', name: 'Mine, off' } }] }, lib).mine;
+  const list = [{ slot: 'cooking_together', scene: flirty }, { slot: null, scene: plain },
+    { slot: null, scene: { id: 'evening_tea', name: 'A clash with ours', tier: 'everyday', simple: true, opening: [{ t: 'Hi.' }], phases: {}, actions: {}, endings: {} } },
+    { scene: { id: 'bad', name: 'Bad', tier: 'everyday', start: 'nope', phases: {}, actions: {}, endings: {}, opening: [] } }, 'junk', null];
+  const r = Mine.merge(have, list, lib);
+  assert.equal(r.added, 3);
   assert.equal(r.rated, 1);
-  const byName = Object.fromEntries(r.list.map(en => [en.scene.name, en]));
-  assert.equal(byName['Kitchen two'].on, false);            // it has Flirty parts inside
+  assert.deepEqual(r.dropped.map(d => d.name), ['Bad', 'A scene', 'A scene']);
+  const byName = Object.fromEntries(r.mine.list.map(en => [en.scene.name, en]));
+  // yours stays exactly as it was (even switched off); theirs all arrive ON, the rated one too (owner, Nov 16)
+  assert.equal(byName['Mine, off'].on, false);
+  assert.equal(byName['Mine, off'].scene.id, 'tea_two');
+  assert.equal(byName['Kitchen two'].on, true);
   assert.equal(byName['Tea two'].on, true);
-  assert.notEqual(byName['Tea two'].scene.id, 'tea_two');   // yours keeps its id; the import gets a new one
+  assert.notEqual(byName['Tea two'].scene.id, 'tea_two');
   assert.notEqual(byName['A clash with ours'].scene.id, 'evening_tea');
-  assert.deepEqual(r.dropped.map(d => d.name), ['Bad']);
-  assert.ok(Mine.fromFile('not json', lib).error && Mine.fromFile('{"format":"other"}', lib).error && Mine.fromFile(JSON.stringify({ format: 'junscenes', v: 99, list: [] }), lib).error);
+  assert.equal(byName['Kitchen two'].slot, 'cooking_together');
+  // the same file twice: added again under new ids, never replacing
+  const again = Mine.merge(r.mine, list, lib);
+  assert.equal(again.mine.list.length, r.mine.list.length + 3);
+  assert.equal(new Set(again.mine.list.map(en => en.scene.id)).size, again.mine.list.length);
+  // full: the rest is left out by name
+  const full = { on: true, list: Array.from({ length: Mine.MAX }, (_, k) => ({ slot: null, scene: { id: 's' + k, name: 'S' + k, tier: 'everyday', simple: true, opening: [{ t: 'Hi.' }], phases: {}, actions: {}, endings: {} } })) };
+  const over = Mine.merge(full, [{ slot: null, scene: plain }], lib);
+  assert.equal(over.added, 0);
+  assert.match(over.dropped[0].why, /room/);
   assert.equal(Mine.slug('Rain on the Roof!', []), 'rain_on_the_roof');
   assert.equal(Mine.slug('Rain on the Roof!', ['rain_on_the_roof']), 'rain_on_the_roof_2');
   assert.match(Mine.slug('A very long name for a scene indeed', ['a_very_long_name_f']), Sc.ID_RE);
   assert.equal(Mine.slug('   ', []), 'scene');
   assert.match(Mine.slug('123 go', []), Sc.ID_RE);
+});
+
+test('"Your scenes" is a Jun profile piece: carried, shape-checked, and ADDED on apply; 18+ switch never from a file', async () => {
+  const P = await import(new URL('js/core/profile.js', root));
+  P.use(J('data/profile-parts.json'));
+  assert.deepEqual([P.defaultIn('scenes', 'profile'), P.defaultIn('scenes', 'gamesave'), P.defaultIn('scenes', 'savepoint')], ['on', 'never', 'always']);
+  assert.ok(P.part('scenes').why.gamesave);
+  let mine = Mine.clean({ list: [{ slot: 'evening_together', scene: { ...clone(tea), id: 'my_tea', name: 'My tea' } }] }, lib).mine;
+  const io = {
+    local: { get: () => null, set: () => {}, keys: () => [] },
+    scenes: { get: async () => mine, add: async (list) => { const r = Mine.merge(mine, list, lib); mine = r.mine; return r; } },
+  };
+  const m = await P.collect(io, { pick: ['scenes'] });
+  assert.equal(m.parts.scenes.scenes.list[0].scene.id, 'my_tea');
+  // a file with odd bits: only the shape is kept here; the scene rulebook runs in add()
+  const fromFile = P.clean({ ...m, parts: { scenes: { scenes: { list: [...m.parts.scenes.scenes.list, 'junk', { scene: [] }, { slot: 5, scene: { id: 'x' } }] } }, comfort: { comfort: { adult: true, adultConfirmed: true, flirty: true } } } });
+  assert.equal(fromFile.manifest.parts.scenes.scenes.list.length, 2);
+  assert.equal(fromFile.manifest.parts.scenes.scenes.list[1].slot, null);
+  assert.deepEqual(fromFile.manifest.parts.comfort.comfort, { flirty: true });   // a file never switches 18+ on
+  assert.ok(P.defaultPick(fromFile.manifest).includes('scenes'));
+  assert.match(P.summary(fromFile.manifest).find(x => x.id === 'scenes').words, /2 scenes, added to yours/);
+  const res = await P.apply(fromFile.manifest, ['scenes'], io);
+  assert.deepEqual(res.applied, ['scenes']);
+  assert.match(res.notes[0], /^1 scene added; left out: x/);
+  assert.deepEqual(mine.list.map(en => en.scene.name), ['My tea', 'My tea']);
+  assert.notEqual(mine.list[0].scene.id, mine.list[1].scene.id);
+  // without the scene maker's door, it's skipped (never half-applied)
+  const res2 = await P.apply(fromFile.manifest, ['scenes'], { local: io.local });
+  assert.deepEqual(res2.skipped.map(k => k.id), ['scenes']);
 });
 
 test('the story engine: an event with a full scene waits for it, goes on with how it ended, and story state remembers it', () => {
@@ -385,6 +428,13 @@ test('the story engine: an event with a full scene waits for it, goes on with ho
   const moved = En.pending(story, d.g, d.ctx);
   assert.ok(moved.some(e => e.type === 'scene'));
   assert.equal(d.g.x.play.wait, 'scene');   // the slot still has a full scene to give: that one plays
+  // "Skip scene" (coming back to a half-played one): the event goes on its own way, never taking an ending's branch,
+  // and nothing about the scene is remembered
+  const sk = begin(2);
+  const skipped = En.step(story, sk.g, { scene: { end: 'skip' } }, sk.ctx);
+  assert.ok(skipped.some(e => e.type === 'scened' && e.end === 'skip'));
+  assert.equal(sk.g.x.play, null);
+  assert.equal(En.Story.seenCount(sk.g.s, 'scene.evening_tea'), 0);
   // a slot that gives a few lines still just shows them (no waiting), as before
   const e = En.newGame(story, 3); e.x.at = 'home';
   const ev = En.begin(story, e, 'home_evening', { ...gate, stage: 1 });

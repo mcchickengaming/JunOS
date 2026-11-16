@@ -414,7 +414,8 @@ function asks(data, g, ctx, t, out) {
 function afterScene(data, g, ctx, t, out, end) {
   const p = g.x.play, node = E(data, p.ev).nodes[p.node];
   p.scene = null; p.wait = null;
-  const to = node.on?.[end] ?? node.on?.else;
+  // "skip" (the player skipped a scene he came back to) never takes an ending's branch: only "on.skip" catches it
+  const to = end === 'skip' ? node.on?.skip : (node.on?.[end] ?? node.on?.else);
   if (to) { goTo(data, g, to, ctx, t, out); return; }
   if (asks(data, g, ctx, t, out)) return;
   goTo(data, g, node.end ? 'end' : route(node.next, g, ctx), ctx, t, out);

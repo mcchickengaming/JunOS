@@ -3,8 +3,13 @@
 // layers are words in a box, her face is the stand-in ASCII one; the real rigs and paintings come with the art (#5).
 // It only draws what the scene engine's events say and sends the player's picks back; no rules here.
 //
-//   const p = createScenePlayer(host, { scene, lib, ctx, seed, names, npcs, debug, onEnd: (endingId, run) => … });
+//   const p = createScenePlayer(host, { scene, lib, ctx, seed, names, npcs, debug, skipOpening, onEnd: (endingId, run) => … });
 //   p.run     the run as it stands (plain data)
+//
+// Lines come ONE AT A TIME (owner, Nov 16): Next (or a click on the lines, Space, Enter, →) shows the next one; Skip shows
+// the rest up to your next pick ("Skip opening" before your first move; skipOpening: true does it at once); Leave is
+// always there and ends it ("That's enough for now"). There's no Back: what was said stays on screen above, and undoing a
+// move would have to un-count firsts and album parts.
 //
 // The two wheels: what you can do (the ordinary things are always there) and her outfits. Under them: where the
 // moment can move on to, and how it can end ("That's enough for now" is always there).
@@ -38,6 +43,9 @@ export const CSS = `
 .sc-tabs button { font-size: 12px; padding: 3px 10px; }
 .sc-tabs button.on { border-color: var(--sv-accent, #ff7aa2); }
 .sc-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--sv-dim, #b9b4d6); }
+.sc-read { display: flex; gap: 6px; justify-content: center; }
+.sc-read .next { min-width: 120px; border-color: var(--sv-her, #7ac8ff); }
+.sc-log.reading { cursor: pointer; }
 .sc-end { border: 1px solid var(--sv-card, #ffd76a); border-radius: 12px; padding: 10px 12px; text-align: center; }
 .sc button { background: var(--sv-btn, #2f2640); color: var(--sv-ink, #fff); border: 1px solid var(--sv-edge, #37305a); border-radius: 8px; padding: 6px 11px; font: inherit; cursor: pointer; }
 .sc button:hover:not(:disabled) { border-color: var(--sv-accent, #ff7aa2); }
@@ -48,7 +56,7 @@ export const CSS = `
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 
-export function createScenePlayer(host, { scene, lib, ctx = {}, seed = 1, tune, names = {}, npcs = {}, debug = false, onEnd } = {}) {
+export function createScenePlayer(host, { scene, lib, ctx = {}, seed = 1, tune, names = {}, npcs = {}, debug = false, skipOpening = false, onEnd } = {}) {
   for (const [id, css] of [['sv-css', STORY_CSS], ['sc-css', CSS]]) if (!document.getElementById(id)) { const st = el('style'); st.id = id; st.textContent = css; document.head.append(st); }
   host.classList.add('sc', 'sv');
   host.textContent = '';
@@ -62,13 +70,34 @@ export function createScenePlayer(host, { scene, lib, ctx = {}, seed = 1, tune, 
   stage.append(top, art, chips, meter);
   const log = el('div', 'sc-log');
   const tabs = el('div', 'sc-tabs'), ring = el('div', 'sc-wheel'), move = el('div', 'sc-row'), view = el('div', 'sc-row'), ends = el('div', 'sc-row');
-  host.append(stage, log, tabs, ring, move, view, ends);
+  const read = el('div', 'sc-read');
+  host.append(stage, log, read, tabs, ring, move, view, ends);
 
   const { run, events } = Sc.start(scene, lib, ctx, { seed, tune });
-  const say = (node) => { log.append(node); node.scrollIntoView({ block: 'nearest' }); };
+  // what's waiting to be shown: { node, stop, face }. A stop (a line, the ending) waits for Next; notes ride along
+  const queue = [];
+  let opening = true;
+  const say = (node, stop = false, f = null) => queue.push({ node, stop, face: f });
   const note = (t, cls = 'sv-note') => say(el('div', cls, t));
   const btn = (label, fn, { off = false, tip = '', cls = '' } = {}) => { const b = el('button', cls, label); b.type = 'button'; b.disabled = off; if (tip) b.title = tip; b.addEventListener('click', fn); return b; };
-  const go = (input) => { show(Sc.act(scene, lib, run, input, ctx, tune)); draw(); };
+  const put = (it) => { log.append(it.node); if (it.face) face = it.face; it.node.scrollIntoView({ block: 'nearest' }); };
+  // show up to and including the next line, then any notes that follow it
+  function reveal() {
+    while (queue.length) { const it = queue.shift(); put(it); if (it.stop) break; }
+    while (queue.length && !queue[0].stop) put(queue.shift());
+  }
+  const flush = () => { while (queue.length) put(queue.shift()); };
+  const next = () => { if (!queue.length) return; reveal(); draw(); };
+  const skip = () => { flush(); draw(); };
+  const go = (input) => { if (input.action !== undefined || input.phase !== undefined || input.outfit !== undefined) opening = false; show(Sc.act(scene, lib, run, input, ctx, tune)); if (input.end !== undefined) flush(); else reveal(); draw(); };
+  const leave = () => { flush(); go({ end: Sc.LEAVE }); };
+  log.addEventListener('click', (e) => { if (queue.length && !e.target.closest('button, a, input, select')) next(); });
+  const onKey = (e) => {
+    if (!host.isConnected) { document.removeEventListener('keydown', onKey); return; }
+    if (!queue.length || e.target.closest?.('input, textarea, select, button, [contenteditable]')) return;
+    if ([' ', 'Enter', 'ArrowRight'].includes(e.key)) { e.preventDefault(); next(); }
+  };
+  document.addEventListener('keydown', onKey);
 
   function show(evs) {
     for (const e of evs) {
@@ -76,12 +105,11 @@ export function createScenePlayer(host, { scene, lib, ctx = {}, seed = 1, tune, 
         const b = el('div', 'sv-beat' + (e.who === 'narrator' ? ' narr' : ''));
         const name = whoName(e.who);
         if (name) { const w = el('div', 'sv-who', name); if (e.who !== 'you') w.append(el('span', 'sv-face', FACES[e.face] || FACES.neutral)); b.append(w); }
-        if (e.who !== 'narrator' && e.who !== 'you' && e.face) face = e.face;
         b.append(el('div', '', e.t));
-        say(b);
+        say(b, true, e.who !== 'narrator' && e.who !== 'you' && e.face ? e.face : null);
       }
       else if (e.type === 'phase' && e.by !== 'start') note(e.by === 'her' ? `— ${e.name} — (${whoName(scene.who || 'jun')} moved things along)` : `— ${e.name} —`);
-      else if (e.type === 'fade') say(el('div', 'sv-beat narr', e.t));
+      else if (e.type === 'fade') say(el('div', 'sv-beat narr', e.t), true);
       else if (e.type === 'did') note('› ' + e.name);
       else if (e.type === 'layer' && !e.still) note(`${e.name}: ${e.word}.`);
       else if (e.type === 'outfit') note('› ' + e.name);
@@ -102,7 +130,7 @@ export function createScenePlayer(host, { scene, lib, ctx = {}, seed = 1, tune, 
     const row = el('div', 'sv-acts'); row.style.justifyContent = 'center';
     row.append(btn('Go on', () => { row.remove(); onEnd && onEnd(e.id, run); }));
     box.append(row);
-    say(box);
+    say(box, true);
   }
 
   function draw() {
@@ -122,8 +150,18 @@ export function createScenePlayer(host, { scene, lib, ctx = {}, seed = 1, tune, 
       const bar = el('div', 'sc-bar'), fill = el('i'); fill.style.width = Math.round(run.meter) + '%'; bar.append(fill);
       meter.append(el('span', '', `${scene.meter?.name || lib?.meterName || 'How she feels'}: ${lib?.meterWords?.[band || 'low'] || ''}` + (debug ? ` (${Math.round(run.meter)})` : '')), bar);
     }
-    for (const box of [tabs, ring, move, view, ends]) { box.textContent = ''; box.hidden = over; }
-    if (over) return;
+    // reading: Next / Skip / Leave, and the wheel waits until the lines are read
+    read.textContent = '';
+    const reading = queue.length > 0;
+    log.classList.toggle('reading', reading);
+    read.hidden = !reading;
+    if (reading) {
+      const endWaits = queue.some(it => it.node.classList?.contains('sc-end'));
+      read.append(btn('Next ▸', next, { cls: 'next', tip: 'Or click the lines, or press Space' }), btn(opening ? 'Skip opening' : 'Skip', skip, { tip: 'Show the rest up to your next pick' }));
+      if (!over && !endWaits) read.append(btn('Leave', leave, { tip: (scene.endings?.leave || lib?.leave)?.name || 'That\'s enough for now' }));
+    }
+    for (const box of [tabs, ring, move, view, ends]) { box.textContent = ''; box.hidden = over || reading; }
+    if (over || reading) return;
     const op = Sc.options(scene, lib, run, ctx, t);
     const list = (items) => items.filter(k => k.ok || debug);
     if (op.outfits.length) {
@@ -142,6 +180,7 @@ export function createScenePlayer(host, { scene, lib, ctx = {}, seed = 1, tune, 
   }
 
   show(events);
+  if (skipOpening) flush(); else reveal();
   draw();
-  return { run, redraw: draw };
+  return { run, redraw: draw, next, skip };
 }

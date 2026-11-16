@@ -13,14 +13,14 @@
 // over: the answer is 'reloaded' and the page reloads. Things are only ever given by the progression
 // service's story grants (by id, once). Autosaves happen at the beats the engine names.
 
-import * as En from './story-engine.js?v=3';
+import * as En from './story-engine.js?v=4';
 import * as Story from './story-state.js?v=3';
 import * as GameSave from '../gamesave.js?v=5';
 import * as Progress from '../progress.js?v=2';
 import * as Gate from '../gate.js?v=6';
 import * as Difficulty from '../difficulty.js?v=2';
 import { api } from '../api.js?v=1';
-import * as SceneDoor from '../scene/scene-door.js?v=3';
+import * as SceneDoor from '../scene/scene-door.js?v=4';
 
 export { En, Story, GameSave, Difficulty, SceneDoor };
 export const HEARD_KEY = 'jun.story.heard';   // the kinds of things that happened lately, for the two-Juns link (#36). Desktop Jun's side: never in a game save.

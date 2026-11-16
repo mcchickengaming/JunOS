@@ -4,15 +4,14 @@
 // (scene-engine.js). They reach every slot through ../delve/scenes.js setCustom(), so the ONE gate still decides
 // whether each can show: a scene tagged 18+ needs 18+ on (and confirmed), like anything else.
 //
-// A file from someone else (.junscenes) is never trusted: every scene is checked by the engine's rulebook, what
-// doesn't pass is left out by name, and everything rated arrives SWITCHED OFF (the Nov 10 rule for shared things).
+// Scenes from someone else come in a Jun profile (#18, the piece "Your scenes") and are never trusted: every scene is
+// checked by the engine's rulebook, what doesn't pass is left out by name, and they're ADDED to yours (merge()).
 
 import { checkScene, ID_RE, TIERS } from './scene-engine.js?v=3';
 
 export const KEY = 'jun.scenes.mine';
 export const V = 1;
 export const MAX = 200;
-export const FORMAT = 'junscenes';
 
 export const blank = () => ({ v: V, on: true, list: [] });
 const tierOf = (sc) => (sc && sc.tier) || 'everyday';
@@ -55,29 +54,22 @@ export function slug(name, taken = []) {
   return id;
 }
 
-export function toFile(mine, { made = 0, pick = null } = {}) {
-  return JSON.stringify({ format: FORMAT, v: V, made, list: (mine?.list || []).filter(en => !pick || pick.includes(en.scene.id)).map(en => ({ slot: en.slot, scene: en.scene })) }, null, 1);
-}
-// → { list: [{ on, slot, scene }], dropped: [{ name, why }], rated: n } or { error }
-export function fromFile(text, lib, have = blank(), o = {}) {
-  let j;
-  try { j = JSON.parse(text); } catch (e) { return { error: 'That isn\'t a scenes file.' }; }
-  if (!j || j.format !== FORMAT) return { error: 'That isn\'t a scenes file.' };
-  if (!(j.v <= V)) return { error: 'That file was made by a newer version.' };
-  const taken = [...have.list.map(en => en.scene.id), ...Object.keys(lib?.scenes || {})];
-  const incoming = (Array.isArray(j.list) ? j.list : []).map(en => {
-    // an id someone here already has gets a new one: an import never replaces a scene of yours
-    if (en && en.scene && taken.includes(en.scene.id)) en = { ...en, scene: { ...en.scene, id: slug(en.scene.name || en.scene.id, taken) } };
+// someone else's scenes (they come in a Jun profile, the piece "Your scenes") → added to yours, never replacing one:
+// an id you already have (or one of ours) gets a new one. Every scene is checked; what doesn't pass is left out by
+// name. Everything arrives SWITCHED ON, rated ones too (owner, Nov 16): his own 18+ / Flirty switches decide what can
+// show, and a file can never touch those. → { mine, added, dropped: [{ name, why }], rated }
+export function merge(have, list, lib, o = {}) {
+  const base = clean(have, lib, o).mine;
+  const taken = [...base.list.map(en => en.scene.id), ...Object.keys(lib?.scenes || {})];
+  const incoming = (Array.isArray(list) ? list : []).slice(0, MAX).map(en => {
+    if (en && en.scene && typeof en.scene === 'object' && taken.includes(en.scene.id)) en = { ...en, scene: { ...en.scene, id: slug(en.scene.name || en.scene.id, taken) } };
     if (en && en.scene) taken.push(en.scene.id);
-    return en;
+    return en && { ...en, on: true };
   });
-  const { mine, dropped } = clean({ on: true, list: incoming }, lib, o);
-  let rated = 0;
-  for (const en of mine.list) {
-    const sc = en.scene;
-    const isRated = [sc, ...Object.values(sc.phases || {}), ...Object.values(sc.actions || {}), ...Object.values(sc.endings || {})].some(x => TIERS.indexOf(tierOf(x)) > 0 || x.consent);
-    en.on = !isRated;   // everything rated arrives switched off: you switch it on yourself
-    if (isRated) rated += 1;
-  }
-  return { list: mine.list, dropped, rated };
+  const r = clean({ on: true, list: incoming }, lib, o);
+  const room = Math.max(0, MAX - base.list.length);
+  const added = r.mine.list.slice(0, room);
+  for (const en of r.mine.list.slice(room)) r.dropped.push({ name: en.scene.name, why: 'You have the most scenes there\'s room for.' });
+  const isRated = (sc) => [sc, ...Object.values(sc.phases || {}), ...Object.values(sc.actions || {}), ...Object.values(sc.endings || {})].some(x => TIERS.indexOf(tierOf(x)) > 0 || x.consent);
+  return { mine: { ...base, list: [...base.list, ...added] }, added: added.length, dropped: r.dropped, rated: added.filter(en => isRated(en.scene)).length };
 }

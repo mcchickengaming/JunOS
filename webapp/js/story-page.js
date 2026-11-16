@@ -3,9 +3,9 @@
 // the engine's (js/core/story/story-engine.js); keeping it is the door's (js/core/story/story.js); drawing it is
 // story-view.js. Leaving is the game world's own "Back to the map".
 
-import * as Door from './core/story/story.js?v=4';
+import * as Door from './core/story/story.js?v=5';
 import { createView } from './story-view.js?v=4';
-import { createScenePlayer } from './scene-view.js?v=4';
+import { createScenePlayer } from './scene-view.js?v=5';
 
 const { En, GameSave } = Door;
 const $ = (id) => document.getElementById(id);
@@ -45,10 +45,27 @@ const answer = (input) => act(En.step(data.story, game.g, input, ctx));
 
 // a full scene (#22): played right here by the scene engine, remembering through the story's own state; it is
 // kept (with the rest of the story) when it ends and the event goes on
+// Coming back to one left half-way (owner, Nov 16): Start it again / Skip opening / Skip scene. Nothing of the
+// half-played one was kept; skipping the scene writes nothing about it and the event simply goes on.
+let resuming = false;
 function playScene(e, box) {
   $('here').hidden = true;
-  createScenePlayer(box, { scene: e.play, lib: data.story.lib, ctx: En.sceneCtx(data.story, game.g, { ...ctx, now: Date.now() }), seed: Date.now() % 1000000,
-    names: ctx.names, npcs: data.story.npcs, onEnd: (end) => answer({ scene: { end } }) });
+  const start = (skipOpening) => {
+    box.textContent = '';
+    createScenePlayer(box, { scene: e.play, lib: data.story.lib, ctx: En.sceneCtx(data.story, game.g, { ...ctx, now: Date.now() }), seed: Date.now() % 1000000,
+      names: ctx.names, npcs: data.story.npcs, skipOpening, onEnd: (end) => answer({ scene: { end } }) });
+  };
+  if (!resuming) { start(false); return; }
+  resuming = false;
+  const ask = document.createElement('div');
+  ask.className = 'sv-beat narr';
+  ask.textContent = `You left in the middle of “${e.play.name}”.`;
+  const row = document.createElement('div');
+  row.className = 'sv-acts';
+  for (const [label, fn] of [['Start it again', () => start(false)], ['Skip opening', () => start(true)], ['Skip scene', () => { box.textContent = ''; answer({ scene: { end: 'skip' } }); }]]) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', fn); row.append(b);
+  }
+  box.append(ask, row);
 }
 
 async function gameOver(box) {
@@ -71,7 +88,7 @@ async function init() {
   GameSave.startClock();
   GameSave.onChange((e) => { if (e?.type === 'loaded') location.reload(); });
   // something was left half-way (the window closed mid-event, or a save from before a fight): carry on
-  if (game.g.x.play || game.g.x.over) { view.show(En.pending(data.story, game.g, ctx), game.g.x.play?.wait); $('when').textContent = whenWords(); return; }
+  if (game.g.x.play || game.g.x.over) { resuming = game.g.x.play?.wait === 'scene'; view.show(En.pending(data.story, game.g, ctx), game.g.x.play?.wait); $('when').textContent = whenWords(); return; }
   await act(En.arrive(data.story, game.g, spot, { ...ctx, placeName: onMap?.name }));
 }
 init().catch((e) => { $('note').textContent = 'The story could not start: ' + (e && e.message); console.error(e); });

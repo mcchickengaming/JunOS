@@ -2,7 +2,7 @@
 // the progress lab; every rule it shows lives in js/core/delve/ (run.js, encounter.js, party.js,
 // scenes.js, sim.js) and this file only draws and listens.
 
-import * as Delve from './core/delve/delve.js?v=8';
+import * as Delve from './core/delve/delve.js?v=9';
 import * as Scenes from './core/delve/scenes.js?v=3';
 import * as Sim from './core/delve/sim.js?v=3';
 import { createView, drawMap } from './core/delve/view.js?v=1';

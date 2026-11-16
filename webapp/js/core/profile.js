@@ -11,6 +11,8 @@
 //   io.local   { get(key), set(key, value|null), keys() }
 //   io.desk    { get() → { desk, size }, set({ desk, size }), spots() → { spots, stay }, setSpots({ spots, stay }) }  (app only)
 //   io.comfort { get(), set(patch) }        io.bond { get() → { stage }, set(stage) }        io.after(partIds) (push prefs…)
+//   io.scenes  { get() → { list }, add(list) → { added, dropped, rated } }   (the owner's scenes, #22: ADDED, never replaced;
+//              each scene is checked against the scene engine's rulebook by add(), which knows the scene library)
 // Safety, tested: data only (strings and plain JSON), every key checked against the part's own list, sizes capped,
 // 18+ never switched on by a file, a newer format refused, unknown parts dropped and named.
 
@@ -19,7 +21,7 @@ import * as Zip from './jun-zip.js?v=1';
 export const FORMAT = 'junprofile', VERSION = 1;
 export const FILE = 'jun-profile.json';
 export const CARRY_KEY = 'jun.carry';
-export const LIMITS = { value: 512 * 1024, total: 4 * 1024 * 1024, name: 60, note: 300, spots: 40 };
+export const LIMITS = { value: 512 * 1024, total: 4 * 1024 * 1024, name: 60, note: 300, spots: 40, scenes: 200 };
 // comfort keys a file may carry. 18+ (adult, adultConfirmed, adultOutside) never: that stays his own choice
 export const COMFORT_KEYS = ['flavor', 'flavorLock', 'flirty', 'siblingsRated'];
 export const CONTAINERS = ['profile', 'gamesave', 'savepoint'];
@@ -117,6 +119,7 @@ export async function collect(io, { name = 'My Jun', note = '', pick = null, car
     if (s.deskSpots && io.desk?.spots) { const d = await io.desk.spots(); if (d) data.spots = { spots: d.spots || [], stay: d.stay || null }; }
     if (s.comfort && io.comfort?.get) { const c = await io.comfort.get(); if (c) data.comfort = Object.fromEntries(COMFORT_KEYS.filter(k => k in c).map(k => [k, c[k]])); }
     if (s.bond && io.bond?.get) { const b = await io.bond.get(); if (b && b.stage) data.bond = { stage: Number(b.stage) }; }
+    if (s.scenes && io.scenes?.get) { const m = await io.scenes.get(); if (m?.list?.length) data.scenes = { list: m.list.map(en => ({ slot: en.slot || null, scene: en.scene })) }; }
     if (Object.keys(data).length) out.parts[id] = data;
   }
   return out;
@@ -163,6 +166,13 @@ export function clean(m) {
       if (Object.keys(c).length) keep.comfort = c;
     }
     if (s.bond && d.bond && Number.isInteger(Number(d.bond.stage))) keep.bond = { stage: Math.max(1, Math.min(6, Number(d.bond.stage))) };
+    if (s.scenes && d.scenes && Array.isArray(d.scenes.list)) {
+      // only the shape here; every scene is checked by io.scenes.add() against the scene engine's own rulebook
+      const list = d.scenes.list.slice(0, LIMITS.scenes).filter(en => en && typeof en === 'object' && en.scene && typeof en.scene === 'object' && !Array.isArray(en.scene))
+        .map(en => ({ slot: typeof en.slot === 'string' ? en.slot.slice(0, 40) : null, scene: en.scene }));
+      const size = JSON.stringify(list).length;
+      if (size > LIMITS.value * 2) dropped.push(id + ': too big'); else if (list.length) { total += size; keep.scenes = { list }; }
+    }
     if (Object.keys(keep).length) out.parts[id] = keep; else dropped.push(id);
   }
   if (total > LIMITS.total) return { error: 'too_big' };
@@ -198,6 +208,7 @@ export function summary(manifest) {
     if (d.spots) bits.push(d.spots.spots.length ? countWords(d.spots.spots.length, 'spot') : 'no spots');
     if (d.comfort) bits.push('what you are to each other' + ('flirty' in d.comfort ? (d.comfort.flirty ? ', Flirty on' : ', Flirty off') : ''));
     if (d.bond) bits.push('a bond to set');
+    if (d.scenes) bits.push(countWords(d.scenes.list.length, 'scene') + ', added to yours');
     out.push({ id, name: p.name, line: p.line, words: bits.join('; '), privacy: p.privacy, offByDefault: defaultIn(p, 'profile') === 'off' });
   }
   return out;
@@ -214,7 +225,7 @@ export const defaultPick = (manifest) => Object.keys(manifest?.parts || {}).filt
 // applying one (the page makes a save point first)
 
 export async function apply(manifest, pick, io) {
-  const applied = [], skipped = [];
+  const applied = [], skipped = [], notes = [];
   const allKeys = io.local?.keys?.() || [];
   for (const id of pick || []) {
     const p = part(id), d = manifest?.parts?.[id];
@@ -229,11 +240,17 @@ export async function apply(manifest, pick, io) {
       if (d.spots) { if (!io.desk?.setSpots) { skipped.push({ id, why: 'needs the desktop app' }); continue; } await io.desk.setSpots(d.spots); }
       if (d.comfort) await io.comfort.set(Object.fromEntries(COMFORT_KEYS.filter(k => k in d.comfort).map(k => [k, d.comfort[k]])));
       if (d.bond) await io.bond.set(d.bond.stage);
+      if (d.scenes) {
+        if (!io.scenes?.add) { skipped.push({ id, why: 'needs the scene maker' }); continue; }
+        const r = await io.scenes.add(d.scenes.list);
+        if (r?.error) throw new Error(r.error);
+        notes.push(`${countWords(r.added, 'scene')} added` + (r.dropped?.length ? `; left out: ${r.dropped.map(x => `${x.name} (${x.why})`).join('; ')}` : ''));
+      }
       applied.push(id);
     } catch (e) { skipped.push({ id, why: e?.message || 'failed' }); }
   }
   if (io.after) await io.after(applied);
-  return { applied, skipped };
+  return { applied, skipped, notes };
 }
 
 export const WORDS = {

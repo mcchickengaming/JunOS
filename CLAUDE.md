@@ -795,8 +795,11 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   can only ever be in Everyday scenes, in code; shipped data has no 18+ and no "agreed beforehand"; every shipped scene ends
   for every bond with Flirty on or off. **The story engine**: a `scene` node whose slot gives a full scene emits
   `{ type: 'scene', …, play }` and WAITS (`wait: 'scene'`); the page plays it (`js/scene-view.js` `createScenePlayer`, one
-  player for the story page, the album and the lab) and answers `En.step(…, { scene: { end } })` → the node's
-  `on: { <ending> | else }`, else its choices / `next`; `pending()` replays it from its start; story-sim.js plays it with
+  player for the story page, the album and the lab; lines come ONE AT A TIME: Next / a click / Space, Skip (= "Skip
+  opening" before the first move; `skipOpening`), Leave; no Back, on purpose) and answers `En.step(…, { scene: { end } })` → the node's
+  `on: { <ending> | else }`, else its choices / `next`; `pending()` replays it from its start, and the story page first
+  asks "You left in the middle of …": Start it again / Skip opening / Skip scene (end `skip`: only `on.skip` catches it,
+  nothing is remembered); story-sim.js plays it with
   `Sc.playOnce`. Sample events in story.json: `evening_together` (slot `evening_together`: Tea night; Close+ with Flirty on:
   Closer than the couch requires; "asleep" / "stay" → the next morning) and `cooking_together` (One pot: a flour mark, an
   apron, a Flirty phase with a fade). Shared safe-spot slots: `after_danger`, `camp_night` (lines; nothing triggers them
@@ -804,13 +807,17 @@ A feature is done only when ALL of these are true. Check them off in the chat be
   line per part, "Play it again" = a replay that writes nothing; what's switched off isn't listed. **The owner's scenes**
   (`scene-mine.js`): localStorage `jun.scenes.mine` `{ on, list: [{ on, slot, scene }] }`; `SceneDoor.install(lib)` (called by
   the story's and the delve's doors) sets `Scenes.setCustom`, so they play wherever their slot is played, through the same
-  gate (an 18+ one needs 18+ on and confirmed); `.junscenes` files are checked scene by scene, never replace one of his, and
-  everything rated arrives switched off. The delve shows a full scene as its first lines (`Delve.beatsOf`). **Scene lab**
+  gate (in the game an 18+ one needs only the 18+ switch; her bond only if the scene sets one). **Shared as a Jun profile
+  piece** `scenes` (profile-parts.json store `scenes`, `io.scenes { get, add }`; Nov 16, owner): applying a profile ADDS its
+  scenes (`Mine.merge`: every scene checked, a clashing id renamed, never replacing or removing one of his) and they arrive
+  SWITCHED ON, rated ones too (owner: "if the user has the setting on then they are wanting said content"); a file still
+  never switches 18+ on (`COMFORT_KEYS`). Settings > Jun profiles says so by its upload button (`#profRated`). Never in a
+  game save (content, not progress: an older save would lose a scene written after it); his progress IN a scene is. The delve shows a full scene as its first lines (`Delve.beatsOf`). **Scene lab**
   `webapp/scene-lab.html` + `js/scene-lab.js` (**F12 > Labs**; main.js allows the url): play any slot or scene in a SANDBOX
   (the story engine's own pretend game, so memory works as in the real one; bond, Flirty what-if, Game Jun vs desktop Jun
   with a "She says stop" button), the slots as the gate sees them, the sandbox's memory + album, **the scene maker** (a few
   lines or a full scene, or start from one of ours; point and click; Check / Test / Save; nothing with a problem can be saved;
-  one switch for all + one each; download / upload), check the data, "a hundred scenes in a moment" (`Sc.many`), every number.
+  one switch for all + one each; sharing points to Jun profiles), check the data, "a hundred scenes in a moment" (`Sc.many`), every number.
   Registry: `scenes`, `scene_maker`. NOT built: real art (settings, rigs, loops, shots are words), Touch v2 as the touch layer,
   speed by hand, marks on her body between scenes outside a scene, modifiers (items), scenes for NPCs' own voices (the engine
   takes `who`; no NPC scenes ship), desktop Jun's scenes (the door is there: an `ask` with her live say + a `mem`), her

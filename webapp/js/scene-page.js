@@ -3,8 +3,8 @@
 // the scenes with a part reached, and plays one again with the same player as everywhere (js/scene-view.js).
 // Playing again is a REPLAY: nothing is remembered, written or saved. What's switched off isn't listed.
 
-import * as Door from './core/story/story.js?v=4';
-import { createScenePlayer } from './scene-view.js?v=4';
+import * as Door from './core/story/story.js?v=5';
+import { createScenePlayer } from './scene-view.js?v=5';
 
 const { En, GameSave, SceneDoor } = Door;
 const Sc = En.Sc;

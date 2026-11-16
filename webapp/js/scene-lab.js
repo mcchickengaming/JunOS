@@ -4,11 +4,11 @@
 // so the scene remembers through story state exactly as in the real game): nothing is written to the real game.
 // The one thing here that IS real: the owner's own scenes (localStorage jun.scenes.mine, through scene-door.js).
 
-import * as Door from './core/story/story.js?v=4';
+import * as Door from './core/story/story.js?v=5';
 import * as Gate from './core/gate.js?v=6';
 import { DEFAULTS, setOverrides, tune as getTune } from './core/scene/scene-tune.js?v=3';
 import { tune as storyTune } from './core/story/story-tune.js?v=1';
-import { createScenePlayer } from './scene-view.js?v=4';
+import { createScenePlayer } from './scene-view.js?v=5';
 import { FACES } from './story-view.js?v=4';
 
 const { En, SceneDoor } = Door;
@@ -394,16 +394,8 @@ async function init() {
   $('newFull').onclick = () => newDraft({ name: '', tier: 'everyday', setting: 'home_evening', pose: 'couch', opening: [{ who: 'narrator', t: '' }], start: 'p1',
     phases: { p1: { name: '', loop: '', actions: ['act1'] } }, actions: { act1: { name: '', say: [{ face: 'neutral', t: '' }] } }, endings: { end1: { name: 'Say goodnight', beats: [{ face: 'neutral', t: '' }] } } }, 'evening_together' in slots ? 'evening_together' : null);
   $('copyBtn').onclick = () => { const src = clone(lib.scenes[$('copyFrom').value]); delete src.id; src.name = 'My ' + src.name[0].toLowerCase() + src.name.slice(1); const from = Object.entries(lib.slots).find(([, sl]) => Object.values(sl.variants).flat().some(v => v.scene === $('copyFrom').value)); newDraft(src, from ? from[0] : null); };
-  $('download').onclick = () => { const a = el('a', { href: URL.createObjectURL(new Blob([Mine.toFile(mineSet, { made: Date.now() })], { type: 'application/json' })), download: 'my-scenes.junscenes' }); document.body.append(a); a.click(); a.remove(); };
-  $('upload').onclick = () => $('uploadFile').click();
-  $('uploadFile').onchange = async (e) => {
-    const f = e.target.files[0]; e.target.value = '';
-    if (!f) return;
-    const r = Mine.fromFile(await f.text(), lib, mineSet, { npcs: S().npcs });
-    if (r.error) { $('mineNote').textContent = r.error; return; }
-    const next = clone(mineSet); next.list.push(...r.list.map(en => ({ ...en, slot: en.slot && slots[en.slot] ? en.slot : null })));
-    keep(next, `Added ${r.list.length} scene${r.list.length === 1 ? '' : 's'}.` + (r.rated ? ` ${r.rated} rated one${r.rated === 1 ? '' : 's'} arrived switched off: look ${r.rated === 1 ? 'it' : 'them'} over, then switch ${r.rated === 1 ? 'it' : 'them'} on.` : '') + (r.dropped.length ? ' Left out: ' + r.dropped.map(d => `${d.name} (${d.why})`).join('; ') : ''));
-  };
+  // sharing goes through Jun profiles (Settings), so there's one kind of file for everything you share
+  $('openProfiles').onclick = () => { if (window.junDesktop?.openSettings) window.junDesktop.openSettings('saves'); else window.open('desktop-settings.html', '_blank'); };
   $('check').onclick = () => {
     const bad = [...Sc.checkLibrary(lib, { shipped: true, npcs: S().npcs }), ...Scenes.checkSlots({ scenes: slots }),
       ...mineSet.list.flatMap(en => Sc.checkScene(en.scene, lib, { npcs: S().npcs }).map(k => `yours, "${en.scene.name}": ${k}`)), ...SceneDoor.dropped().map(d => `yours, left out: ${d.name} (${d.why})`)];

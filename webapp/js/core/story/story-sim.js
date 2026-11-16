@@ -8,7 +8,7 @@
 // "no" turns down whatever can be turned down (a player who only wants the main story). A game over is
 // what it is for a player: back to the last autosave (kept here in memory), and try again.
 
-import * as En from './story-engine.js?v=3';
+import * as En from './story-engine.js?v=4';
 import { tune as getTune } from './story-tune.js?v=1';
 import { dice, mix } from '../delve/rng.js?v=1';
 import * as Places from '../world/places.js?v=1';

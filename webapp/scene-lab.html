@@ -103,14 +103,14 @@
 
   <section class="wide">
     <h2>Your own scenes (the scene maker)</h2>
-    <p class="note">Make a scene, test it here, save it: it then plays in the real game wherever its slot comes up, if the one gate lets it show (its rating has to be switched on in Settings, and <span class="herName">she</span> has to be fine with it). Nothing with a problem can be saved. Scenes from a file arrive checked, and anything rated in them arrives switched off.</p>
+    <p class="note">Make a scene, test it here, save it: it then plays in the real game wherever its slot comes up, if the one gate lets it show (its rating has to be switched on in Settings, and <span class="herName">she</span> has to be fine with it). Nothing with a problem can be saved. Scenes from someone else arrive checked and switched on; your own switches decide what shows.</p>
     <div class="maker">
       <div>
         <div class="btns"><label class="chk"><input type="checkbox" id="mineOn"> Use my scenes</label></div>
         <div id="mineList"></div>
         <div class="btns"><button id="newSimple">New: a few lines</button><button id="newFull">New: a full scene</button></div>
         <div class="btns"><select id="copyFrom"></select><button id="copyBtn">Start from this one</button></div>
-        <div class="btns"><button id="download">Download my scenes</button><button id="upload">Upload scenes…</button><input type="file" id="uploadFile" accept=".junscenes,.json" hidden></div>
+        <p class="note">To share them, or to bring in someone else's: Settings &gt; Saves &amp; updates &gt; <b>Jun profiles</b> (the piece "Your scenes"). A profile's scenes are added to yours, never replacing one, and arrive switched on. Scenes can have 18+ content: your own 18+ setting decides what shows. <button id="openProfiles">Open Jun profiles</button></p>
         <p class="note" id="mineNote" role="status"></p>
       </div>
       <div id="editor"><p class="note">Pick one of your scenes, or start a new one.</p></div>
@@ -144,6 +144,6 @@
     <div class="btns"><button id="tuneReset">Back to the real numbers</button></div>
   </section>
 </main>
-<script type="module" src="js/scene-lab.js?v=4"></script>
+<script type="module" src="js/scene-lab.js?v=5"></script>
 </body>
 </html>

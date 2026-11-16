@@ -8,7 +8,7 @@
 // never in a game save: they're content, not progress).
 
 import * as Scenes from '../delve/scenes.js?v=3';
-import * as Mine from './scene-mine.js?v=3';
+import * as Mine from './scene-mine.js?v=4';
 import * as Sc from './scene-engine.js?v=3';
 
 export { Mine, Sc, Scenes };

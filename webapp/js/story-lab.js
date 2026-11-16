@@ -2,12 +2,12 @@
 // it shows lives in js/core/story/ (story-engine.js, cond.js, story-sim.js) and this file only draws and listens. The sandbox game is
 // an object on this page: nothing is written to the real game, nothing is granted, no save is made.
 
-import * as Door from './core/story/story.js?v=4';
-import * as Sim from './core/story/story-sim.js?v=3';
+import * as Door from './core/story/story.js?v=5';
+import * as Sim from './core/story/story-sim.js?v=4';
 import * as Places from './core/world/places.js?v=1';
 import { DEFAULTS, setOverrides, tune as getTune } from './core/story/story-tune.js?v=1';
 import { createView } from './story-view.js?v=4';
-import { createScenePlayer } from './scene-view.js?v=4';
+import { createScenePlayer } from './scene-view.js?v=5';
 
 const { En, Story, Difficulty } = Door;
 const $ = (id) => document.getElementById(id);
